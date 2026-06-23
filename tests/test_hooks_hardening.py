@@ -1,0 +1,221 @@
+"""
+Phase 3 — Hooks hardening tests.
+
+Playwright context is mocked throughout — no browser is launched.
+"""
+import pytest
+from unittest.mock import MagicMock, patch, call
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _make_scenario(name="Test scenario", tags=None):
+    scenario = MagicMock()
+    scenario.name = name
+    scenario.effective_tags = list(tags or [])
+    return scenario
+
+
+def _make_feature(filename="features/test.feature"):
+    feature = MagicMock()
+    feature.filename = filename
+    return feature
+
+
+def _make_context():
+    """Bare context with no pre-set attributes."""
+    return MagicMock(spec=[])
+
+
+# ---------------------------------------------------------------------------
+# Bug 3 — @headed + @headless conflict warning
+# ---------------------------------------------------------------------------
+
+class TestTagConflictWarning:
+    def test_warns_when_both_tags_present(self, capsys):
+        from bddframe import hooks
+
+        scenario = _make_scenario(tags=["headed", "headless"])
+        context = MagicMock()
+
+        with patch("bddframe.hooks.sync_playwright") as mock_pw_fn:
+            mock_pw = MagicMock()
+            mock_pw_fn.return_value.start.return_value = mock_pw
+            mock_browser = MagicMock()
+            mock_pw.chromium.launch.return_value = mock_browser
+            mock_bctx = MagicMock()
+            mock_browser.new_context.return_value = mock_bctx
+
+            hooks.before_scenario(context, scenario)
+
+        captured = capsys.readouterr()
+        assert "WARNING" in captured.out
+        assert "headed" in captured.out
+        assert "headless" in captured.out
+
+    def test_no_warning_when_only_headed(self, capsys):
+        from bddframe import hooks
+
+        scenario = _make_scenario(tags=["headed"])
+        context = MagicMock()
+
+        with patch("bddframe.hooks.sync_playwright") as mock_pw_fn:
+            mock_pw = MagicMock()
+            mock_pw_fn.return_value.start.return_value = mock_pw
+            mock_browser = MagicMock()
+            mock_pw.chromium.launch.return_value = mock_browser
+            mock_bctx = MagicMock()
+            mock_browser.new_context.return_value = mock_bctx
+
+            hooks.before_scenario(context, scenario)
+
+        captured = capsys.readouterr()
+        assert "WARNING" not in captured.out
+
+    def test_headed_tag_wins_over_headless_tag(self):
+        """@headed + @headless → browser launched with headless=False."""
+        from bddframe import hooks
+
+        scenario = _make_scenario(tags=["headed", "headless"])
+        context = MagicMock()
+
+        with patch("bddframe.hooks.sync_playwright") as mock_pw_fn:
+            mock_pw = MagicMock()
+            mock_pw_fn.return_value.start.return_value = mock_pw
+            mock_browser = MagicMock()
+            mock_pw.chromium.launch.return_value = mock_browser
+            mock_bctx = MagicMock()
+            mock_browser.new_context.return_value = mock_bctx
+
+            hooks.before_scenario(context, scenario)
+
+        mock_pw.chromium.launch.assert_called_once()
+        _, kwargs = mock_pw.chromium.launch.call_args
+        assert kwargs["headless"] is False
+
+
+# ---------------------------------------------------------------------------
+# Bug 4 — invalid BDDFRAME_BROWSER raises ValueError with clear message
+# ---------------------------------------------------------------------------
+
+class TestBrowserValidation:
+    def test_invalid_browser_raises(self, monkeypatch):
+        from bddframe import hooks
+
+        monkeypatch.setenv("BDDFRAME_BROWSER", "chrome")
+        scenario = _make_scenario()
+        context = MagicMock()
+
+        with patch("bddframe.hooks.sync_playwright"):
+            with pytest.raises(ValueError, match="chrome"):
+                hooks.before_scenario(context, scenario)
+
+    def test_valid_browser_env_accepted(self, monkeypatch):
+        from bddframe import hooks
+
+        monkeypatch.setenv("BDDFRAME_BROWSER", "firefox")
+        scenario = _make_scenario()
+        context = MagicMock()
+
+        with patch("bddframe.hooks.sync_playwright") as mock_pw_fn:
+            mock_pw = MagicMock()
+            mock_pw_fn.return_value.start.return_value = mock_pw
+            mock_browser = MagicMock()
+            mock_pw.firefox.launch.return_value = mock_browser
+            mock_bctx = MagicMock()
+            mock_browser.new_context.return_value = mock_bctx
+
+            hooks.before_scenario(context, scenario)  # must not raise
+
+        mock_pw.firefox.launch.assert_called_once()
+
+    def test_firefox_tag_overrides_invalid_env(self, monkeypatch):
+        """@firefox tag takes precedence over a bad BDDFRAME_BROWSER value."""
+        from bddframe import hooks
+
+        monkeypatch.setenv("BDDFRAME_BROWSER", "chrome")
+        scenario = _make_scenario(tags=["firefox"])
+        context = MagicMock()
+
+        with patch("bddframe.hooks.sync_playwright") as mock_pw_fn:
+            mock_pw = MagicMock()
+            mock_pw_fn.return_value.start.return_value = mock_pw
+            mock_browser = MagicMock()
+            mock_pw.firefox.launch.return_value = mock_browser
+            mock_bctx = MagicMock()
+            mock_browser.new_context.return_value = mock_bctx
+
+            hooks.before_scenario(context, scenario)  # must not raise
+
+
+# ---------------------------------------------------------------------------
+# Bug 6 — per-resource cleanup: partial failures don't leak processes
+# ---------------------------------------------------------------------------
+
+class TestAfterScenarioCleanup:
+    def test_all_three_resources_closed_on_success(self):
+        from bddframe import hooks
+
+        context = MagicMock()
+        mock_bctx = MagicMock()
+        mock_browser = MagicMock()
+        mock_pw = MagicMock()
+        context._bctx = mock_bctx
+        context._browser = mock_browser
+        context._pw = mock_pw
+        scenario = _make_scenario()
+
+        hooks.after_scenario(context, scenario)
+
+        mock_bctx.close.assert_called_once()
+        mock_browser.close.assert_called_once()
+        mock_pw.stop.assert_called_once()
+
+    def test_pw_stop_called_even_when_bctx_close_raises(self):
+        """If _bctx.close() raises, _browser.close() and _pw.stop() still run."""
+        from bddframe import hooks
+
+        context = MagicMock()
+        mock_bctx = MagicMock()
+        mock_bctx.close.side_effect = RuntimeError("bctx already closed")
+        mock_browser = MagicMock()
+        mock_pw = MagicMock()
+        context._bctx = mock_bctx
+        context._browser = mock_browser
+        context._pw = mock_pw
+        scenario = _make_scenario()
+
+        hooks.after_scenario(context, scenario)  # must not propagate the error
+
+        mock_browser.close.assert_called_once()
+        mock_pw.stop.assert_called_once()
+
+    def test_cleanup_skips_missing_bctx_attribute(self):
+        """
+        If before_scenario failed before _bctx was assigned,
+        after_scenario must still stop _pw without AttributeError.
+        """
+        from bddframe import hooks
+
+        context = MagicMock(spec=["_browser", "_pw"])
+        mock_browser = MagicMock()
+        mock_pw = MagicMock()
+        context._browser = mock_browser
+        context._pw = mock_pw
+        scenario = _make_scenario()
+
+        hooks.after_scenario(context, scenario)
+
+        mock_browser.close.assert_called_once()
+        mock_pw.stop.assert_called_once()
+
+    def test_cleanup_with_no_resources_at_all(self):
+        """Context with no playwright attributes — must not raise."""
+        from bddframe import hooks
+
+        context = MagicMock(spec=[])
+        scenario = _make_scenario()
+
+        hooks.after_scenario(context, scenario)  # must not raise

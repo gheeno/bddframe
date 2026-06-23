@@ -29,11 +29,17 @@ STEP_KEYWORDS = ("Given ", "When ", "Then ", "And ", "But ")
 KNOWN_TAGS = [
     ("web",          "Run with Playwright browser"),
     ("headless",     "No visible browser — CI mode"),
+    ("headed",       "Force browser visible — overrides --headless and .env"),
+    ("firefox",      "Use Firefox instead of Chromium"),
+    ("webkit",       "Use WebKit (Safari engine) instead of Chromium"),
+    ("mobile",       "Run with mobile device emulation (add @iphone or @android)"),
+    ("iphone",       "Emulate iPhone 13 (use with @mobile)"),
+    ("android",      "Emulate Pixel 5 (use with @mobile)"),
+    ("slow",         "500 ms delay between actions — for debugging"),
+    ("record_video", "Record a .webm video, saved to videos/"),
     ("visual",       "Run with OpenCV desktop agent"),
-    ("mobile",       "Run with Appium"),
     ("smoke",        "Include in smoke test subset"),
     ("retry(3)",     "Retry up to N times on failure"),
-    ("record_video", "Record a video of this scenario"),
     ("baseline",     "Force a fresh visual baseline screenshot"),
 ]
 
