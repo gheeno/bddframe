@@ -1,0 +1,56 @@
+{
+  "name": "bddframe",
+  "displayName": "BDDFrame",
+  "description": "Syntax highlighting, step validation and autocompletion for BDDFrame .feature files",
+  "version": "0.1.0",
+  "publisher": "bddframe",
+  "engines": { "vscode": "^1.80.0" },
+  "categories": ["Testing", "Programming Languages"],
+  "keywords": ["bdd", "gherkin", "feature", "testing", "cucumber"],
+  "activationEvents": ["onLanguage:bddframe"],
+  "main": "./client/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "bddframe",
+        "aliases": ["BDDFrame Feature", "Gherkin", "BDD"],
+        "extensions": [".feature"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "bddframe",
+        "scopeName": "source.bddframe",
+        "path": "./syntaxes/bddframe.tmLanguage.json"
+      }
+    ],
+    "configuration": {
+      "title": "BDDFrame",
+      "properties": {
+        "bddframe.pythonPath": {
+          "type": "string",
+          "default": "python3",
+          "description": "Path to the Python interpreter that has bddframe installed."
+        },
+        "bddframe.unknownStepSeverity": {
+          "type": "string",
+          "default": "warning",
+          "enum": ["warning", "information", "none"],
+          "enumDescriptions": [
+            "Yellow squiggle on steps the LLM will handle at runtime.",
+            "Blue dot in Problems panel only — no squiggle in the editor.",
+            "Silent — unknown steps show no indicator at all."
+          ],
+          "description": "How to mark steps that don't match a built-in pattern."
+        }
+      }
+    }
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.80.0"
+  }
+}

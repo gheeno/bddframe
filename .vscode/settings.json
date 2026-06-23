@@ -1,0 +1,5 @@
+{
+  "cucumberautocomplete.steps": [".cucumber_stubs.py"],
+  "cucumberautocomplete.syncfeatures": "features/**/*.feature",
+  "cucumberautocomplete.strictGherkinCompletion": false
+}
