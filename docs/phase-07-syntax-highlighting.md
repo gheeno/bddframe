@@ -1,4 +1,4 @@
-# Phase 6 — Syntax Highlighting & Editor Experience
+# Phase 7 — Syntax Highlighting & Editor Experience
 
 **Goal**: The `.feature` file looks great in VS Code, `[variables]` are highlighted, `@tags` autocomplete, and unknown steps get a warning before you even run.
 
@@ -141,9 +141,12 @@ The yellow warning on the last step tells the QA: "I don't have a built-in patte
 
 ## Deliverables
 
-- [ ] `vscode-extension/` — VS Code extension package
-- [ ] `vscode-extension/syntaxes/bddframe-variables.json` — TextMate injection grammar
-- [ ] `bddframe/lsp/server.py` — pygls language server
-- [ ] `vscode-extension/package.json` — extension manifest, declares `bddframe-lsp` as the language server
-- [ ] `.vsix` build via `vsce package` in `Makefile`
-- [ ] `bddframe-lsp` registered as a console script in `pyproject.toml`
+- [x] `vscode-extension/` — VS Code extension package
+- [x] `vscode-extension/syntaxes/bddframe.tmLanguage.json` — full TextMate grammar with `[variable]` and `<outline-param>` highlighting baked in (replaces the planned separate injection file)
+- [x] `vscode-extension/language-configuration.json` — bracket pairs, auto-close, word pattern
+- [x] `vscode-extension/package.json` — extension manifest with language, grammar, and LSP client contributions
+- [x] `vscode-extension/client/extension.js` — VS Code extension activator that spawns `bddframe-lsp`
+- [x] `bddframe/lsp/server.py` — pygls language server: step validation, tag autocomplete, `[variable]` completion from `.env`
+- [x] `bddframe-lsp` registered as a console script in `pyproject.toml`
+- [x] `Makefile` — `make vsix` builds the `.vsix` package; `make install-ext` installs it locally; `make test` runs the full test suite
+- [x] `tests/test_lsp.py` — unit tests for validation logic, KNOWN_TAGS completeness, and `_env_var_names` helper

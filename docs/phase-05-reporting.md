@@ -1,4 +1,4 @@
-# Phase 4 — Reporting
+# Phase 5 — Reporting
 
 **Goal**: After every run, produce a report that shows what happened, where it failed, and a screenshot with the failure point circled — all in a format Azure DevOps understands natively.
 
@@ -193,7 +193,7 @@ flowchart LR
     style F fill:#e3f2fd
 ```
 
-Pipeline tasks (full YAML in Phase 5):
+Pipeline tasks (full YAML in Phase 6):
 
 ```yaml
 - task: PublishTestResults@2

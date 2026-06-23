@@ -4,6 +4,8 @@ from dotenv import load_dotenv
 from playwright.sync_api import sync_playwright
 from bddframe.agents.web import pom as pom_module
 
+_VALID_BROWSERS = {"chromium", "firefox", "webkit"}
+
 
 def before_all(context):
     load_dotenv()
@@ -17,15 +19,36 @@ def before_feature(context, feature):
 def before_scenario(context, scenario):
     tags = set(scenario.effective_tags)
 
-    headless = 'headless' in tags or os.getenv("BDDFRAME_HEADLESS", "false").lower() == "true"
-    slow_mo  = 500 if 'slow' in tags else 0
+    # Bug 3: warn when @headed and @headless both appear — @headed wins but conflict
+    # is almost always a forgotten debug tag that will break CI silently.
+    if 'headed' in tags and 'headless' in tags:
+        print(
+            f"\n  [bddframe] WARNING: scenario '{scenario.name}' has both @headed and "
+            f"@headless — @headed wins. Remove one tag to suppress this warning."
+        )
 
+    if 'headed' in tags:
+        headless = False
+    elif 'headless' in tags:
+        headless = True
+    else:
+        headless = os.getenv("BDDFRAME_HEADLESS", "false").lower() == "true"
+
+    slow_mo = 500 if 'slow' in tags else 0
+
+    # Bug 4: validate browser name before passing to getattr(playwright, name)
     if 'firefox' in tags:
         browser_name = 'firefox'
     elif 'webkit' in tags:
         browser_name = 'webkit'
     else:
         browser_name = os.getenv("BDDFRAME_BROWSER", "chromium")
+
+    if browser_name not in _VALID_BROWSERS:
+        raise ValueError(
+            f"Unsupported browser '{browser_name}'. "
+            f"Valid options: {', '.join(sorted(_VALID_BROWSERS))}"
+        )
 
     timeout = int(os.getenv("BDDFRAME_TIMEOUT", "10000"))
 
@@ -42,7 +65,7 @@ def before_scenario(context, scenario):
         ctx_opts['record_video_dir'] = "videos/"
 
     context._bctx = context._browser.new_context(**ctx_opts)
-    context.page  = context._bctx.new_page()
+    context.page = context._bctx.new_page()
     context.page.set_default_timeout(timeout)
 
 
@@ -59,9 +82,17 @@ def after_step(context, step):
 
 
 def after_scenario(context, scenario):
-    try:
-        context._bctx.close()
-        context._browser.close()
-        context._pw.stop()
-    except Exception:
-        pass
+    # Bug 6: clean up each resource independently so a failure on one
+    # (e.g. _bctx never created) does not skip stopping _pw and leak
+    # an orphaned browser process.
+    for attr, method in [
+        ("_bctx",    lambda r: r.close()),
+        ("_browser", lambda r: r.close()),
+        ("_pw",      lambda r: r.stop()),
+    ]:
+        resource = getattr(context, attr, None)
+        if resource is not None:
+            try:
+                method(resource)
+            except Exception:
+                pass

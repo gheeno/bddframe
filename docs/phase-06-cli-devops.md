@@ -1,4 +1,4 @@
-# Phase 5 — CLI, Recorder & Azure DevOps
+# Phase 6 — CLI, Recorder & Azure DevOps
 
 **Goal**: One command to run tests. One command to record a new test. Drop-in pipeline YAML for Azure DevOps.
 

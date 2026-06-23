@@ -67,8 +67,11 @@ bddframe run login.feature
 # Run by tag
 bddframe run --tag smoke
 
-# Run headless
+# Run headless (no browser window)
 bddframe run --headless
+
+# Run headed (browser visible — overrides .env and --headless)
+bddframe run --headed
 
 # Validate feature files without launching a browser
 bddframe validate
@@ -99,17 +102,23 @@ Tags on a `Scenario` (or `Feature` to apply to all scenarios) control how the br
 | `@web @firefox` | Firefox |
 | `@web @webkit` | Safari engine |
 | `@headless` | No visible browser window |
+| `@headed` | Force browser visible — overrides `--headless` and `.env` |
 | `@web @mobile @iphone` | iPhone 13 emulation |
 | `@web @mobile @android` | Pixel 5 emulation |
 | `@record_video` | Record `.webm`, saved to `videos/` |
 | `@slow` | 500 ms delay between actions (debug) |
 
+Tag priority (highest wins): `@headed` > `@headless` > `--headed` > `--headless` > `.env`
+
 ```gherkin
 @headless
-Feature: Regression Suite   ← all scenarios in this file run headless
+Feature: Regression Suite        ← all scenarios run headless
 
   @web @smoke
-  Scenario: Login works headlessly
+  Scenario: Standard login        ← headless (inherited)
+
+  @web @headed
+  Scenario: Debug this one        ← headed, overrides the Feature tag
     ...
 ```
 
@@ -189,7 +198,8 @@ Options: `"warning"` (default), `"information"` (Problems panel only), `"none"` 
 
 - [Phase 1 — Foundation](docs/phase-01-foundation.md)
 - [Phase 2 — Web Agent](docs/phase-02-web-agent.md)
-- [Phase 3 — Visual / Desktop Agent](docs/phase-03-visual-agent.md)
-- [Phase 4 — Reporting](docs/phase-04-reporting.md)
-- [Phase 5 — CLI, Recorder & Azure DevOps](docs/phase-05-cli-devops.md)
-- [Phase 6 — Syntax Highlighting](docs/phase-06-syntax-highlighting.md)
+- [Phase 3 — CLI & Hooks Hardening](docs/phase-03-hardening.md)
+- [Phase 4 — Visual / Desktop Agent](docs/phase-04-visual-agent.md)
+- [Phase 5 — Reporting](docs/phase-05-reporting.md)
+- [Phase 6 — CLI, Recorder & Azure DevOps](docs/phase-06-cli-devops.md)
+- [Phase 7 — Syntax Highlighting](docs/phase-07-syntax-highlighting.md)

@@ -1,4 +1,4 @@
-# Phase 3 — Visual / Desktop Agent
+# Phase 4 — Visual / Desktop Agent
 
 **Goal**: Automate anything on screen that isn't a browser DOM — desktop apps, Electron apps, Citrix, legacy software, anything a human eye can see.
 
