@@ -1,5 +1,6 @@
 import os
 import subprocess
+from pathlib import Path
 import typer
 
 app = typer.Typer(help="BDDFrame — AI-powered BDD test runner", add_completion=False)
@@ -18,7 +19,16 @@ def run(
     env["BDDFRAME_HEADLESS"] = "true" if headless else "false"
     env["BDDFRAME_BROWSER"] = browser
 
-    args = ["behave", path, "--no-capture"]
+    if path.endswith(".feature"):
+        # Behave needs features/ as the base (contains steps/ and environment.py).
+        # Use --include with the filename stem so any path convention works:
+        #   bddframe run tests/checkout.feature
+        #   bddframe run features/saucedemo/login.feature
+        #   bddframe run login.feature
+        args = ["behave", "features/", "--include", Path(path).stem, "--no-capture"]
+    else:
+        args = ["behave", path, "--no-capture"]
+
     if tag:
         args += ["--tags", tag]
 

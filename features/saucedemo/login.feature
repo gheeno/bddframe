@@ -1,3 +1,4 @@
+@headless
 Feature: Sauce Demo Login
 
   @web @smoke

@@ -13,13 +13,11 @@ Feature: Guest Checkout
 
   @web @smoke
   Scenario: Customer completes a purchase with a valid card
-
-    Given I have 2 items in my cart
-    When I go to checkout
-    And I enter [my email] in the email field
-    And I enter [my card number] in the card details
-    And I place the order
-    Then I should see a thank you message
+    Given User is on "https://staging.myshop.com"
+    When User enters [MY_EMAIL] in the email field
+    And User enters [MY_CARD_NUMBER] in the card details
+    And User clicks the Place Order button
+    Then User should see "Thank you for your order"
     And the screen should look the same as before
 ```
 
@@ -30,10 +28,10 @@ That is the only file the QA touches. No Python. No YAML. No XPath.
 ## How it works
 
 1. **`behave` parses** the `.feature` file into steps
-2. **LangGraph orchestrator** routes each step to the right agent
+2. **Step resolver** matches each step against built-in patterns (no LLM cost)
 3. **Web agent** finds elements by what they *are* (label, role, text) — not by CSS selector
-4. **LLM interprets** ambiguous steps — no step definitions ever written
-5. **Vision LLM asserts** things that can't be expressed in DOM terms ("looks the same as before")
+4. **Self-healing** kicks in when an element isn't found: scroll, partial match, then vision LLM
+5. **LLM fallback** interprets steps that don't match any pattern (opt-in via `BDDFRAME_MODEL`)
 6. **Allure report** shows pass/fail with annotated screenshots of exactly what went wrong
 
 ---
@@ -43,7 +41,6 @@ That is the only file the QA touches. No Python. No YAML. No XPath.
 | Layer | Tool | License |
 |-------|------|---------|
 | BDD parsing | `behave` | BSD |
-| Orchestration | `LangGraph` | Apache 2.0 |
 | LLM gateway | `LiteLLM` | MIT |
 | Local LLM | `Ollama` + `llama3` / `llava` | MIT |
 | Web automation | `Playwright` | Apache 2.0 |
@@ -57,46 +54,104 @@ That is the only file the QA touches. No Python. No YAML. No XPath.
 ## Quick start
 
 ```bash
-pip install bddframe
+pip install -e ".[all]"
 playwright install chromium
 
-bddframe run tests/checkout.feature
-bddframe report open
-```
+# Run all features
+bddframe run
 
-Record a flow instead of writing from scratch:
+# Run a specific feature file (any path convention works)
+bddframe run features/saucedemo/login.feature
+bddframe run login.feature
 
-```bash
-bddframe record --output tests/checkout.feature
-# browser opens → do the flow → close → .feature file generated
+# Run by tag
+bddframe run --tag smoke
+
+# Run headless
+bddframe run --headless
+
+# Validate feature files without launching a browser
+bddframe validate
 ```
 
 ---
 
 ## Variable substitution
 
-`[my email]` in a step maps to `MY_EMAIL` in `.env` or CI pipeline variables. No special syntax — square brackets are the universal convention.
+`[MY_EMAIL]` in a step maps to `MY_EMAIL` in `.env` or CI pipeline variables. Square brackets are the universal convention — lowercase with spaces also works (`[my email]` → `MY_EMAIL`).
 
-```
-# .env
+```bash
+# .env  (copy from .env.example — gitignored)
 MY_EMAIL=test@example.com
-MY_CARD_NUMBER=4111111111111111
-SHOP_URL=https://staging.myshop.com
+SAUCE_USERNAME=standard_user
+BASE_URL=https://staging.myshop.com
 ```
+
+---
+
+## Browser tags
+
+Tags on a `Scenario` (or `Feature` to apply to all scenarios) control how the browser runs:
+
+| Tag | Effect |
+|-----|--------|
+| `@web` | Chromium (default) |
+| `@web @firefox` | Firefox |
+| `@web @webkit` | Safari engine |
+| `@headless` | No visible browser window |
+| `@web @mobile @iphone` | iPhone 13 emulation |
+| `@web @mobile @android` | Pixel 5 emulation |
+| `@record_video` | Record `.webm`, saved to `videos/` |
+| `@slow` | 500 ms delay between actions (debug) |
+
+```gherkin
+@headless
+Feature: Regression Suite   ← all scenarios in this file run headless
+
+  @web @smoke
+  Scenario: Login works headlessly
+    ...
+```
+
+---
+
+## Assertions
+
+### Structural — fast, no LLM
+
+```gherkin
+Then User should see "Products"
+Then User should not see "Error"
+Then User should have url containing "inventory"
+And the page title should contain "Swag Labs"
+```
+
+### Semantic — vision LLM (requires `BDDFRAME_MODEL` in `.env`)
+
+```gherkin
+Then the checkout form should show a success state
+Then the header should display the user's name
+```
+
+### Visual baseline — semantic diff (requires `BDDFRAME_MODEL`)
+
+```gherkin
+And the screen should look the same as before
+And the "checkout" screen should look the same as before ignoring the header
+```
+
+First run captures a semantic description of the page. Subsequent runs compare against it — tolerates timestamps, avatars, and dynamic badges.
 
 ---
 
 ## Custom Extension Install
 
-The `vscode-extension/` folder is a VS Code extension that provides syntax highlighting, step validation, `[variable]` colouring and `@tag` autocomplete — specific to BDDFrame.
+The `vscode-extension/` folder provides syntax highlighting, step validation, `[variable]` colouring and `@tag` autocomplete for `.feature` files.
 
 **Prerequisites**
 
 ```bash
-# Install LSP dependencies
 pip install -e ".[lsp]"
-
-# Install extension npm dependencies (one-time)
 cd vscode-extension && npm install && cd ..
 ```
 
@@ -119,9 +174,8 @@ The BDDFrame extension replaces `alexkrechik.cucumberautocomplete`. With both ac
 
 **Suppress unknown step warnings** (optional)
 
-Add to `.vscode/settings.json`:
-
 ```json
+// .vscode/settings.json
 {
   "bddframe.unknownStepSeverity": "none"
 }

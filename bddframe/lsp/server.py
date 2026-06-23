@@ -76,7 +76,7 @@ def did_open(ls: LanguageServer, params: lsp.DidOpenTextDocumentParams):
 
 @server.feature(lsp.TEXT_DOCUMENT_DID_CHANGE)
 def did_change(ls: LanguageServer, params: lsp.DidChangeTextDocumentParams):
-    doc = ls.workspace.get_document(params.text_document.uri)
+    doc = ls.workspace.get_text_document(params.text_document.uri)
     diags = _validate(doc.source)
     ls.text_document_publish_diagnostics(
         lsp.PublishDiagnosticsParams(uri=params.text_document.uri, diagnostics=diags)
@@ -85,7 +85,7 @@ def did_change(ls: LanguageServer, params: lsp.DidChangeTextDocumentParams):
 
 @server.feature(lsp.TEXT_DOCUMENT_DID_SAVE)
 def did_save(ls: LanguageServer, params: lsp.DidSaveTextDocumentParams):
-    doc = ls.workspace.get_document(params.text_document.uri)
+    doc = ls.workspace.get_text_document(params.text_document.uri)
     diags = _validate(doc.source)
     ls.text_document_publish_diagnostics(
         lsp.PublishDiagnosticsParams(uri=params.text_document.uri, diagnostics=diags)
@@ -101,7 +101,7 @@ def did_save(ls: LanguageServer, params: lsp.DidSaveTextDocumentParams):
     lsp.CompletionOptions(trigger_characters=["@", "["]),
 )
 def completion(ls: LanguageServer, params: lsp.CompletionParams) -> lsp.CompletionList:
-    doc = ls.workspace.get_document(params.text_document.uri)
+    doc = ls.workspace.get_text_document(params.text_document.uri)
     line = doc.lines[params.position.line]
     prefix = line[: params.position.character]
     items = []
