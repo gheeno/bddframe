@@ -41,6 +41,8 @@ def execute_step(step_text: str, context):
         actions.assert_url(page, action['fragment'])
     elif t == 'wait_load':
         actions.wait_load(page)
+    elif t == 'wait_networkidle':
+        actions.wait_networkidle(page)
     elif t == 'wait_visible':
         actions.wait_visible(page, action['text'])
     elif t == 'wait_seconds':
@@ -49,6 +51,12 @@ def execute_step(step_text: str, context):
         actions.scroll(page, action['direction'])
     elif t == 'scroll_to':
         actions.scroll_to(page, action['locator'])
+    elif t == 'assert_title':
+        actions.assert_title(page, action['fragment'])
+    elif t == 'assert_semantic':
+        actions.assert_semantic(page, action['assertion'])
+    elif t == 'visual_baseline':
+        actions.visual_baseline(page, action['name'], action.get('ignore'))
     elif t == 'screenshot':
         actions.screenshot(page, action['name'])
     else:

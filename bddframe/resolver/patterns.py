@@ -100,10 +100,16 @@ PATTERNS = [
 
     # Wait
     (r'^waits? for (?:the )?page to (?:load|be ready)$',
-                                                   'wait_load',      lambda m: {}),
-    (r'^waits? until ["\'](.+?)["\'] is visible$',
-                                                   'wait_visible',   lambda m: {'text': _q(m.group(1))}),
-    (r'^waits? (\d+) seconds?$',                   'wait_seconds',   lambda m: {'seconds': int(m.group(1))}),
+                                                   'wait_load',        lambda m: {}),
+    (r'^waits? for (?:the )?page to fully load$',
+                                                   'wait_networkidle', lambda m: {}),
+    (r'^waits? for (?:the )?network to be idle$',
+                                                   'wait_networkidle', lambda m: {}),
+    (r'^waits? until ["\'](.+?)["\'] (?:is visible|appears?|loads?)$',
+                                                   'wait_visible',     lambda m: {'text': _q(m.group(1))}),
+    (r'^waits? until (.+?) (?:is visible|appears?|loads?)$',
+                                                   'wait_visible',     lambda m: {'text': m.group(1)}),
+    (r'^waits? (\d+) seconds?$',                   'wait_seconds',     lambda m: {'seconds': int(m.group(1))}),
 
     # Scroll
     (r'^scrolls? down$',                           'scroll',         lambda m: {'direction': 'down'}),
@@ -120,9 +126,25 @@ PATTERNS = [
     (r'^should have url containing ["\'](.+?)["\']$',
                                                    'assert_url',     lambda m: {'fragment': _q(m.group(1))}),
 
+    # Title assertion
+    (r'^the page title should (?:contain|include) ["\'](.+?)["\']$',
+                                                   'assert_title',    lambda m: {'fragment': _q(m.group(1))}),
+
+    # Semantic (vision LLM) assertions
+    (r'^the (.+?) should (?:show|display|have) (?:a )?(.+)$',
+                                                   'assert_semantic', lambda m: {'assertion': f"{m.group(1)} shows {m.group(2)}"}),
+    (r'^the (.+?) should look (.+)$',
+                                                   'assert_semantic', lambda m: {'assertion': f"{m.group(1)} looks {m.group(2)}"}),
+
+    # Visual baseline
+    (r'^the screen should look the same as before(?: ignoring (?:the )?(.+))?$',
+                                                   'visual_baseline', lambda m: {'name': 'default', 'ignore': m.group(1)}),
+    (r'^the ["\'](.+?)["\'] screen should look the same as before(?: ignoring (?:the )?(.+))?$',
+                                                   'visual_baseline', lambda m: {'name': _q(m.group(1)), 'ignore': m.group(2)}),
+
     # Screenshot
     (r'^takes? a screenshot(?: ["\'](.+?)["\'])?$',
-                                                   'screenshot',     lambda m: {'name': _q(m.group(1)) if m.group(1) else 'manual'}),
+                                                   'screenshot',      lambda m: {'name': _q(m.group(1)) if m.group(1) else 'manual'}),
 ]
 
 
