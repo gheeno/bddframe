@@ -650,6 +650,7 @@ Tests run headless. Failures upload annotated screenshots as pipeline artifacts.
 - [Getting Started](docs/getting-started.md) ← full walkthrough
 - [Writing a Test](docs/writing-a-test.md) ← step-by-step: happy path + problematic locators
 - [Resolution Hierarchy](docs/resolution-hierarchy.md) ← when the local agent vs an LLM handles a step
+- [The LLM](docs/llm.md) ← model, triggers, client module, LLM-vs-OpenCV diagram
 - [POM Key Mapping](docs/pom-key-mapping.md) ← how step wording maps to `pom.yaml` keys
 
 **Design phases**
