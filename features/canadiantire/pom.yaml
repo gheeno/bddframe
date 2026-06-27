@@ -1,0 +1,60 @@
+# Local POM — applies ONLY to features/canadiantire/*.feature files.
+# Overrides global pom.yaml for any matching key.
+#
+# HOW TO USE:
+#   Run the scenario first WITHOUT any POM entries.
+#   Only add an entry here when the agent prints:
+#     "No match found for '<label>'" or the step fails with a locator error.
+#   Then inspect the element in DevTools and add the selector below.
+#
+# Selector types: css | xpath | id | testid | text | role
+#
+# ===========================================================================
+# LANDING PAGE — canadiantire.ca
+# ===========================================================================
+#
+# The search bar has a placeholder "What can we help you find?" so the agent
+# will likely resolve it via getByPlaceholder. Add this entry if it fails.
+#
+# search bar:
+#   css: "input[data-testid='search-input'], input[name='q']"
+#
+# ===========================================================================
+# SEARCH RESULTS PAGE — /search?q=...
+# ===========================================================================
+#
+# Product cards are often <div> or <li> elements with no accessible name.
+# The agent falls back here when getByRole/getByText can't target "first result".
+#
+# first result:
+#   css: "[data-testid='product-tile']:first-of-type a"
+#
+# search result list:
+#   css: "[data-testid='product-listing'], .product-list"
+#
+# ===========================================================================
+# PRODUCT DETAIL PAGE — /pdp/...
+# ===========================================================================
+#
+# Product title, price, and description are usually semantic HTML (h1, p)
+# so the agent should resolve them via text. Add entries only if they are
+# rendered inside a web component or canvas element.
+#
+# product title:
+#   testid: "product-name"
+#
+# product price:
+#   css: "[data-testid='sale-price'], .price-current"
+#
+# product description:
+#   css: "[data-testid='product-description'] p"
+#
+# ===========================================================================
+# SHARED ACROSS PAGES
+# ===========================================================================
+#
+# Canadian Tire uses the OneTrust cookie banner on first load.
+# If the banner blocks interaction, add this to the global pom.yaml instead.
+#
+# cookie accept button:
+#   id: "onetrust-accept-btn-handler"
