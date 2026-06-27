@@ -200,10 +200,16 @@ The orchestrator switches agents mid-scenario based on which step patterns match
 
 ## Deliverables
 
-- [ ] `bddframe/agents/visual/matcher.py` — OpenCV template match + scale variants
-- [ ] `bddframe/agents/visual/ocr.py` — pytesseract wrapper with preprocessing
-- [ ] `bddframe/agents/visual/vision_locate.py` — vision LLM coordinate fallback
-- [ ] `bddframe/agents/visual/desktop.py` — PyAutoGUI actions
-- [ ] `bddframe/agents/visual/screenshot.py` — full-screen capture
-- [ ] `bddframe/resolver/visual_patterns.py` — tier-1 patterns for all visual steps
-- [ ] `tests/assets/` convention documented
+- [x] `bddframe/agents/visual/matcher.py` — OpenCV template match + scale variants + annotated failure screenshot
+- [x] `bddframe/agents/visual/ocr.py` — pytesseract wrapper with grayscale/contrast preprocessing
+- [x] `bddframe/agents/visual/vision_locate.py` — vision LLM coordinate fallback (gated on BDDFRAME_VISION_MODEL)
+- [x] `bddframe/agents/visual/desktop.py` — PyAutoGUI actions (click, right-click, double-click, type, key, drag, scroll, scroll_to_image)
+- [x] `bddframe/agents/visual/screenshot.py` — full-screen capture (mss primary, PIL ImageGrab fallback)
+- [x] `bddframe/agents/visual/regions.py` — named region + raw x,y,w,h parser
+- [x] `bddframe/resolver/visual_patterns.py` — tier-1 patterns for all visual steps
+- [x] `bddframe/orchestrator/visual_runner.py` — dispatch layer mapping pattern results to agent actions
+- [x] `bddframe/steps/visual_catch_all.py` + `features/steps/z_visual_catch_all.py` — behave wiring
+- [x] `pyproject.toml` — `visual` extra: opencv-python, pytesseract, pyautogui, mss
+- [x] `tests/test_visual_patterns.py` — 22 pattern unit tests (no screen access)
+- [x] `tests/test_visual_matcher.py` — 5 matcher unit tests (cv2 mocked)
+- [x] `tests/assets/` — store reference screenshots here (directory documented; created on first use)

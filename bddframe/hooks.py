@@ -6,9 +6,22 @@ from bddframe.agents.web import pom as pom_module
 
 _VALID_BROWSERS = {"chromium", "firefox", "webkit"}
 
+try:
+    from bddframe.reporting import writer as _writer
+    from bddframe.reporting import junit as _junit
+    from bddframe.reporting import builder as _builder
+    from bddframe.reporting import annotate as _annotate
+    _REPORTING = True
+except ImportError:
+    _REPORTING = False
+
+# Accumulated scenario results for JUnit XML, populated in after_scenario.
+_suite_results = []
+
 
 def before_all(context):
     load_dotenv()
+    _suite_results.clear()
 
 
 def before_feature(context, feature):
@@ -68,20 +81,53 @@ def before_scenario(context, scenario):
     context.page = context._bctx.new_page()
     context.page.set_default_timeout(timeout)
 
+    if _REPORTING:
+        context._allure_result = _writer.ScenarioResult(scenario)
+
+
+def _allure_result(context):
+    """Return context._allure_result only when it's a real ScenarioResult instance."""
+    if not _REPORTING:
+        return None
+    result = getattr(context, "_allure_result", None)
+    if result is None:
+        return None
+    # Guard against MagicMock contexts in tests — only accept real ScenarioResult objects.
+    if not isinstance(result, _writer.ScenarioResult):
+        return None
+    return result
+
 
 def after_step(context, step):
     if step.status == "failed":
         os.makedirs("screenshots", exist_ok=True)
         safe_name = step.name.replace(" ", "_").replace("/", "_")[:80]
-        path = f"screenshots/FAILED_{safe_name}.png"
+        raw_path = f"screenshots/FAILED_{safe_name}.png"
+        annotated_path = None
         try:
-            context.page.screenshot(path=path, full_page=True)
-            print(f"\n  📸 Screenshot saved: {path}")
+            context.page.screenshot(path=raw_path, full_page=True)
+            print(f"\n  📸 Screenshot saved: {raw_path}")
+            ar = _allure_result(context)
+            if ar is not None:
+                annotated_path = _annotate.draw_not_found(raw_path, step.name[:60])
         except Exception:
             pass
+        ar = _allure_result(context)
+        if ar is not None:
+            ar.add_step(step, "failed", annotated_path or raw_path)
+    else:
+        ar = _allure_result(context)
+        if ar is not None:
+            ar.add_step(step, "passed")
 
 
 def after_scenario(context, scenario):
+    ar = _allure_result(context)
+    if ar is not None:
+        ar.finish(scenario)
+        _writer.write_result(ar)
+        _suite_results.append(ar)
+
     # Bug 6: clean up each resource independently so a failure on one
     # (e.g. _bctx never created) does not skip stopping _pw and leak
     # an orphaned browser process.
@@ -96,3 +142,9 @@ def after_scenario(context, scenario):
                 method(resource)
             except Exception:
                 pass
+
+
+def after_all(context):
+    if _REPORTING and _suite_results:
+        _junit.write_junit(_suite_results)
+        _builder.generate()

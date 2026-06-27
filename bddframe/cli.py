@@ -99,5 +99,42 @@ def list_scenarios(
     ])
 
 
+@app.command()
+def record(
+    output: str = typer.Option("features/recorded.feature", "--output", "-o", help="Path to write the generated .feature file"),
+    name: str = typer.Option("Recorded Feature", "--name", "-n", help="Feature/scenario name"),
+):
+    """Record a new test by performing actions in a browser."""
+    from bddframe.recorder.recorder import Recorder
+    Recorder(output_path=output, feature_name=name).record()
+
+
+# ---------------------------------------------------------------------------
+# report subcommand group
+# ---------------------------------------------------------------------------
+
+report_app = typer.Typer(help="Manage Allure test reports")
+app.add_typer(report_app, name="report")
+
+
+@report_app.command("open")
+def report_open(
+    report_dir: str = typer.Argument("allure-report", help="Path to the Allure report directory"),
+):
+    """Open the last Allure report in the browser."""
+    from bddframe.reporting.builder import open_report
+    open_report(report_dir)
+
+
+@report_app.command("generate")
+def report_generate(
+    results_dir: str = typer.Argument("allure-results", help="Path to allure-results/"),
+    report_dir: str = typer.Option("allure-report", "--out", "-o", help="Output directory"),
+):
+    """Re-generate the Allure HTML report from existing results."""
+    from bddframe.reporting.builder import generate
+    generate(results_dir, report_dir)
+
+
 if __name__ == "__main__":
     app()

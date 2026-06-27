@@ -244,10 +244,11 @@ Adds ~2 minutes to pipeline startup for model pull (cached after first run on a 
 
 ## Deliverables
 
-- [ ] `bddframe/cli.py` — all CLI commands via `typer`
-- [ ] `bddframe/recorder/recorder.py` — Playwright event capture + `.feature` writer
-- [ ] `bddframe/recorder/sensitives.py` — auto-detection of sensitive values → `[VARIABLE]`
-- [ ] `azure-pipelines.yml` — Linux template
-- [ ] `azure-pipelines-windows.yml` — Windows template
-- [ ] `.env.example` — all variables documented
-- [ ] `pyproject.toml` — complete with all deps + `bddframe` entry point
+- [x] `bddframe/cli.py` — all CLI commands via `typer` (`run`, `validate`, `list`, `record`, `report open`, `report generate`)
+- [x] `bddframe/recorder/recorder.py` — Playwright event capture + `.feature` writer
+- [x] `bddframe/recorder/sensitives.py` — auto-detection of sensitive values → `[VARIABLE]`
+- [x] `azure-pipelines.yml` — Linux template
+- [x] `azure-pipelines-windows.yml` — Windows template
+- [x] `.env.example` — all variables documented
+- [x] `pyproject.toml` — complete with all deps + `bddframe` entry point
+- [x] `tests/test_recorder.py` — 20 tests for recorder and sensitives (no browser required)

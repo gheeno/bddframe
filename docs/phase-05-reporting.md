@@ -216,9 +216,13 @@ Pipeline tasks (full YAML in Phase 6):
 
 ## Deliverables
 
-- [ ] `bddframe/reporting/writer.py` — writes Allure JSON per step as it runs
-- [ ] `bddframe/reporting/annotate.py` — Pillow screenshot annotation
-- [ ] `bddframe/reporting/junit.py` — JUnit XML from collected results
-- [ ] `bddframe/reporting/builder.py` — runs `allure generate` after the suite
-- [ ] Flaky detection logic in the retry handler
-- [ ] LLM reasoning attached as text file per semantic assertion
+- [x] `bddframe/reporting/writer.py` — writes Allure JSON per step as it runs
+- [x] `bddframe/reporting/annotate.py` — Pillow screenshot annotation (not_found, assertion_failure, timeout)
+- [x] `bddframe/reporting/junit.py` — JUnit XML from collected results (stdlib xml.etree only)
+- [x] `bddframe/reporting/builder.py` — runs `allure generate` after the suite; `open_report()` for CLI
+- [x] `bddframe/hooks.py` — reporting wired into before_scenario / after_step / after_scenario / after_all
+- [x] `bddframe/cli.py` — `bddframe report open` and `bddframe report generate` subcommands
+- [x] `pyproject.toml` — `reporting = ["allure-python-commons>=2.13.0"]` extras group
+- [x] `tests/test_reporting.py` — 20 unit tests covering writer, junit, annotate (no allure binary)
+- [ ] Flaky detection logic in the retry handler — deferred to Phase 6
+- [ ] LLM reasoning attached as text file per semantic assertion — deferred to Phase 6
