@@ -55,6 +55,7 @@ flowchart TD
 | [7 — Syntax Highlighting](phase-07-syntax-highlighting.md) | VS Code extension, variable highlighting, tag autocomplete, LSP | Done |
 | [8 — Test Development Guide](phase-08-test-development.md) | Feature file authoring, POM mapping strategy, multi-page flows | Done |
 | [9 — Element Disambiguation](phase-09-element-disambiguation.md) | Correct-element resolution: ambiguity detection, page-scoped POM | Plan |
+| [10 — Local Agent Framework (Foundry Local)](phase-10-foundry-local-agent.md) | Run Agent Framework on a locked-down network (no HF/Ollama) via Foundry Local; uv-first | Plan |
 | [Writing a Test](writing-a-test.md) | Step-by-step: happy path + problematic locators | Guide |
 | [Resolution Hierarchy](resolution-hierarchy.md) | When the local agent vs an LLM handles each step | Reference |
 | [The LLM](llm.md) | Model, triggers, the client module, orchestration, LLM-vs-OpenCV diagram | Reference |
