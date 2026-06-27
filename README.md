@@ -8,7 +8,7 @@ No selectors. No Page Object classes. No step definitions. No code.
 
 ## Table of contents
 
-1. [How it works](#how-it-works)
+1. [Architecture](#how-it-works)
 2. [Installation](#installation)
 3. [Setup — first-time config](#setup--first-time-config)
 4. [Write a test](#write-a-test)
@@ -28,33 +28,48 @@ No selectors. No Page Object classes. No step definitions. No code.
 
 ## How it works
 
-```
-Your .feature file
-      │
-      ▼
-  behave parses steps
-      │
-      ▼
-  Step resolver — pattern match (no LLM cost)
-      │                    │
-      │              no match?
-      │                    ▼
-      │           LLM fallback (opt-in)
-      ▼
-  Web agent — finds elements by label / role / text
-      │
-      ▼
-  Playwright drives the browser
-      │
-      ▼
-  Allure report — screenshots, pass/fail, JUnit XML
+```mermaid
+flowchart TD
+    QA["QA Analyst\nwrites .feature file\nin plain sentences"]
+    REC["bddframe record\nRecorder captures\nbrowser actions"]
+
+    QA -->|hand-write| F["checkout.feature\nGherkin format"]
+    REC -->|auto-generates| F
+
+    F --> P["behave\nparses steps"]
+    P --> SR["Step Resolver\npattern match — 40+ built-in steps\nno LLM cost"]
+
+    SR -->|pattern matched| ROT{"Orchestrator\nroutes by tag"}
+    SR -->|no match| LLM["LLM fallback\nopt-in via BDDFRAME_MODEL\nnever called if pattern matches"]
+    LLM --> ROT
+
+    ROT -->|web tag| W["Web Agent\nPlaywright\nfinds elements by label / role / text"]
+    ROT -->|visual tag| V["Visual Agent\nOpenCV + PyAutoGUI\ntemplate matching + OCR"]
+
+    W --> C["Result Collector\npass / fail + screenshot"]
+    V --> C
+
+    C --> REP["Allure Report\nannotated screenshots\nJUnit XML for Azure DevOps"]
+
+    style QA       fill:#4a4a6a,color:#e8e8ff,stroke:#7a7aaa
+    style REC      fill:#4a4a6a,color:#e8e8ff,stroke:#7a7aaa
+    style F        fill:#2d4a3e,color:#b8f5d8,stroke:#4aaa80
+    style P        fill:#3a3a3a,color:#d0d0d0,stroke:#666
+    style SR       fill:#3a3a3a,color:#d0d0d0,stroke:#666
+    style LLM      fill:#4a3a2a,color:#f5d8b8,stroke:#aa804a,stroke-dasharray:4 4
+    style ROT      fill:#3a3a3a,color:#d0d0d0,stroke:#666
+    style W        fill:#1e3a5f,color:#b8d8f5,stroke:#4a80aa
+    style V        fill:#1e3a5f,color:#b8d8f5,stroke:#4a80aa
+    style C        fill:#3a3a3a,color:#d0d0d0,stroke:#666
+    style REP      fill:#1e3a5f,color:#b8d8f5,stroke:#4a80aa
 ```
 
 1. `behave` parses the `.feature` file into steps
 2. The step resolver matches each step against 40+ built-in patterns — no LLM call
-3. The web agent locates elements by what they *are* (visible label, ARIA role, text) — no CSS selectors
-4. On failure: screenshot is taken, annotated, and embedded in the Allure report
-5. Optional: LLM fallback interprets steps that match no built-in pattern
+3. The orchestrator routes each step to the right agent based on scenario tags (`@web`, `@visual`)
+4. The web agent locates elements by what they *are* (visible label, ARIA role, text) — no CSS selectors
+5. On failure: screenshot is taken, annotated, and embedded in the Allure report
+6. Optional: LLM fallback interprets steps that match no built-in pattern
 
 ---
 
