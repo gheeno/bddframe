@@ -66,6 +66,10 @@ def _to_third_person(text: str) -> str:
 # Patterns tried top-to-bottom; first match wins.
 # ---------------------------------------------------------------------------
 PATTERNS = [
+    # Page pin (9.3) — set the active POM page for SPAs where the URL is static.
+    # Must precede the navigate patterns; ends in " page" so it can't be a URL.
+    (r'^is on (?:the )?["\'](.+?)["\'] page$',     'set_page',       lambda m: {'name': _q(m.group(1))}),
+
     # Navigate
     (r'^is on ["\'](.+)["\']$',                   'navigate',       lambda m: {'url': _q(m.group(1))}),
     (r'^navigates? to ["\'](.+)["\']$',            'navigate',       lambda m: {'url': _q(m.group(1))}),

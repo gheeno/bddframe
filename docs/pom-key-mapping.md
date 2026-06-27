@@ -197,31 +197,66 @@ When User enters "cordless" in the sidebar search input
 
 ---
 
-## Current limitation — no URL-based page scoping
+## URL-based page scoping (implemented — Phase 9.2)
 
-There is no mechanism today to say "use this selector only when the browser is
-on `/search`." The `_lookup` function in `pom.py` receives only a text key — it
-does not have access to the current page URL.
-
-A page-scoped YAML structure would look like this, but **it is not implemented**:
+You can scope a key to a page by URL, so the **same key resolves to different
+selectors on different pages**. `pom.locate(page, text)` reads `page.url` and
+selects the matching `pages:` block before scanning keys.
 
 ```yaml
-# Proposed — not implemented
+# pom.yaml — page-scoped format
 pages:
   home:
-    url_contains: "canadiantire.ca/$"
+    match: { url_contains: "canadiantire.ca/$" }   # regex, matched on page.url
     search:
       css: "input.home-search"
 
   search results:
-    url_contains: "/search"
+    match: { url_contains: "/search" }
     search:
       css: "input.results-filter"
+
+# Page-agnostic elements — checked after the active page block
+shared:
+  cookie accept:
+    id: onetrust-accept-btn-handler
 ```
 
-For this to work, `pom.py` would need the current `page.url` passed in at
-lookup time so it could filter by `url_contains` before scanning keys.
+**Lookup order** (per file, local then global):
 
-Until that is built, **page-prefixed key naming is the correct workaround.**
-The naming convention is explicit, requires no code change, and makes the
-feature file self-documenting about which page the step is acting on.
+1. Active page block — first `pages:` entry whose `match.url_contains` matches
+   the live URL (or the page pinned via the step below)
+2. `shared:` block
+3. Top-level flat keys (legacy format — still fully supported)
+
+The flat format you've seen elsewhere in these docs still works unchanged; a
+file with no `pages:`/`shared:` keys behaves exactly as before.
+
+### Pinning the page on SPAs (Phase 9.3)
+
+When the URL never changes between logical pages (single-page apps), pin the
+active page explicitly. This overrides URL matching:
+
+```gherkin
+Given User is on the "Search Results" page
+```
+
+The name must match a key under `pages:`. The pin resets at the start of each
+scenario.
+
+---
+
+## Ambiguous elements within ONE page (Phase 9.1)
+
+Page scoping handles *different* pages. For two identical elements on the *same*
+page (e.g. six "Add to cart" buttons), the accessibility locator now detects the
+ambiguity instead of silently clicking the first:
+
+- **Lenient (default)**: prints a warning listing every candidate, then uses the
+  first match so existing suites stay green.
+- **Strict** (`BDDFRAME_STRICT_LOCATOR=true` or the `@strict` tag): fails the
+  step with the candidate list, telling you to add a scoped `pom.yaml` entry.
+
+In both modes, if a POM entry exists for the key it is used *before* falling
+back to the first match — so a scoped `xpath`/`css` entry is how you point the
+framework at the right one.

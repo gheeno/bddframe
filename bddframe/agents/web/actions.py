@@ -4,6 +4,12 @@ from playwright.sync_api import Page
 from .locator import find
 
 
+def set_page(name: str):
+    """Pin the active POM page (9.3) — used when the URL can't identify the page."""
+    from . import pom
+    pom.set_active_page(name)
+
+
 def navigate(page: Page, url: str):
     page.goto(url, wait_until="domcontentloaded")
 

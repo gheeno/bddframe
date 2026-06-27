@@ -3,6 +3,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from playwright.sync_api import sync_playwright
 from bddframe.agents.web import pom as pom_module
+from bddframe.agents.web import locator as locator_module
 
 _VALID_BROWSERS = {"chromium", "firefox", "webkit"}
 
@@ -31,6 +32,10 @@ def before_feature(context, feature):
 
 def before_scenario(context, scenario):
     tags = set(scenario.effective_tags)
+
+    # Per-scenario locator/POM state — reset so tags/pins don't leak between scenarios.
+    locator_module.set_strict('strict' in tags or None)
+    pom_module.set_active_page(None)
 
     # Bug 3: warn when @headed and @headless both appear — @headed wins but conflict
     # is almost always a forgotten debug tag that will break CI silently.

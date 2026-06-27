@@ -1,31 +1,61 @@
+import os
 import re
 from playwright.sync_api import Page, Locator
 from . import pom
+
+# Strict locator mode: when an accessibility strategy matches MORE THAN ONE
+# element and no POM entry disambiguates it, strict mode fails the step with
+# the candidate list instead of silently taking .first.
+# Set by hooks.before_scenario from the @strict tag, or BDDFRAME_STRICT_LOCATOR.
+_strict: bool | None = None
+
+
+def set_strict(value: bool | None):
+    global _strict
+    _strict = value
+
+
+def _is_strict() -> bool:
+    if _strict is not None:
+        return _strict
+    return os.getenv("BDDFRAME_STRICT_LOCATOR", "false").lower() == "true"
 
 
 def find(page: Page, text: str) -> Locator | None:
     """
     Resolve a human label to a Playwright Locator.
-    Order: accessibility → self-heal scroll → self-heal partial → POM YAML → vision LLM.
+    Order: accessibility (unique) → POM (if ambiguous or not found)
+           → self-heal scroll → self-heal partial → vision LLM.
     """
-    loc = _try_strategies(page, text)
-    if loc:
-        return loc
+    loc, ambiguous = _try_strategies(page, text)
 
+    if loc is not None and not ambiguous:
+        return loc.first  # exactly one match — safe
+
+    if ambiguous:
+        # Do NOT trust a blind .first. Prefer an explicit POM selector that
+        # scopes to the intended element; otherwise escalate per mode.
+        scoped = pom.locate(page, text)
+        if scoped is not None:
+            print(f"\n  📋 POM: disambiguated '{text}' via pom.yaml")
+            return scoped
+        return _on_ambiguous(page, text, loc)
+
+    # Nothing found — run the self-heal chain.
     # Self-heal 1: scroll and retry
     page.mouse.wheel(0, 300)
-    loc = _try_strategies(page, text)
-    if loc:
+    loc, ambiguous = _try_strategies(page, text)
+    if loc is not None and not ambiguous:
         print(f"\n  🔧 Healed: found '{text}' after scroll")
-        return loc
+        return loc.first
 
     # Self-heal 2: partial text (first word)
     first_word = text.split()[0] if text.split() else text
     if first_word != text:
-        loc = _try_strategies(page, first_word)
-        if loc:
+        loc2, amb2 = _try_strategies(page, first_word)
+        if loc2 is not None and not amb2:
             print(f"\n  🔧 Healed: matched '{text}' via partial text '{first_word}'")
-            return loc
+            return loc2.first
 
     # Fallback 1: POM YAML
     loc = pom.locate(page, text)
@@ -47,7 +77,6 @@ def wait_for(page: Page, text: str, timeout: int | None = None):
     Wait for an element to become visible.
     Tries accessibility strategies and POM YAML — handles dynamic/slow-loading content.
     """
-    import os
     timeout_ms = timeout or int(os.getenv("BDDFRAME_TIMEOUT", "10000"))
 
     # Try POM first for named elements, then fall back to text
@@ -58,7 +87,14 @@ def wait_for(page: Page, text: str, timeout: int | None = None):
     loc.wait_for(state="visible", timeout=timeout_ms)
 
 
-def _try_strategies(page: Page, text: str) -> Locator | None:
+def _try_strategies(page: Page, text: str) -> tuple[Locator | None, bool]:
+    """
+    Returns (locator, ambiguous).
+    Strategies are tried in priority order; the first one that matches wins —
+    same as before. Returns the FULL locator (not .first) so ambiguous
+    candidates can be enumerated, plus whether it matched exactly one element
+    (ambiguous=False) or several (ambiguous=True). Callers take .first.
+    """
     pattern = re.compile(re.escape(text), re.IGNORECASE)
     strategies = [
         lambda: page.get_by_role("button",   name=pattern),
@@ -74,15 +110,51 @@ def _try_strategies(page: Page, text: str) -> Locator | None:
     for strategy in strategies:
         try:
             loc = strategy()
-            if loc.count() > 0:
-                return loc.first
+            count = loc.count()
+            if count >= 1:
+                return loc, count > 1
         except Exception:
             continue
-    return None
+    return None, False
+
+
+def _on_ambiguous(page: Page, text: str, loc: Locator):
+    """
+    Reached when accessibility matched >1 element and no POM entry exists.
+    Strict: fail with the candidate list. Lenient: warn + return .first.
+    """
+    candidates = _describe_candidates(loc)
+    msg = (
+        f"Ambiguous locator '{text}' — matched multiple elements:\n"
+        + "\n".join(f"    [{i}] {c}" for i, c in enumerate(candidates))
+        + f"\n  → Add a scoped entry to pom.yaml under key '{text.lower()}' "
+        f"(e.g. an xpath/css that targets the intended one)."
+    )
+    if _is_strict():
+        raise AssertionError(msg)
+    print(f"\n  ⚠️  {msg}\n  (lenient mode — using the first match; "
+          f"set BDDFRAME_STRICT_LOCATOR=true or @strict to fail instead)")
+    return loc.first
+
+
+def _describe_candidates(loc: Locator, limit: int = 5) -> list[str]:
+    """Short text/role description of each ambiguous candidate, for evidence."""
+    out = []
+    try:
+        handles = loc.element_handles()[:limit]
+        for h in handles:
+            try:
+                tag = h.evaluate("e => e.tagName.toLowerCase()")
+                txt = (h.inner_text() or "").strip().replace("\n", " ")[:50]
+                out.append(f"<{tag}> {txt!r}")
+            except Exception:
+                out.append("<?>")
+    except Exception:
+        out.append("(could not enumerate candidates)")
+    return out or ["(none)"]
 
 
 def _vision_locate(page: Page, text: str) -> Locator | None:
-    import os
     if not os.getenv("BDDFRAME_MODEL"):
         return None
     try:

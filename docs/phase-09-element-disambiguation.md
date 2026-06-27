@@ -4,8 +4,11 @@
 just the first one that happens to match. Eliminate silent wrong-element
 selection across both the accessibility path and the POM fallback.
 
-> Status: **Plan only — not yet implemented.** This document divides the work
-> into independently shippable phases.
+> Status: **Implemented** (9.1–9.3). 9.4 deferred. See commits on
+> `feature/BFRAME_0008`. One deliberate simplification: lenient-mode evidence is
+> a printed candidate list (text/role of each match) rather than an annotated
+> screenshot — cheaper, and enough to choose the right POM key. The existing
+> after_step hook still screenshots on hard failures (including strict-mode).
 
 ---
 
@@ -205,12 +208,13 @@ organizational sugar over 9.2 — **do not build until a suite actually hurts.**
 
 ## Sequencing & rationale
 
-| Phase | Fixes | Gherkin change | Schema change | Ship independently? |
-|-------|-------|----------------|---------------|---------------------|
-| 9.1 Ambiguity detection | Failure A (the common one) | none | none | ✅ |
-| 9.2 URL page-scoped POM | Failure B | none | additive, opt-in | ✅ |
-| 9.3 Explicit page pin | SPA gap in 9.2 | opt-in step/tag | none | ✅ (needs 9.2) |
-| 9.4 Per-page files | organization | none | none | deferred |
+| Phase | Fixes | Gherkin change | Schema change | Status |
+|-------|-------|----------------|---------------|--------|
+| 9.1a Single tag-routed catch-all | behave couldn't load | none | none | ✅ done |
+| 9.1b Ambiguity detection | Failure A (the common one) | none | none | ✅ done |
+| 9.2 URL page-scoped POM | Failure B | none | additive, opt-in | ✅ done |
+| 9.3 Explicit page pin | SPA gap in 9.2 | opt-in step | none | ✅ done |
+| 9.4 Per-page files | organization | none | none | deferred (YAGNI) |
 
 **Do 9.1 first** — it is the linchpin. Most wrong-element bugs are
 ambiguous-but-found cases that never reach the POM today; until the locator
