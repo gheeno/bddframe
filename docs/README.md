@@ -54,6 +54,7 @@ flowchart TD
 | [6 — CLI, Recorder & Azure DevOps](phase-06-cli-devops.md) | CLI commands, flow recorder, pipeline YAML | Done |
 | [7 — Syntax Highlighting](phase-07-syntax-highlighting.md) | VS Code extension, variable highlighting, tag autocomplete, LSP | Done |
 | [8 — Test Development Guide](phase-08-test-development.md) | Feature file authoring, POM mapping strategy, multi-page flows | Done |
+| [POM Key Mapping](pom-key-mapping.md) | Exactly how step wording maps to pom.yaml keys, with examples | Reference |
 
 ## Design principles
 
