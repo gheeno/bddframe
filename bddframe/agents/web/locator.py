@@ -77,14 +77,28 @@ def wait_for(page: Page, text: str, timeout: int | None = None):
     Wait for an element to become visible.
     Tries accessibility strategies and POM YAML — handles dynamic/slow-loading content.
     """
+    import time
     timeout_ms = timeout or int(os.getenv("BDDFRAME_TIMEOUT", "10000"))
 
-    # Try POM first for named elements, then fall back to text
+    # Try POM first for named elements.
     loc = pom.locate(page, text)
-    if loc is None:
-        loc = page.get_by_text(text, exact=False).first
+    if loc is not None:
+        loc.wait_for(state="visible", timeout=timeout_ms)
+        return
 
-    loc.wait_for(state="visible", timeout=timeout_ms)
+    # Text: poll for the first VISIBLE match — skip sr-only/hidden duplicates
+    # that would otherwise sort first and never become visible.
+    matches = page.get_by_text(text, exact=False)
+    deadline = time.monotonic() + timeout_ms / 1000
+    while time.monotonic() < deadline:
+        for i in range(min(matches.count(), 30)):
+            try:
+                if matches.nth(i).is_visible():
+                    return
+            except Exception:
+                pass
+        page.wait_for_timeout(250)
+    raise AssertionError(f"Timed out waiting for visible text '{text}' ({timeout_ms}ms)")
 
 
 def _try_strategies(page: Page, text: str) -> tuple[Locator | None, bool]:

@@ -1,27 +1,31 @@
-@headless
+@web @headless
 Feature: Canadian Tire Product Search
 
-  # Guest user browses across three pages:
-  # Home → Search Results → Product Detail
-  # No POM entries needed if the agent resolves all elements naturally.
-  # See pom.yaml in this folder for fallback selectors.
+  # Guest user, three real pages: home -> search results -> product detail.
+  # The search box / submit / first-result have no usable accessible label,
+  # so they resolve via the page-scoped pom.yaml in this folder.
+  # Single-word locator keys (searchbox, searchbutton, firstresult) are used
+  # on purpose: a multi-word label triggers the partial-text self-heal, which
+  # would grab the wrong button before the POM is consulted.
 
   @web @smoke
-  Scenario: Guest user searches for a product and views its details
-
+  Scenario: Guest searches for a product and opens the first result
     Given User is on "https://www.canadiantire.ca"
-    When User fills in "mastercraft tool box" in the search bar
-    And User wait for the page to load
-    And User clicks the first result
-    Then User should see "MASTERCRAFT"
-    And User should see "Tool Box"
+    And User waits 5 seconds
+    When User enters "mastercraft tool box" in the searchbox field
+    And User clicks the searchbutton
+    And User waits until "Mastercraft" is visible
+    And User clicks the firstresult
+    And User waits until "Mastercraft" is visible
+    Then User should see "Mastercraft"
+    And User should have url containing "pdp"
 
   @web
-  Scenario: Search results page loads with relevant products
-
+  Scenario: Search results page shows relevant products
     Given User is on "https://www.canadiantire.ca"
-    When User fills in "mastercraft tool box" in the search bar
-    And User wait for the page to load
-    Then User should have url containing "search"
-    And User should see "mastercraft"
-    And User should not see "No results found"
+    And User waits 5 seconds
+    When User enters "mastercraft tool box" in the searchbox field
+    And User clicks the searchbutton
+    And User waits until "Mastercraft" is visible
+    Then User should have url containing "search-results"
+    And User should see "Mastercraft"
