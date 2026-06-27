@@ -196,6 +196,7 @@ Options: `"warning"` (default), `"information"` (Problems panel only), `"none"` 
 
 ## Docs
 
+- [Getting Started](docs/getting-started.md) ← start here
 - [Phase 1 — Foundation](docs/phase-01-foundation.md)
 - [Phase 2 — Web Agent](docs/phase-02-web-agent.md)
 - [Phase 3 — CLI & Hooks Hardening](docs/phase-03-hardening.md)
