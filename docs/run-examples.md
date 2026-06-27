@@ -84,12 +84,6 @@ bddframe report generate
 bddframe report open
 ```
 
-One-shot alternative (build + serve in one step, temp report):
-
-```bash
-allure serve allure-results
-```
-
 Re-generating from existing results without re-running tests:
 
 ```bash
@@ -99,6 +93,29 @@ bddframe report open allure-report
 
 > If `report generate` does nothing, the Allure CLI isn't on PATH — `builder.py`
 > skips silently when `allure` is missing.
+
+### Generate vs serve vs host — pick by what you need
+
+> ⚠️ **You can't just double-click `allure-report/index.html`.** The report
+> loads data over XHR, which browsers block on `file://`. It must be served over
+> HTTP. The options below all do that.
+
+| Goal | Command | Notes |
+|------|---------|-------|
+| **Build** the static HTML only (for CI artifact / hosting) | `bddframe report generate` → `allure-report/` | == `allure generate allure-results -o allure-report --clean`. No server. |
+| **Build + open** on a local Allure server | `bddframe report open` | == `allure open allure-report`. Spins a temp local server and opens the browser. |
+| **One-shot** from results (no saved report dir) | `allure serve allure-results` | Builds to a temp dir and serves immediately. Best for a quick look. |
+| **Host** an already-built report with no Allure CLI | `python -m http.server 8000 --directory allure-report` | Pure stdlib. Then open `http://localhost:8000`. Handy on a box where Allure CLI isn't installed but the report dir exists (e.g. unzipped CI artifact). |
+| **Share on the LAN** | `python -m http.server 8000 --bind 0.0.0.0 --directory allure-report` | Others hit `http://<your-ip>:8000`. |
+
+Keeping trend/history across runs: copy the previous report's history into the
+next results before generating —
+
+```bash
+cp -r allure-report/history allure-results/history 2>/dev/null || true
+bddframe run features/
+bddframe report generate          # now shows trends from prior runs
+```
 
 ---
 
