@@ -5,18 +5,26 @@ Resolution order (per lookup):
   1. Local  pom.yaml  (features/<subfolder>/pom.yaml)
   2. Global pom.yaml  (features/pom.yaml)
 
-YAML structure:
-  hero banner:
-    css: ".hero-banner"
+Within each file, keys are looked up in this order:
+  a. Active page block  (pages: whose `match.url_contains` fits the live URL,
+     or the page pinned via `set_active_page`)
+  b. shared: block      (page-agnostic elements)
+  c. Top-level flat keys (legacy format — still fully supported)
 
-  product table:
-    xpath: "//table[@data-testid='products']"
+FLAT FORMAT (legacy, unchanged):
+  burger menu:
+    id: react-burger-menu-btn
 
-  profile avatar:
-    id: "user-avatar"          # shorthand for [id="user-avatar"]
-
-  search input:
-    testid: "search-box"       # data-testid attribute
+PAGE-SCOPED FORMAT (new, optional — solves same-key-different-page):
+  pages:
+    home:
+      match: { url_contains: "example.com/$" }   # regex, matched on page.url
+      search: { css: "input.home-search" }
+    search results:
+      match: { url_contains: "/search" }
+      search: { css: "input.results-filter" }
+  shared:
+    cookie accept: { id: onetrust-accept-btn-handler }
 
 Selector types: css | xpath | id | testid | text | role
 """
@@ -31,8 +39,14 @@ try:
 except ImportError:
     yaml = None  # ponytail: only fail at lookup time, not import time
 
-# Set by hooks.before_scenario so locator knows which folder is active.
+# Set by hooks.before_feature so locator knows which folder is active.
 _feature_dir: str | None = None
+
+# Optional page pin (9.3): overrides URL matching when set (e.g. SPAs where the
+# URL never changes). Set by the "User is on the '<name>' page" step / @page tag.
+_active_page: str | None = None
+
+_RESERVED = ("pages", "shared")
 
 
 def set_context(feature_dir: str | None):
@@ -40,9 +54,19 @@ def set_context(feature_dir: str | None):
     _feature_dir = feature_dir
 
 
+def set_active_page(name: str | None):
+    global _active_page
+    _active_page = name
+
+
 def locate(page, text: str):
     """Return a Playwright Locator from POM YAML, or None."""
-    entry = _lookup(text)
+    url = ""
+    try:
+        url = page.url or ""
+    except Exception:
+        pass
+    entry = _lookup(text, url)
     if entry is None:
         return None
     return _build_locator(page, entry, text)
@@ -54,12 +78,63 @@ def _normalize(s: str) -> str:
     return re.sub(r'\s+', ' ', s.strip().lower())
 
 
-def _lookup(text: str) -> dict | None:
+def _lookup(text: str, url: str = "") -> dict | str | None:
     key = _normalize(text)
     for mapping in _load_pom_chain():
-        for raw_key, entry in mapping.items():
-            if _normalize(str(raw_key)) == key:
-                return entry
+        entry = _lookup_in_mapping(mapping, key, url)
+        if entry is not None:
+            return entry
+    return None
+
+
+def _lookup_in_mapping(mapping: dict, key: str, url: str):
+    if not isinstance(mapping, dict):
+        return None
+
+    # a. active page block (pinned name first, then URL match)
+    pages = mapping.get("pages")
+    if isinstance(pages, dict):
+        block = _active_page_block(pages, url)
+        if block:
+            hit = _match_key(block, key, skip=("match",))
+            if hit is not None:
+                return hit
+
+    # b. shared block
+    shared = mapping.get("shared")
+    if isinstance(shared, dict):
+        hit = _match_key(shared, key)
+        if hit is not None:
+            return hit
+
+    # c. legacy flat keys
+    flat = {k: v for k, v in mapping.items() if k not in _RESERVED}
+    return _match_key(flat, key)
+
+
+def _active_page_block(pages: dict, url: str) -> dict | None:
+    # Pinned page wins, regardless of URL.
+    if _active_page is not None:
+        pin = _normalize(_active_page)
+        for name, block in pages.items():
+            if _normalize(str(name)) == pin and isinstance(block, dict):
+                return block
+    # Otherwise first block whose match.url_contains is found in the URL.
+    for name, block in pages.items():
+        if not isinstance(block, dict):
+            continue
+        pattern = (block.get("match") or {}).get("url_contains")
+        if pattern and re.search(pattern, url, re.IGNORECASE):
+            return block
+    return None
+
+
+def _match_key(mapping: dict, key: str, skip: tuple = ()):
+    for raw_key, entry in mapping.items():
+        if raw_key in skip:
+            continue
+        if _normalize(str(raw_key)) == key:
+            return entry
     return None
 
 

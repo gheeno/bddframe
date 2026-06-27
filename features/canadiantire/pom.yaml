@@ -1,0 +1,20 @@
+# Local POM — features/canadiantire/*.feature only. Page-scoped by URL (9.2).
+#
+# Why these selectors (verified against the live site):
+#   - #search-input is a DUPLICATED id (hidden mobile + desktop); the visible
+#     one is targeted with :visible rather than the id.
+#   - the framework's fill does not submit, so a separate submit button is needed.
+#   - product links are <a href*="pdp">; the first is the top result.
+
+pages:
+  home:
+    match: { url_contains: "en.html" }
+    searchbox:
+      css: 'input[data-testid="search-input"]:visible'
+    searchbutton:
+      css: 'button[aria-label="Search"]:visible'
+
+  results:
+    match: { url_contains: "search-results" }
+    firstresult:
+      css: 'a[href*="pdp"]:visible'

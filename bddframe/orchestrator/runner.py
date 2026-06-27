@@ -19,7 +19,9 @@ def execute_step(step_text: str, context):
 
     t = action['type']
 
-    if t == 'navigate':
+    if t == 'set_page':
+        actions.set_page(action['name'])
+    elif t == 'navigate':
         actions.navigate(page, action['url'])
     elif t == 'click':
         actions.click(page, action['locator'])

@@ -4,6 +4,12 @@ from playwright.sync_api import Page
 from .locator import find
 
 
+def set_page(name: str):
+    """Pin the active POM page (9.3) — used when the URL can't identify the page."""
+    from . import pom
+    pom.set_active_page(name)
+
+
 def navigate(page: Page, url: str):
     page.goto(url, wait_until="domcontentloaded")
 
@@ -52,8 +58,12 @@ def uncheck(page: Page, locator_text: str):
 
 def assert_visible(page: Page, text: str):
     loc = page.get_by_text(text, exact=False)
-    if loc.count() > 0 and loc.first.is_visible():
-        return
+    # Scan for the first VISIBLE match — the first DOM match is often an
+    # sr-only (screen-reader, visually hidden) duplicate. ponytail: cap at 30,
+    # raise the cap if a page hides the real match past the 30th occurrence.
+    for i in range(min(loc.count(), 30)):
+        if loc.nth(i).is_visible():
+            return
     raise AssertionError(f"Expected to see '{text}' on page — not found.\nURL: {page.url}")
 
 

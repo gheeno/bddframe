@@ -20,7 +20,7 @@ BDDFrame is a no-code browser test framework. A QA writes plain-English `.featur
 | 6 — Recorder & DevOps | `bddframe record` watches your browser actions and writes the `.feature` file for you; Azure DevOps pipeline YAML included | `bddframe/recorder/`, `azure-pipelines.yml` |
 | 7 — Editor (VS Code) | Syntax highlighting, `[variable]` colouring, step validation squiggles, tag autocomplete via pygls LSP | `bddframe/lsp/`, `vscode-extension/` |
 
-**Test coverage**: 114 tests, all passing, none require a real browser.
+**Test coverage**: 125 tests, all passing, none require a real browser.
 
 ---
 
@@ -159,12 +159,13 @@ bddframe run --headed
 
 When a step says `User clicks the login button`, the web agent tries these strategies in order:
 
-1. Exact text / label match (`get_by_text`, `get_by_label`, `get_by_role`)
-2. POM YAML lookup (if `login button` is defined in `pom.yaml`)
-3. Scroll + partial match retry
-4. Vision LLM fallback (only if `BDDFRAME_VISION_MODEL` is set in `.env`)
+1. **Accessibility tree** — role / label / placeholder / text. A *unique* match is used immediately.
+2. **Ambiguous** (the label matches 2+ elements) — consult `pom.yaml` for a scoped selector; with none, warn and use the first match (or **fail** under `@strict` / `BDDFRAME_STRICT_LOCATOR`).
+3. **Self-heal** — scroll and retry, then first-word partial match.
+4. **POM YAML** — page-scoped block → `shared:` → flat keys.
+5. **Vision LLM** — only if `BDDFRAME_MODEL` is set; otherwise the step fails with a screenshot.
 
-For most modern web apps, strategy 1 handles everything. You only need POM YAML for elements that have no accessible text (icon buttons, legacy apps).
+For most modern web apps, strategy 1 handles everything. You only need POM YAML for elements that have no accessible text (icon buttons, legacy apps) or that are ambiguous. The full picture — including where an LLM does vs does not take over — is in **[Resolution Hierarchy](resolution-hierarchy.md)**.
 
 ---
 
@@ -451,4 +452,4 @@ python -m pytest tests/ -v
 make test
 ```
 
-114 tests, all passing. Tests cover: CLI hardening, hooks lifecycle, step patterns, visual patterns, Allure writer, JUnit output, screenshot annotation, recorder, and LSP validation.
+125 tests, all passing. Tests cover: CLI hardening, hooks lifecycle, step patterns, visual patterns, Allure writer, JUnit output, screenshot annotation, recorder, LSP validation, page-scoped POM lookup, and locator ambiguity detection.
