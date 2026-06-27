@@ -60,6 +60,7 @@ flowchart TD
 | [Resolution Hierarchy](resolution-hierarchy.md) | When the local agent vs an LLM handles each step | Reference |
 | [The LLM](llm.md) | Model, triggers, the client module, orchestration, LLM-vs-OpenCV diagram | Reference |
 | [POM Key Mapping](pom-key-mapping.md) | Exactly how step wording maps to pom.yaml keys, with examples | Reference |
+| [Tech Stack](tech-stack.md) | Every library/tool, its version, and its purpose | Reference |
 
 ## Design principles
 
