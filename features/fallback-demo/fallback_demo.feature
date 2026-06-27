@@ -8,11 +8,7 @@
 #                         Accessibility returns 0 matches, so the framework
 #                         falls back to pom.yaml in this folder. (step marked [POM])
 #
-# Run it (web steps only):   behave features/fallback-demo --no-capture
-#   KNOWN ISSUE: features/steps/z_visual_catch_all.py and z_catch_all.py both
-#   register the same catch-all regex, so behave currently refuses to load both
-#   (AmbiguousStep). Until that's resolved, run this demo with only the web
-#   catch-all on the step path. See docs/phase-09 notes.
+# Run it:   behave features/fallback-demo --no-capture
 #
 # Watch for this line in the output, which proves the fallback fired:
 #   📋 POM: resolved 'burger menu' via pom.yaml
