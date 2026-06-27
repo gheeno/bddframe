@@ -8,34 +8,51 @@ A QA writes a `.feature` file in plain Gherkin sentences. No step definitions. N
 
 ```mermaid
 flowchart TD
-    QA["👤 QA Analyst\nwrites .feature file\nin plain sentences"] --> F["📄 checkout.feature\nGherkin format"]
+    QA["QA Analyst\nwrites .feature file\nin plain sentences"]
+    REC["bddframe record\nRecorder captures\nbrowser actions"]
 
-    F --> P["behave Parser\nbreaks file into steps"]
-    P --> O["LangGraph Orchestrator\nroutes each step"]
+    QA -->|hand-write| F["checkout.feature\nGherkin format"]
+    REC -->|auto-generates| F
 
-    O --> R{"Step Router"}
-    R -->|web action| W["🌐 Web Agent\nPlaywright"]
-    R -->|visual action| V["🖥️ Visual Agent\nOpenCV + PyAutoGUI"]
-    R -->|mobile action| M["📱 Mobile Agent\nAppium"]
+    F --> P["behave\nparses steps"]
+    P --> SR["Step Resolver\npattern match — 40+ built-in steps\nno LLM cost"]
 
-    W & V & M --> C["Result Collector\npass / fail + screenshot"]
-    C --> Rep["📊 Allure Report\nannotated screenshots\nJUnit XML for Azure DevOps"]
+    SR -->|pattern matched| ROT{"Orchestrator\nroutes by tag"}
+    SR -->|no match| LLM["LLM fallback\nopt-in via BDDFRAME_MODEL\nnever called if pattern matches"]
+    LLM --> ROT
 
-    style QA fill:#e8f5e9
-    style F fill:#e8f5e9
-    style Rep fill:#e3f2fd
+    ROT -->|web tag| W["Web Agent\nPlaywright\nfinds elements by label / role / text"]
+    ROT -->|visual tag| V["Visual Agent\nOpenCV + PyAutoGUI\ntemplate matching + OCR"]
+
+    W --> C["Result Collector\npass / fail + screenshot"]
+    V --> C
+
+    C --> Rep["Allure Report\nannotated screenshots\nJUnit XML for Azure DevOps"]
+
+    style QA       fill:#4a4a6a,color:#e8e8ff,stroke:#7a7aaa
+    style REC      fill:#4a4a6a,color:#e8e8ff,stroke:#7a7aaa
+    style F        fill:#2d4a3e,color:#b8f5d8,stroke:#4aaa80
+    style P        fill:#3a3a3a,color:#d0d0d0,stroke:#666
+    style SR       fill:#3a3a3a,color:#d0d0d0,stroke:#666
+    style LLM      fill:#4a3a2a,color:#f5d8b8,stroke:#aa804a,stroke-dasharray:4 4
+    style ROT      fill:#3a3a3a,color:#d0d0d0,stroke:#666
+    style W        fill:#1e3a5f,color:#b8d8f5,stroke:#4a80aa
+    style V        fill:#1e3a5f,color:#b8d8f5,stroke:#4a80aa
+    style C        fill:#3a3a3a,color:#d0d0d0,stroke:#666
+    style Rep      fill:#1e3a5f,color:#b8d8f5,stroke:#4a80aa
 ```
 
 ## Phases
 
 | Phase | Topic | Status |
 |-------|-------|--------|
-| [1 — Foundation](phase-01-foundation.md) | Parser, LLM backend, orchestrator, step resolver | Planned |
-| [2 — Web Agent](phase-02-web-agent.md) | Playwright, intent locators, semantic assertions, self-healing | Planned |
-| [3 — Visual Agent](phase-03-visual-agent.md) | OpenCV, OCR, vision LLM, desktop automation | Planned |
-| [4 — Reporting](phase-04-reporting.md) | Allure, JUnit XML, annotated screenshots | Planned |
-| [5 — CLI, Recorder & Azure DevOps](phase-05-cli-devops.md) | CLI, flow recorder, pipeline YAML | Planned |
-| [6 — Syntax Highlighting](phase-06-syntax-highlighting.md) | VS Code extension, variable highlighting, tag autocomplete | Planned |
+| [1 — Foundation](phase-01-foundation.md) | Parser, LLM backend, orchestrator, step resolver | Done |
+| [2 — Web Agent](phase-02-web-agent.md) | Playwright, intent locators, semantic assertions, self-healing | Done |
+| [3 — CLI & Hooks Hardening](phase-03-hardening.md) | Browser validation, env normalisation, cleanup guarantees | Done |
+| [4 — Visual Agent](phase-04-visual-agent.md) | OpenCV template matching, OCR, vision LLM, desktop automation | Done |
+| [5 — Reporting](phase-05-reporting.md) | Allure JSON, JUnit XML, annotated screenshots | Done |
+| [6 — CLI, Recorder & Azure DevOps](phase-06-cli-devops.md) | CLI commands, flow recorder, pipeline YAML | Done |
+| [7 — Syntax Highlighting](phase-07-syntax-highlighting.md) | VS Code extension, variable highlighting, tag autocomplete, LSP | Done |
 
 ## Design principles
 
