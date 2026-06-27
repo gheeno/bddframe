@@ -67,9 +67,12 @@ flowchart TD
 1. `behave` parses the `.feature` file into steps
 2. The step resolver matches each step against 40+ built-in patterns — no LLM call
 3. The orchestrator routes each step to the right agent based on scenario tags (`@web`, `@visual`)
-4. The web agent locates elements by what they *are* (visible label, ARIA role, text) — no CSS selectors
-5. On failure: screenshot is taken, annotated, and embedded in the Allure report
-6. Optional: LLM fallback interprets steps that match no built-in pattern
+4. The web agent locates elements by what they *are* (visible label, ARIA role, text) — no CSS selectors. If the label is **ambiguous** (matches many elements) it consults `pom.yaml` for a scoped selector, then warns (or fails in strict mode) rather than guessing
+5. `pom.yaml` is the fallback for elements with no readable label, and can be **page-scoped by URL** so the same name maps to different elements on different pages
+6. On failure: screenshot is taken, annotated, and embedded in the Allure report
+7. Optional: LLM fallback interprets steps/elements only when you opt in — see the full **[Resolution Hierarchy](docs/resolution-hierarchy.md)** for exactly when the local agent vs an LLM handles each step
+
+> **By default there is no LLM.** With no `BDDFRAME_MODEL` set, BDDFrame is fully local (patterns + Playwright + POM + OpenCV); anything it can't resolve fails loudly. LLM layers only switch on when you set the env vars below.
 
 ---
 
@@ -110,30 +113,57 @@ brew install allure        # macOS
 
 ---
 
-## Setup — first-time config
+## Setup
 
-Copy the environment template and fill in your values:
+Three tiers: do the **one-time** setup once per machine, the **per-app** setup
+once for each application you test, and pick **per-run** options each time you run.
+
+### 1. One-time setup (once per machine / clone)
+
+Everything under [Installation](#installation) above — clone, `pip install -e .`,
+`playwright install chromium`, and (optional) `brew install allure`. Then create
+your env file from the template:
 
 ```bash
 cp .env.example .env
 ```
 
-Open `.env` and set the credentials for the site you want to test.
-The included example uses [saucedemo.com](https://www.saucedemo.com) — a public demo site, credentials are safe to use:
+Set the global browser defaults in `.env` (these rarely change):
 
 ```bash
-# .env
-SAUCE_USERNAME=standard_user
-SAUCE_PASSWORD=secret_sauce
-BASE_URL=https://www.saucedemo.com
-
 BDDFRAME_BROWSER=chromium        # chromium | firefox | webkit
 BDDFRAME_HEADLESS=false          # true = no visible browser window
 BDDFRAME_TIMEOUT=10000           # ms to wait for elements
+BDDFRAME_STRICT_LOCATOR=false    # true = ambiguous locators FAIL instead of guessing (recommended in CI)
 ```
 
-Any `[variable]` in a `.feature` file maps to the matching env var (uppercased, spaces → underscores).
-`[sauce username]` → `SAUCE_USERNAME`.
+### 2. Per-application setup (once per app under test)
+
+Add that app's credentials/URLs to `.env`. The included example uses
+[saucedemo.com](https://www.saucedemo.com) — a public demo site, safe to use:
+
+```bash
+SAUCE_USERNAME=standard_user
+SAUCE_PASSWORD=secret_sauce
+BASE_URL=https://www.saucedemo.com
+```
+
+Any `[variable]` in a `.feature` file maps to the matching env var (uppercased,
+spaces → underscores): `[sauce username]` → `SAUCE_USERNAME`. Then create a
+feature folder for the app (`features/<app>/`) and, if it has unlabelled or
+ambiguous elements, a `features/<app>/pom.yaml` — see
+[POM YAML](#pom-yaml--element-aliases).
+
+### 3. Per-run setup (each time you run)
+
+Nothing to install — just choose tags (`@smoke`, `@strict`) and CLI flags
+(`--headless`, `--browser firefox`, `--tag`). See [Run the tests](#run-the-tests).
+
+### Continuous / CI setup
+
+Set the same env vars as **pipeline variables** (no `.env` needed — see
+[CI — Azure DevOps](#ci--azure-devops)). Recommended CI defaults:
+`BDDFRAME_HEADLESS=true` and `BDDFRAME_STRICT_LOCATOR=true`.
 
 ---
 
@@ -318,7 +348,7 @@ python -m pytest tests/test_visual_patterns.py -v
 python -m pytest tests/test_visual_matcher.py -v
 ```
 
-**Expected result:** 114 passed, 0 failed.
+**Expected result:** 125 passed, 0 failed.
 
 | Test file | What it covers | Tests |
 |-----------|---------------|-------|
@@ -329,6 +359,9 @@ python -m pytest tests/test_visual_matcher.py -v
 | `test_recorder.py` | Recorder navigation/fill/click events, sensitive value redaction | 20 |
 | `test_visual_patterns.py` | Visual step pattern matching (18 patterns) | 22 |
 | `test_visual_matcher.py` | OpenCV template matching (mocked — no screen access) | 5 |
+| `test_pom_page_scope.py` | Page-scoped POM lookup, `shared:`, flat legacy, page pin | 5 |
+| `test_locator_ambiguity.py` | Ambiguity detection, strict vs lenient escalation | 4 |
+| `test_patterns_setpage.py` | Page-pin step pattern, navigate not shadowed | 2 |
 
 ---
 
@@ -347,6 +380,8 @@ Add tags to a `Scenario` or `Feature` to control the browser. Feature-level tags
 | `@mobile @android` | Pixel 5 emulation |
 | `@slow` | 500 ms delay between actions — useful for debugging |
 | `@record_video` | Record `.webm` video to `videos/` |
+| `@strict` | Ambiguous locators (a label matching many elements) **fail** instead of using the first match |
+| `@visual` | Route to the desktop/OpenCV agent instead of the web agent |
 
 **Priority (highest wins):** `@headed` > `@headless` > `--headed` > `--headless` > `.env`
 
@@ -474,6 +509,37 @@ When User clicks the shopping cart
 
 Supported selector types: `css`, `xpath`, `id`, `testid`, `text`, `role`
 
+### Page-scoped POM — same name, different element per page
+
+When a name like `search` means a different element on different pages, scope it
+by URL. The framework reads the live URL and picks the matching block:
+
+```yaml
+pages:
+  home:
+    match: { url_contains: "example.com/$" }   # regex on page.url
+    search: { css: "input.home-search" }
+  results:
+    match: { url_contains: "/search" }
+    search: { css: "input.results-filter" }
+shared:                                         # checked after the active page
+  cookie accept: { id: onetrust-accept-btn-handler }
+```
+
+For single-page apps where the URL never changes, pin the page explicitly:
+
+```gherkin
+Given User is on the "results" page
+```
+
+### Ambiguous elements
+
+If a label matches **multiple** elements (e.g. six "Add to cart" buttons), the
+framework uses a POM entry for that key if one exists; otherwise it warns and
+uses the first match (or fails, under `@strict` / `BDDFRAME_STRICT_LOCATOR`).
+Full details: **[POM Key Mapping](docs/pom-key-mapping.md)** and
+**[Resolution Hierarchy](docs/resolution-hierarchy.md)**.
+
 ---
 
 ## Variable substitution
@@ -516,11 +582,18 @@ Then install the LLM extra:
 pip install -e ".[llm]"
 ```
 
-**Semantic / vision assertions** also require a vision-capable model:
+**Which env var gates which LLM layer** (see [Resolution Hierarchy](docs/resolution-hierarchy.md)):
+
+| Var | Turns on | Must be |
+|-----|----------|---------|
+| `BDDFRAME_MODEL` | LLM step fallback · web vision element-locate · semantic & visual-baseline assertions | vision-capable for the assertion/locate features (e.g. `openai/gpt-4o`, `ollama/llava`) |
+| `BDDFRAME_VISION_MODEL` | The `@visual` desktop agent's image vision-locate fallback | vision-capable |
 
 ```bash
-BDDFRAME_VISION_MODEL=ollama/llava       # local
-BDDFRAME_VISION_MODEL=openai/gpt-4o     # hosted
+# Web semantic assertions + vision element-locate (uses BDDFRAME_MODEL):
+BDDFRAME_MODEL=openai/gpt-4o
+# Desktop / @visual image fallback:
+BDDFRAME_VISION_MODEL=ollama/llava
 ```
 
 ---
@@ -573,7 +646,13 @@ Tests run headless. Failures upload annotated screenshots as pipeline artifacts.
 
 ## Docs
 
+**Start here**
 - [Getting Started](docs/getting-started.md) ← full walkthrough
+- [Writing a Test](docs/writing-a-test.md) ← step-by-step: happy path + problematic locators
+- [Resolution Hierarchy](docs/resolution-hierarchy.md) ← when the local agent vs an LLM handles a step
+- [POM Key Mapping](docs/pom-key-mapping.md) ← how step wording maps to `pom.yaml` keys
+
+**Design phases**
 - [Phase 1 — Foundation](docs/phase-01-foundation.md)
 - [Phase 2 — Web Agent](docs/phase-02-web-agent.md)
 - [Phase 3 — CLI & Hooks Hardening](docs/phase-03-hardening.md)
@@ -581,3 +660,5 @@ Tests run headless. Failures upload annotated screenshots as pipeline artifacts.
 - [Phase 5 — Reporting](docs/phase-05-reporting.md)
 - [Phase 6 — CLI, Recorder & Azure DevOps](docs/phase-06-cli-devops.md)
 - [Phase 7 — Syntax Highlighting](docs/phase-07-syntax-highlighting.md)
+- [Phase 8 — Test Development Guide](docs/phase-08-test-development.md)
+- [Phase 9 — Element Disambiguation](docs/phase-09-element-disambiguation.md)
