@@ -105,3 +105,123 @@ No match found for 'header search'
 ```
 
 That string is your YAML key.
+
+---
+
+## The page-blindness problem
+
+The POM lookup (`pom.py:_lookup`) is a **flat key scan** — it has no concept of
+which page the browser is currently on. It iterates every key in the YAML and
+returns the first match.
+
+This creates two concrete problems:
+
+**1. YAML silently drops duplicate keys.**
+
+```yaml
+# BAD — second entry overwrites the first. The home page search is gone.
+search:
+  css: "input.home-search"
+search:
+  css: "input.results-filter"
+```
+
+**2. A key written for one page will fire on a different page if the locator
+happens to match.**
+
+---
+
+## How to handle the same element on different pages
+
+### Fix 1 — page-prefixed keys (recommended, works today)
+
+Include the page or section in the key name. The feature file step must use the
+same prefix so the extracted locator matches.
+
+```yaml
+# pom.yaml
+home search:
+  css: "input.home-search"
+
+results search:
+  css: "input.results-filter"
+```
+
+```gherkin
+# Feature file — home page step
+When User enters "mastercraft tool box" in the home search input
+
+# Feature file — search results page step
+When User clears the results search input
+```
+
+The pattern strips `the` and `input` — so `home search input` → key `home search`. ✓
+
+---
+
+### Fix 2 — XPath axis selectors (scope by container, not position)
+
+When elements are structurally identical but live inside different containers,
+use an XPath axis to scope to the right parent. This is safer than positional
+index (`[1]`, `[2]`) because it survives DOM reordering.
+
+```yaml
+# Scope to the page header
+header search:
+  xpath: "//header//input[@type='search']"
+
+# Scope to the sidebar filter panel
+sidebar search:
+  xpath: "//aside//input[@type='search']"
+
+# Positional index — last resort, fragile if layout changes
+first search bar:
+  xpath: "(//input[@type='search'])[1]"
+```
+
+```gherkin
+When User enters "drill" in the header search input
+When User enters "cordless" in the sidebar search input
+```
+
+---
+
+### Comparison
+
+| Approach | Readable step? | Stable? | When to use |
+|---|---|---|---|
+| Page-prefixed key | ✅ | ✅ | Default — always try this first |
+| XPath axis (container) | ✅ | ✅ | Two identical elements in different containers |
+| XPath positional `[1]` | ⚠️ | ❌ fragile | Last resort — no other structural difference |
+| Arbitrary key (`search_2`) | ❌ | ✅ | Never — makes feature file unreadable |
+
+---
+
+## Current limitation — no URL-based page scoping
+
+There is no mechanism today to say "use this selector only when the browser is
+on `/search`." The `_lookup` function in `pom.py` receives only a text key — it
+does not have access to the current page URL.
+
+A page-scoped YAML structure would look like this, but **it is not implemented**:
+
+```yaml
+# Proposed — not implemented
+pages:
+  home:
+    url_contains: "canadiantire.ca/$"
+    search:
+      css: "input.home-search"
+
+  search results:
+    url_contains: "/search"
+    search:
+      css: "input.results-filter"
+```
+
+For this to work, `pom.py` would need the current `page.url` passed in at
+lookup time so it could filter by `url_contains` before scanning keys.
+
+Until that is built, **page-prefixed key naming is the correct workaround.**
+The naming convention is explicit, requires no code change, and makes the
+feature file self-documenting about which page the step is acting on.
