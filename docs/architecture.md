@@ -108,6 +108,7 @@ flowchart TD
     PRE["preconditions.py<br/>@precondition data setup/teardown"]
     LOC["agents/web/locator.py<br/>find()"]
     POM["agents/web/pom.py<br/>pom.yaml selectors"]
+    SCREEN["agents/web/screen.py<br/>pixel/OCR bridge (canvas · terminal)"]
     VIS["agents/visual/*<br/>OpenCV · OCR · PyAutoGUI"]
     PW["Playwright (browser)"]
     LLM["llm/client.py<br/>ask() / ask_vision() → LiteLLM"]
@@ -126,6 +127,7 @@ flowchart TD
     PAT -. "no match + model set" .-> LLM
     RUN -->|"run_script / run_command"| SCRIPT
     HOOK -->|"@precondition tag"| PRE
+    RUN -->|"pixel/OCR steps"| SCREEN --> PW
     RUN --> ACT --> LOC -->|"role / label / text"| PW
     LOC -. "not found" .-> POM
     POM -. "still not found + model set" .-> LLM
@@ -138,6 +140,7 @@ flowchart TD
     style FEAT fill:#2d4a3e,color:#b8f5d8,stroke:#4aaa80
     style PW fill:#1e3a5f,color:#b8d8f5,stroke:#4a80aa
     style POM fill:#1e3a5f,color:#b8d8f5,stroke:#4a80aa
+    style SCREEN fill:#1e3a5f,color:#b8d8f5,stroke:#4a80aa
     style VIS fill:#1e3a5f,color:#b8d8f5,stroke:#4a80aa
     style LLM fill:#3a2a4a,color:#e8d8f5,stroke:#8a6aaa
     style TRACE fill:#1e3a5f,color:#b8d8f5,stroke:#4a80aa
@@ -151,6 +154,7 @@ flowchart TD
 | **Route** | `bddframe/hooks.py` | Reads scenario tags → launches the right browser (or routes `@visual` to the desktop agent), and wires reporting into behave's lifecycle. |
 | **Interpret** | `bddframe/resolver/` | Turn a sentence into a structured action via regex; LLM fallback only if no pattern matches. |
 | **Act (web)** | `bddframe/agents/web/` | `actions.py` (do it) → `locator.py` (find it, accessibility-first) → `pom.py` (named selectors). |
+| **Pixel/OCR bridge** | `bddframe/agents/web/screen.py` | Canvas and terminal UIs with no semantic DOM: OCR-locates text in a Playwright screenshot (device-pixel coords converted to CSS-pixel mouse coords), then drives `page.mouse` / `page.keyboard`. Activated by the `focuses on`, `type_text`, `click_at`, `assert screen text` step family. |
 | **Test data / scripts** | `bddframe/orchestrator/script_runner.py`, `agents/web/actions.py` | Non-UI steps: run an external script/command (`run the script …`), call an API, mock a route, load a fixture. |
 | **Preconditions** | `bddframe/preconditions.py` | `@precondition:NAME` → seed data before a scenario and tear it down after (even on failure), from a per-folder `preconditions.yaml`. |
 | **Act (visual)** | `bddframe/agents/visual/` | OpenCV template match + Tesseract OCR + PyAutoGUI for non-DOM UIs. |
