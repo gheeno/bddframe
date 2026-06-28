@@ -7,7 +7,13 @@ Status: proposed. Not yet scheduled.
 
 ---
 
-## Phase E — Parallelism ceiling (F1)
+## Phase E — Parallelism ceiling (F1) ✅ Done
+
+**Status:** implemented in `feature/BFRAME_0021`.
+[`scripts/list_features.py`](../scripts/list_features.py) discovers web feature
+files and both Azure pipelines consume it as a dynamic matrix. Sharding is
+**web-only** by design — files tagged `@appium`/`@desktop`/etc. are excluded
+(see Phase F/G for those platforms' own runners).
 
 **Goal:** shard at the feature-*file* level, not the feature-*folder* level.
 Eliminates uneven agent load and removes the manual matrix-row requirement.
