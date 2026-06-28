@@ -435,7 +435,7 @@ make test            # == python -m pytest unit_tests/ -v
 |-----|-----|
 | **[Guide](docs/guide.md)** | New & veteran testers — install → write → run → `pom.yaml` → shared state → reports → CI → editor. |
 | **[Architecture](docs/architecture.md)** | The tech, end to end — mental model, component map, resolution hierarchy, the LLM layer, tech stack (Mermaid throughout). |
-| **[Design History](docs/design-history.md)** | The rationale trail behind every capability (the 12 build phases, condensed). |
+| **[Design History](docs/design-history.md)** | The rationale trail behind every capability (the build phases, condensed). |
 | **[Enterprise Plan](docs/enterprise-plan.md)** | Enterprise-grade gap analysis + what was built (parallelism, retries, traces, Key Vault, healing telemetry, Docker). |
 | **[Preconditions Plan](docs/preconditions-plan.md)** | The phase plan + rationale for tag-driven data preconditions & teardowns (the JDBC-fixture analog). |
 | **[docs/](docs/README.md)** | Documentation index. |

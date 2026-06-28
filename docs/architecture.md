@@ -102,8 +102,10 @@ flowchart TD
     RUN["orchestrator/runner.py<br/>execute_step() (web)"]
     VRUN["orchestrator/visual_runner.py<br/>(@visual)"]
     RES["resolver/step_resolver.py<br/>resolve()"]
-    PAT["resolver/patterns.py · visual_patterns.py<br/>40+ regex patterns"]
+    PAT["resolver/patterns.py · visual_patterns.py<br/>50+ regex patterns"]
     ACT["agents/web/actions.py<br/>click / fill / assert_*"]
+    SCRIPT["orchestrator/script_runner.py<br/>run external script / command"]
+    PRE["preconditions.py<br/>@precondition data setup/teardown"]
     LOC["agents/web/locator.py<br/>find()"]
     POM["agents/web/pom.py<br/>pom.yaml selectors"]
     VIS["agents/visual/*<br/>OpenCV · OCR · PyAutoGUI"]
@@ -122,6 +124,8 @@ flowchart TD
     GLUE -->|"everything else"| RUN
     RUN --> RES --> PAT
     PAT -. "no match + model set" .-> LLM
+    RUN -->|"run_script / run_command"| SCRIPT
+    HOOK -->|"@precondition tag"| PRE
     RUN --> ACT --> LOC -->|"role / label / text"| PW
     LOC -. "not found" .-> POM
     POM -. "still not found + model set" .-> LLM
@@ -147,6 +151,8 @@ flowchart TD
 | **Route** | `bddframe/hooks.py` | Reads scenario tags → launches the right browser (or routes `@visual` to the desktop agent), and wires reporting into behave's lifecycle. |
 | **Interpret** | `bddframe/resolver/` | Turn a sentence into a structured action via regex; LLM fallback only if no pattern matches. |
 | **Act (web)** | `bddframe/agents/web/` | `actions.py` (do it) → `locator.py` (find it, accessibility-first) → `pom.py` (named selectors). |
+| **Test data / scripts** | `bddframe/orchestrator/script_runner.py`, `agents/web/actions.py` | Non-UI steps: run an external script/command (`run the script …`), call an API, mock a route, load a fixture. |
+| **Preconditions** | `bddframe/preconditions.py` | `@precondition:NAME` → seed data before a scenario and tear it down after (even on failure), from a per-folder `preconditions.yaml`. |
 | **Act (visual)** | `bddframe/agents/visual/` | OpenCV template match + Tesseract OCR + PyAutoGUI for non-DOM UIs. |
 | **LLM** | `bddframe/llm/client.py` | The single gateway to any model via LiteLLM. Reached only as a leaf-level fallback. |
 | **Report** | `bddframe/reporting/` | Allure JSON per step, JUnit XML for Azure, annotated failure screenshots. |
@@ -167,7 +173,7 @@ The actual path for a normal `@web` step, in plain words:
    built-in `catch_all()`.
 2. `catch_all` checks the tag: `@visual` → the desktop agent; otherwise → `execute_step()`.
 3. `execute_step` **substitutes variables** (`[SAUCE_USERNAME]` → env value, `` `captured` `` → run store), then asks the **resolver**: *what does this sentence mean?*
-4. The resolver tries 40+ regex patterns. Match → it returns an action dict (`click`, `fill`, `assert_visible`, …). No match → it calls the LLM **only if a model is configured** (Trigger 1).
+4. The resolver tries 50+ regex patterns. Match → it returns an action dict (`click`, `fill`, `assert_visible`, …). No match → it calls the LLM **only if a model is configured** (Trigger 1).
 5. The action runs through `actions.py`, which uses `locator.py` to **find the element by its readable name** — role / label / placeholder / text. No `By.id` needed.
 6. Element not found? Try `pom.yaml`. Still not found? Vision LLM (Trigger 2) — again, only if a model is set.
 7. Playwright performs the actual click/fill in the browser.
@@ -207,7 +213,7 @@ flowchart TD
     S["Gherkin step"] --> L0
 
     subgraph L0["① Interpret the sentence — resolver"]
-        P["Pattern match (40+ regex)\nLOCAL · no cost"] -->|matched| OUT0["action"]
+        P["Pattern match (50+ regex)\nLOCAL · no cost"] -->|matched| OUT0["action"]
         P -->|no match| LLM0["LLM step fallback\nonly if BDDFRAME_MODEL set\nelse: step FAILS"]
         LLM0 --> OUT0
     end
@@ -365,7 +371,7 @@ Note the split: triggers 1–3 (web path) gate on `BDDFRAME_MODEL`; trigger 4
 
 ```mermaid
 flowchart TD
-    STEP["Gherkin step"] --> RES["Resolver: 40+ regex patterns<br/>LOCAL"]
+    STEP["Gherkin step"] --> RES["Resolver: 50+ regex patterns<br/>LOCAL"]
     RES -->|matched| ROUTE{"route by tag"}
     RES -->|no match| T1["ask() — step fallback<br/>trigger 1 · BDDFRAME_MODEL"]
     T1 --> ROUTE
@@ -439,7 +445,7 @@ bddframe run features/fallback-demo/llm_fallback.feature --headed
 To watch the raw prompt/response exchange:
 
 ```bash
-uv run --with litellm --with pytest python -m pytest tests/test_llm_openai_endpoint.py -s
+uv run --with litellm --with pytest python -m pytest unit_tests/test_llm_openai_endpoint.py -s
 ```
 
 ### Config recap
@@ -555,7 +561,7 @@ newer), and why it's here.
 
 | Tech | Purpose |
 |------|---------|
-| [pytest](https://pytest.org/) | The `tests/` suite — **200 tests, no browser/LLM/display needed**. `make test`. |
+| [pytest](https://pytest.org/) | The `unit_tests/` suite — **212 tests, no browser/LLM/display needed**. `make test`. |
 | Makefile | `make test`, `make vsix`, `make install-ext`, `make clean`. |
 | Azure Pipelines | `azure-pipelines.yml` (Linux) + `azure-pipelines-windows.yml` (Windows) — feature-folder **matrix sharding**, publish JUnit + Allure + failure traces. |
 | Docker / devcontainer | `Dockerfile` (Playwright base image, browsers preinstalled) + `.devcontainer/` for reproducible CI and local parity. |

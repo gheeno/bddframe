@@ -13,10 +13,13 @@ off by default.
 | **[../README.md](../README.md)** | everyone | Elevator pitch, install, run, report, the LLM in brief. The front door. |
 | **[Guide](guide.md)** | new & veteran testers | The complete how-to: install → write → run → `pom.yaml` → shared state → reports → CI → editor. |
 | **[Architecture](architecture.md)** | learning the tech | One-stop deep dive (study it like Selenium/Appium/Selenide): mental model, component map, request lifecycle, resolution hierarchy, the LLM layer, tech stack — with Mermaid diagrams throughout. |
-| **[Design History](design-history.md)** | maintainers | The rationale trail behind every capability, condensed from the 12 build phases. |
+| **[Design History](design-history.md)** | maintainers | The rationale trail behind every capability, condensed from the build phases. |
 
 ## Quick links
 
+- **How do I run the bundled BusterBlock test app?** → [README → Run the bundled test app](../README.md#run-the-bundled-test-app-busterblock).
+- **How do I seed data before a test (preconditions/teardowns)?** → [README → Preconditions & teardowns](../README.md#preconditions--teardowns) · plan: [preconditions-plan.md](preconditions-plan.md).
+- **How do I run a Python/JS/jar/shell script from a step?** → [README → Run a script from a step](../README.md#run-a-script-from-a-step).
 - **When does the LLM run, and which sample test triggers it?** → [Architecture → The LLM layer](architecture.md#5-the-llm-layer) (`features/fallback-demo/llm_fallback.feature`).
 - **How does step wording map to `pom.yaml` keys?** → [Guide → pom.yaml](guide.md#5-pomyaml--when-natural-naming-fails).
 - **Local agent vs LLM, step by step?** → [Architecture → Resolution hierarchy](architecture.md#4-the-resolution-hierarchy).

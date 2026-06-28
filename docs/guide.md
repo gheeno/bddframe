@@ -76,17 +76,21 @@ docker run --rm bddframe run features/saucedemo/ --headless
 ### Project layout
 
 ```
-bddframe/           ← the package (cli, hooks, agents, resolver, reporting, llm, lsp)
-features/           ← your tests live here
+bddframe/             ← the package (cli, hooks, agents, resolver, reporting, llm, lsp)
+features/             ← your tests live here
   saucedemo/
     checkout.feature
-    pom.yaml        ← element aliases for this folder (optional)
-  pom.yaml          ← global element aliases (optional)
-  steps/            ← auto-wired catch-all — do not edit
-  environment.py    ← hooks entry point — do not edit
-environments.yaml   ← base URLs per environment ([SAUCEDEMO]) — committed
-.env                ← browser/run settings, NO secrets — committed
-secrets.env         ← credentials (gitignored); or use Azure Key Vault
+    pom.yaml          ← element aliases for this folder (optional)
+  busterblock/        ← example suite for the bundled test app (needs it running)
+    preconditions.yaml ← @precondition data fixtures (optional)
+    scripts/          ← scripts invoked by "run the script ..." steps
+  pom.yaml            ← global element aliases (optional)
+  steps/              ← auto-wired catch-all — do not edit
+  environment.py      ← hooks entry point — do not edit
+test-app-vhs-vault/   ← bundled local test app (BusterBlock.ca) — see §4
+environments.yaml     ← base URLs per environment ([SAUCEDEMO], [BUSTERBLOCK]) — committed
+.env                  ← browser/run settings, NO secrets — committed
+secrets.env           ← credentials (gitignored); or use Azure Key Vault
 ```
 
 ---
@@ -224,6 +228,32 @@ bddframe run --log-level WARNING                 # quieter output
 bddframe list                                   # discovered scenarios, no browser
 bddframe validate                               # parse + check [variables], no browser
 ```
+
+### Bundled example suites
+
+The repo ships ready-to-run examples under `features/`. One of them drives a
+**local** test app, so know what each needs before `bddframe run` (no arg) runs
+them all:
+
+| Suite | Hits | Needs |
+|-------|------|-------|
+| `features/saucedemo/` | the public `saucedemo.com` demo | internet |
+| `features/canadiantire/` | a public site | internet |
+| `features/busterblock/` | the bundled **BusterBlock** app | the local app running (below) |
+| `features/fallback-demo/` | LLM step-fallback demo | `BDDFRAME_MODEL` set, else fails by design |
+
+**BusterBlock** (`test-app-vhs-vault/`) is a self-contained Node/Express site the
+`features/busterblock/` suite — login, catalog, checkout, **preconditions**, and
+**run-a-script** examples — runs against. Start it first, in its own terminal:
+
+```bash
+cd test-app-vhs-vault && npm install && npm start   # serves http://localhost:3333
+```
+
+Then, from another terminal: `bddframe run features/busterblock/`. The
+`[BUSTERBLOCK]` reference and the `BB_USER` / `BB_PASS` demo login are already in
+`environments.yaml` / `secrets.env.example`. Full walkthrough: **[README → Run the
+bundled test app](../README.md#run-the-bundled-test-app-busterblock)**.
 
 **What to expect:**
 
@@ -633,7 +663,8 @@ uv pip install -e ".[visual]"
 brew install tesseract        # macOS  (apt install tesseract-ocr on Linux)
 ```
 
-Tag the scenario `@visual` and store reference images in `tests/assets/`:
+Tag the scenario `@visual` and store reference images where the run can reach
+them (e.g. an `assets/` folder; the path in the step is relative to the run dir):
 
 ```gherkin
 @visual
@@ -736,15 +767,16 @@ in `.vscode/settings.json`:
 BDDFrame's own suite runs with **no browser, no LLM, and no display**.
 
 ```bash
-make test                          # == python -m pytest tests/ -v
-python -m pytest tests/test_lsp.py -v   # a single file
+make test                               # == python -m pytest unit_tests/ -v
+python -m pytest unit_tests/test_lsp.py -v   # a single file
 ```
 
-**Expected: 200 passed, 0 failed.** Coverage spans CLI hardening, hooks
+**Expected: 212 passed, 0 failed.** Coverage spans CLI hardening, hooks
 lifecycle, step patterns (incl. tables and shared-state), visual patterns,
 OpenCV matcher (mocked), Allure writer, JUnit output, screenshot annotation,
 recorder + sensitive redaction, LSP validation, page-scoped POM lookup, locator
 ambiguity detection, and the enterprise additions — deterministic pixel diff,
-quarantine exit-code scan, healing telemetry, Key Vault merge, and the
-mock/API/test-data steps.
+quarantine exit-code scan, healing telemetry, Key Vault merge, the
+mock/API/test-data steps, **data preconditions/teardowns, and the
+script/command runner**.
 </content>

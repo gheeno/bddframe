@@ -12,7 +12,7 @@ Selenium / Selenide **including** their self-healing add-ons (Healenium / Autohe
 > **Update 2026-06-27: Phases A–D implemented.** The operational gaps below are
 > closed — parallelism (CI sharding), retry/quarantine, failure traces,
 > deterministic visual diff, structured logging, Key Vault secrets, healing
-> telemetry, Docker, and API/mock/test-data steps all landed. Suite: 200 tests
+> telemetry, Docker, and API/mock/test-data steps all landed. Suite: 212 tests
 > green. The sections below are kept as the original assessment.
 
 Architecturally ahead of Selenium/Selenide; operationally not yet enterprise-grade.
