@@ -1,6 +1,6 @@
 # Peer Review — BDDFrame (2026-06-28)
 
-Reviewer: external/independent. Branch: BFRAME_0018. Status: **actionable backlog**.
+Reviewer: external/independent. Branch: BFRAME_0018. Status: **all 7 items implemented on this branch** (see the summary table; 0018-3 uses Pillow `histogram()` rather than the numpy swap originally sketched — lazier, no new dep).
 
 This is a cold read of the full codebase after Phases A–D landed. Items are
 ranked by severity × enterprise impact. Nothing here touches the locator

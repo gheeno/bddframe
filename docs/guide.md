@@ -483,8 +483,12 @@ And the page title should contain "Swag Labs"
 Then the "Email" field should contain "a@b.com"      # element value
 Then the "Submit" button should be disabled          # enabled/disabled/checked
 And the chart line should have attribute "stroke" equal to "green"
-And User should see 3 "result" items                 # count
+And User should see 3 "result" items                 # count (visible only)
 ```
+
+> Count assertions count **visible** occurrences — sr-only/aria duplicates and
+> tooltip text are excluded, so "should see 3 X" reflects what a user actually
+> sees on screen.
 
 ### Visual regression — deterministic (no LLM)
 Pixel diff against a stored baseline. First run captures `baselines/<name>.png`;
@@ -639,6 +643,41 @@ run, if anything healed, BDDFrame writes `healing.jsonl` (one event per line) an
 `healing-report.txt` with a suggested `pom.yaml` entry per healed locator — turn a
 flaky-by-naming locator into a one-line deterministic fix.
 
+### Agentic RCA — automatic failure root-cause
+
+Telemetry tells you *what* healed; RCA tells you *why a failure happened*. Enable
+it with a vision model plus the opt-in flag:
+
+```bash
+# .env
+BDDFRAME_MODEL=openai/gpt-4o     # vision-capable
+BDDFRAME_RCA=true
+```
+
+On **each failed step**, BDDFrame sends the failure screenshot + step text +
+error to the model and gets back a structured verdict. It's logged to the console
+and attached to the Allure result as the `rca_category` label, so you can filter
+the report by root cause:
+
+| `rca_category` | Meaning |
+|----------------|---------|
+| `app-regression` | The UI changed or a feature is broken |
+| `locator-rot` | The element's label or structure changed |
+| `environment-flap` | Network, timeout, or infra issue |
+| `test-data` | Missing, stale, or wrong seed data |
+| `test-script` | The step or assertion itself is wrong |
+
+```
+🔍 RCA [environment-flap] (medium): the page never finished loading before the assertion
+💡 Suggested fix: add a "wait until ... is visible" step or raise BDDFRAME_TIMEOUT
+```
+
+RCA is **best-effort**: it never changes a test's pass/fail and never raises, and
+it fires only on failure (one model call per failed step — green runs cost
+nothing). Off unless both `BDDFRAME_MODEL` and `BDDFRAME_RCA` are set. It pairs
+with [failure traces](#failure-traces-playwright): the trace shows the *what*, RCA
+suggests the *why*.
+
 ---
 
 ## 9. Recording a test
@@ -727,6 +766,33 @@ jobs:
 Add a matrix row per feature folder to scale out. Because a run rewrites
 `allure-results/`, each shard must have its own workspace — which separate agents
 do automatically. (No in-process worker pool; add agents, not threads.)
+
+#### Data isolation across shards
+
+Separate agents get separate *workspaces*, **not** separate *backends*. Two
+shards that seed the same test server race: if both call
+`POST [BUSTERBLOCK]/api/test/reset` ([preconditions](#preconditions--teardowns)),
+one shard's reset wipes the other's state mid-run. Two ways to keep shards
+independent:
+
+1. **Backend per shard** (cleanest) — give each shard its own server instance /
+   database via the variable group, e.g. set `BUSTERBLOCK` to a per-shard URL in
+   the matrix:
+
+   ```yaml
+   matrix:
+     saucedemo:    { featurePath: 'features/saucedemo/',  BUSTERBLOCK: 'http://bb-1:3333' }
+     canadiantire: { featurePath: 'features/canadiantire/', BUSTERBLOCK: 'http://bb-2:3333' }
+   ```
+
+2. **Namespaced fixtures** — if the backend supports it, seed into a per-shard
+   slot instead of a global reset (e.g. key test data by the shard's job name) so
+   no two shards touch the same records. This needs the app to support scoped
+   resets; the bundled BusterBlock uses a single global store, so prefer option 1
+   for it.
+
+The safe default: shard so that no two folders hit the same backend, or run each
+against its own instance.
 
 ### Secrets via Key Vault
 

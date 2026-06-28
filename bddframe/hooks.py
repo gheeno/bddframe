@@ -219,6 +219,16 @@ def after_step(context, step):
         ar = _allure_result(context)
         if ar is not None:
             ar.add_step(step, "failed", annotated_path or raw_path)
+
+        # Agentic RCA (opt-in: BDDFRAME_RCA + BDDFRAME_MODEL). Classify the
+        # failure's root cause from the screenshot and tag the Allure result so
+        # the report can be filtered by category. Best-effort, never raises.
+        from bddframe import rca
+        verdict = rca.review(step.name, step.error_message, raw_path)
+        if verdict is not None and ar is not None:
+            ar.result["labels"].append(
+                {"name": "rca_category", "value": verdict["label"]}
+            )
     else:
         ar = _allure_result(context)
         if ar is not None:

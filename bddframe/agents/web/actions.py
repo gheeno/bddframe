@@ -147,18 +147,21 @@ def visual_baseline(page: Page, name: str, ignore: str = None):
 
 
 def _pixel_diff_ratio(base, current, tol: int = 30):
-    """Fraction of pixels that differ by more than `tol` (0..255) on any channel.
+    """Fraction of pixels that differ by more than `tol` (0..255) of luminance.
     Returns None if the two images have different sizes (treated as a mismatch
     by the caller). Pure function — no DOM — so it's unit-testable.
-    ponytail: O(pixels) Python sum; fine for a screenshot, swap to numpy if a
-    4K full-page diff ever gets slow."""
+
+    Uses Pillow's C-level histogram() instead of a per-pixel Python loop, so a
+    full-page diff is fast and needs no numpy. The luminance diff is bucketed
+    0..255; `changed` is every bucket above `tol`."""
     from PIL import ImageChops
     base = base.convert("RGB")
     current = current.convert("RGB")
     if base.size != current.size:
         return None
     diff = ImageChops.difference(base, current).convert("L")
-    changed = sum(1 for p in diff.getdata() if p > tol)
+    hist = diff.histogram()                 # 256 luminance buckets, C-speed
+    changed = sum(hist[tol + 1:])           # pixels differing by more than tol
     total = base.size[0] * base.size[1]
     return changed / total if total else 0.0
 
@@ -318,10 +321,13 @@ def assert_attribute(page: Page, locator_text: str, attribute: str, value: str):
 
 
 def assert_count(page: Page, count: int, locator_text: str):
-    actual = page.get_by_text(locator_text, exact=False).count()
+    # Count VISIBLE occurrences only. A raw get_by_text count includes sr-only
+    # duplicates, aria-label copies, and tooltip text, so "should see 3 X" could
+    # report 6. The `visible=true` engine filters to what a user actually sees.
+    actual = page.get_by_text(locator_text, exact=False).locator("visible=true").count()
     if actual != count:
         raise AssertionError(
-            f"Expected {count} '{locator_text}' — found {actual}.\nURL: {page.url}"
+            f"Expected {count} visible '{locator_text}' — found {actual}.\nURL: {page.url}"
         )
 
 
