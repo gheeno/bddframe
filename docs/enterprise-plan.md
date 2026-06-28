@@ -155,3 +155,145 @@ which we mostly already do. Lean into that and close the debug/scale gap.
 
 Phase A. It's the overlap of "broken" and "biggest differentiator", and it's
 small diffs: pipeline fix + tracing + feature-sharding.
+
+---
+
+## Future Plans
+
+> Peer review findings — 2026-06-28. These are not yet implemented.
+> Ranked by enterprise impact.
+
+---
+
+### F1 — Break the sharding ceiling (parallelism)
+
+**Current limit:** parallelism is achieved by sharding feature *folders* across
+CI agents (one matrix job per folder). Everything inside a folder runs serially.
+This means:
+
+- You cannot parallelize finer than a folder without standing up a separate
+  process per file manually.
+- Uneven folders = uneven agents: a folder with 50 scenarios blocks one agent
+  while another agent finishes 5 and idles.
+- New folders require a manual matrix row in `azure-pipelines.yml` — no
+  auto-discovery.
+
+**Fix options (pick one):**
+
+- **File-level matrix** (small lift): auto-discover `.feature` files, generate
+  one matrix job per file. Requires a dynamic matrix in Azure DevOps
+  (`strategy.matrix` from a script step) or a pre-job that outputs the list.
+- **`behavex`** (drop-in): behave-compatible runner with in-process parallel
+  execution. Adds a dependency but removes the agent-count requirement.
+- **`pytest-bdd` + `pytest-xdist`** (bigger migration): replaces `behave` with a
+  pytest-native BDD runner that supports `-n auto` out of the box. Largest lift
+  but the most future-proof.
+
+---
+
+### F2 — Appium / native mobile support
+
+**Current state:** the `@mobile` tag in `hooks.py` is **Playwright device
+emulation only** (viewport + user-agent). It does not connect to a real device
+or Appium server. Real mobile automation does not exist yet.
+
+**What's needed:**
+
+- A new `bddframe/agents/mobile/` agent wrapping `appium-python-client`.
+- An `@appium` routing tag in the orchestrator (alongside `@web` and `@visual`).
+- Mobile-specific locator strategies: `accessibility_id`, `resource-id`,
+  `content-desc`, and XPath for UIAutomator2 (Android) / XCUITest (iOS).
+- Capability management: device UDID, platform version, app path/bundle ID.
+- An Appium session lifecycle separate from Playwright (server URL, driver
+  start/stop per scenario).
+- New visual patterns for mobile gestures: swipe, pinch-zoom, long-press.
+
+The resolver → orchestrator → agent architecture is clean enough that
+`AppiumAgent` slots in without touching existing web/visual paths.
+
+---
+
+### F3 — Legacy desktop (SikuliX-class) gaps
+
+The visual agent (PyAutoGUI + OpenCV + Tesseract) covers the basics but has
+gaps that block reliable desktop automation for real enterprise apps.
+
+**F3a — Wire `focus_region` into the search path (highest priority)**
+
+`focus_region` currently parses the region string and does nothing with it
+(`visual_runner.py:89` comment: "Parsed for future use"). On any screen with
+duplicate buttons or dialogs, OpenCV and OCR search the entire screen and match
+the first occurrence. This is the primary reason SikuliX is more reliable on
+complex desktop UIs.
+
+Fix: pass the parsed `{x, y, width, height}` dict from `regions.parse_region()`
+as a crop boundary into `matcher.find_on_screen()` and
+`ocr.find_text_on_screen()`.
+
+**F3b — Multi-word OCR phrase matching**
+
+`ocr.py` matches word-by-word. "Save As" will fail if Tesseract returns two
+separate bounding boxes (`"Save"` and `"As"`). Fix: group adjacent boxes by line
+and run needle matching on the joined line text.
+
+**F3c — Window management**
+
+No ability to bring a window to the foreground, find a window by title, or
+enumerate open windows. SikuliX users rely on this to avoid focus-stealing
+between concurrent desktop processes. Candidates: `pygetwindow` (Windows/macOS)
+or `wmctrl` (Linux).
+
+**F3d — Multi-monitor support**
+
+`matcher.py` and `ocr.py` always capture `mss.monitors[1]` (the primary
+monitor). Secondary monitors are invisible. Fix: expose a `--monitor N` option
+and thread it through `screenshot.capture()`.
+
+**F3e — Win32/COM integration for true legacy apps**
+
+For WinForms, MFC, and VB6 applications, PyAutoGUI screen-coordinate control is
+fragile (DPI scaling, remote desktop, minimised windows). SikuliX sidesteps this
+with image matching; but the real enterprise path is `pywin32` / `comtypes`
+UIAutomation. This is the furthest out — only worth pursuing if a specific
+legacy app target is named.
+
+---
+
+### F4 — Remote browser execution (BrowserStack / Sauce Labs)
+
+Currently all Playwright browsers launch locally. Enterprise teams run against
+device/browser farms. Playwright supports remote CDP endpoints and
+`connect_over_cdp()`; BDDFrame needs to expose a `BDDFRAME_REMOTE_URL`
+environment variable and pass it through `hooks.before_scenario` as an
+alternative launch path.
+
+---
+
+### F5 — LLM cost cap
+
+When `BDDFRAME_MODEL` is set and a build is broken, every failed step triggers a
+model call (step-resolver fallback + vision locate + RCA). There is no token
+budget, rate limit, or per-run call ceiling. Add `BDDFRAME_LLM_MAX_CALLS`
+(default: unlimited for backward compat) checked before each `ask()`/`ask_vision()`
+call. Log a warning when the cap is hit; subsequent LLM steps fall back to the
+pattern resolver's fail path.
+
+---
+
+### F6 — Multi-user / multi-context flows
+
+Each scenario gets one `context.page`. Testing "User A places an order; User B
+sees the update" requires two simultaneous browser sessions. Playwright supports
+multiple `BrowserContext` instances natively. Expose this via a step pattern:
+`Given a new browser context as "buyer"` / `When acting as "buyer"`, with the
+context stored in `context._named_contexts`.
+
+---
+
+### F7 — Step-level retry
+
+Retries today are scenario-level: a flaky `wait_visible` at step 8 of 15 retries
+from step 1. Add a `@retry_step` tag (or `BDDFRAME_STEP_RETRIES`) that wraps
+individual step execution in a retry loop before handing off to the scenario
+retry. Useful for steps with inherent network latency (SSO redirects, CDN-
+backed assets).
