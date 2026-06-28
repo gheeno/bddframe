@@ -2,8 +2,15 @@
 POM YAML fallback — maps human names to explicit selectors.
 
 Resolution order (per lookup):
-  1. Local  pom.yaml  (features/<subfolder>/pom.yaml)
-  2. Global pom.yaml  (features/pom.yaml)
+  1. Local  pageobjects/<page>_pom.yaml  (features/<subfolder>/pageobjects/*)
+  2. Local  pom.yaml                     (features/<subfolder>/pom.yaml)
+  3. Global pom.yaml                     (features/pom.yaml)
+
+PER-PAGE FILE (recommended for folders with many pages):
+  features/<feature>/pageobjects/login_pom.yaml
+    match: { url_contains: "/login" }   # filename 'login' is also the page name
+    username: { css: "#user-name" }
+    password: { css: "#password" }
 
 Within each file, keys are looked up in this order:
   a. Active page block  (pages: whose `match.url_contains` fits the live URL,
@@ -139,16 +146,43 @@ def _match_key(mapping: dict, key: str, skip: tuple = ()):
 
 
 def _load_pom_chain() -> list[dict]:
-    """Return [local_pom, global_pom] — local first so it wins on duplicates."""
+    """Return [local..., global] mappings — local first so it wins on duplicates.
+
+    Local sources, in order:
+      1. features/<folder>/pageobjects/<page>_pom.yaml  (one file per page;
+         filename minus '_pom' is the page name used for pinning + matching)
+      2. features/<folder>/pom.yaml                     (shared/flat elements)
+    """
     chain = []
     if _feature_dir:
-        local = _load_yaml(Path(_feature_dir) / "pom.yaml")
+        folder = Path(_feature_dir)
+        # ponytail: glob per lookup is O(files-in-pageobjects); fine for a handful
+        # of pages. lru_cache the listing if a folder ever holds hundreds.
+        pod = folder / "pageobjects"
+        if pod.is_dir():
+            for path in sorted(pod.glob("*_pom.yaml")):
+                data = _load_yaml(path)
+                if data:
+                    chain.append(_wrap_page(path.stem[:-4], data))
+        local = _load_yaml(folder / "pom.yaml")
         if local:
             chain.append(local)
     global_ = _load_yaml(_global_pom_path())
     if global_:
         chain.append(global_)
     return chain
+
+
+def _wrap_page(name: str, data: dict) -> dict:
+    """A per-page file is a single page block keyed by its filename.
+
+    {match: ..., search: ...}  ->  {pages: {<name>: {match: ..., search: ...}}}
+    Files already using pages:/shared:, or with no match: (folder-wide shared
+    elements), are passed through unchanged.
+    """
+    if "pages" in data or "shared" in data or "match" not in data:
+        return data
+    return {"pages": {name: data}}
 
 
 def _global_pom_path() -> Path:

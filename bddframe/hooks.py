@@ -20,8 +20,22 @@ except ImportError:
 _suite_results = []
 
 
+def _load_environments():
+    """Load base URLs from environments.yaml into os.environ (uppercased).
+    Real env vars / .env win, so CI can override without editing the file."""
+    path = Path.cwd() / "environments.yaml"
+    if not path.exists():
+        return
+    import yaml
+    data = yaml.safe_load(path.read_text()) or {}
+    for key, value in data.items():
+        os.environ.setdefault(key.upper(), str(value))
+
+
 def before_all(context):
-    load_dotenv()
+    load_dotenv()                          # config (committed)
+    load_dotenv("secrets.env")             # secrets (gitignored) — soon AKV
+    _load_environments()
     _suite_results.clear()
 
 
