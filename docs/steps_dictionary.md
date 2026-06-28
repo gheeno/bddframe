@@ -353,6 +353,46 @@ stdout is always stored in `SCRIPT_OUTPUT`. Named `storing output in` stores it 
 
 ---
 
+## Adding a new step
+
+### Why the editor never warns
+
+`cucumberautocomplete` (`.vscode/settings.json`) points at `.cucumber_stubs.py`, which registers three wildcard `.*` patterns — one each for `Given`, `When`, `Then`. Every step matches, so the LSP **never** reports "undefined step" warnings regardless of whether the step is implemented.
+
+### What actually validates a step
+
+The check happens at **runtime**. `bddframe/steps/catch_all.py` intercepts every step and hands it to `bddframe/resolver/patterns.py`. If no regex there matches, the scenario fails (see *What happens when a step is not found* below).
+
+### How to add a new pattern
+
+**1. Write the step** in your `.feature` file — the editor accepts it immediately.
+
+**2. Add a regex** to `bddframe/resolver/patterns.py` → `PATTERNS` list:
+
+```python
+(r'^your pattern here (.+)$',  'your_action',  lambda m: {'param': m.group(1)}),
+```
+
+Patterns are tried top-to-bottom; first match wins — insert at the right priority position.
+
+**3. Add an action handler** in `bddframe/agents/web/actions.py`:
+
+```python
+def your_action(page: Page, param: str):
+    ...
+```
+
+**4. Wire the dispatch** in `bddframe/orchestrator/runner.py` → `execute_step()`:
+
+```python
+elif t == 'your_action':
+    actions.your_action(page, **params)
+```
+
+No LSP changes needed — the wildcard stubs already cover every possible step text.
+
+---
+
 ## What happens when a step is not found
 
 When a step doesn't match any known pattern, the framework tries two things in order:
