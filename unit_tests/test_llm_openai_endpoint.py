@@ -102,6 +102,50 @@ def test_unset_api_key_is_the_documented_gotcha(foundry, monkeypatch):
         ask("this should fail fast")
 
 
+# --- BFRAME_0018-1: LLM fallback output validation -------------------------
+
+def test_resolve_rejects_unknown_action_type(foundry):
+    # A syntactically valid JSON with a bogus type must NOT dispatch — it would
+    # otherwise run the wrong action or crash deep in the runner.
+    foundry.reply = '{"type": "frobnicate", "locator": "Login"}'
+    with pytest.raises(AssertionError, match="unknown action type 'frobnicate'"):
+        step_resolver.resolve("User does something unknown")
+
+
+def test_resolve_accepts_advertised_type_the_old_list_missed(foundry):
+    # `search` is advertised in the prompt and dispatchable — must pass validation.
+    foundry.reply = '{"type": "search", "query": "tool box"}'
+    action = step_resolver.resolve("User looks for a tool box")
+    assert action == {"type": "search", "query": "tool box"}
+
+
+def test_resolve_strips_markdown_fence(foundry):
+    foundry.reply = '```json\n{"type": "click", "locator": "Login"}\n```'
+    action = step_resolver.resolve("User submits the login form")
+    assert action == {"type": "click", "locator": "Login"}
+
+
+def test_resolve_recovers_json_from_surrounding_prose(foundry):
+    foundry.reply = 'Sure! Here is the action: {"type": "click", "locator": "OK"}'
+    action = step_resolver.resolve("User confirms the dialog")
+    assert action == {"type": "click", "locator": "OK"}
+
+
+def test_resolve_retries_once_then_raises_on_garbage(foundry):
+    foundry.reply = "not json at all, sorry"
+    with pytest.raises(AssertionError, match="unparseable response"):
+        step_resolver.resolve("User does a nonsense step")
+
+
+def test_valid_types_mirrors_the_runner_dispatch():
+    """Guard the hand-kept VALID_TYPES against drift from runner.py's dispatch."""
+    import re
+    from pathlib import Path
+    runner = Path(step_resolver.__file__).parent.parent / "orchestrator" / "runner.py"
+    dispatched = set(re.findall(r"t == '([a-z_]+)'", runner.read_text()))
+    assert dispatched == set(step_resolver.VALID_TYPES)
+
+
 if __name__ == "__main__":
     # Verbose run: show exactly what the model received and returned for Trigger 1.
     stub = _Stub()

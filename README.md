@@ -215,6 +215,14 @@ agent and the Tests tab aggregates them — see
 `allure-results/`, don't run two shards against the same working directory; give
 each its own checkout (what the CI matrix does automatically).
 
+> **Shared-backend data isolation.** Sharding gives each agent its own
+> *workspace*, not its own *backend*. If two shards seed the same test server
+> (e.g. both run `POST /api/test/reset` [preconditions](#preconditions--teardowns)),
+> they race — one shard's reset can wipe the other's state mid-scenario. Either
+> point each shard at its own backend instance, or split shards so no two touch
+> the same fixture namespace. See
+> [Guide → CI](docs/guide.md#11-ci--azure-devops) for the namespacing pattern.
+
 `bddframe record` opens a browser, watches you click through a flow, and writes
 the `.feature` file (sensitive values auto-redacted to `[VARIABLE]`).
 
@@ -358,6 +366,7 @@ Built for running at scale in Azure DevOps. Each item links to the detail:
 | **Deterministic visual diff** | `the screen should match the baseline` — pixel diff via Pillow, no LLM |
 | **Secrets in Azure Key Vault** | `BDDFRAME_KEYVAULT_URL` + `pip install -e ".[azure]"` — [Guide → Secrets](docs/guide.md#secrets--azure-key-vault) |
 | **Self-heal telemetry** | `healing.jsonl` + `pom.yaml` suggestions for every healed locator |
+| **Agentic RCA** | `BDDFRAME_RCA=true` — a vision model classifies each failure's root cause and tags the Allure report ([RCA](#agentic-rca--failure-root-cause)) |
 | **Reproducible runner** | `Dockerfile` (browsers preinstalled) + `.devcontainer/` |
 
 ```bash
@@ -397,9 +406,11 @@ BDDFRAME_LLM_URL=http://localhost:11434
 | 2 | Web element not found by accessibility + `pom.yaml` | `BDDFRAME_MODEL` |
 | 3 | Semantic / visual-baseline assertion (always uses the model) | `BDDFRAME_MODEL` |
 | 4 | `@visual` image not found by OpenCV/OCR | `BDDFRAME_VISION_MODEL` |
+| 5 | A step **failed** and RCA is on — classify the root cause | `BDDFRAME_MODEL` + `BDDFRAME_RCA` |
 
-Vision features (triggers 2–4) need a vision-capable model (`openai/gpt-4o`,
-`ollama/llava`).
+Vision features (triggers 2–5) need a vision-capable model (`openai/gpt-4o`,
+`ollama/llava`). Trigger 5 is the only one that fires *after* a failure rather
+than to resolve a step — see [Agentic RCA](#agentic-rca--failure-root-cause).
 
 **The sample test that invokes the LLM:** `features/fallback-demo/llm_fallback.feature`.
 Every step resolves locally except one —
@@ -419,13 +430,52 @@ Full detail (client module, prompts, diagrams): **[docs/architecture.md → The 
 
 ---
 
+## Agentic RCA — failure root-cause
+
+Healenium's edge was *telemetry*; the next step is *diagnosis*. When a step
+fails and RCA is enabled, BDDFrame sends the failure screenshot + step text +
+error to a vision model and gets back a structured root-cause verdict, logs it,
+and tags the Allure result so the report is filterable by category.
+
+```bash
+uv pip install -e ".[llm]"
+# .env
+BDDFRAME_MODEL=openai/gpt-4o     # a vision-capable model
+BDDFRAME_RCA=true                # opt-in; only fires on failure
+```
+
+The model classifies each failure into one of five categories, attached to the
+Allure result as the `rca_category` label:
+
+| Label | Meaning |
+|-------|---------|
+| `app-regression` | The UI changed or a feature is broken |
+| `locator-rot` | The element's label or structure changed |
+| `environment-flap` | Network, timeout, or infra issue |
+| `test-data` | Missing, stale, or wrong seed data |
+| `test-script` | The step or assertion itself is wrong |
+
+Console output on a failed step:
+
+```
+🔍 RCA [locator-rot] (high): the Login button is now labelled "Sign in"
+💡 Suggested fix: update the step or add a pom.yaml entry for "Login"
+```
+
+RCA is **off by default**, **best-effort** (never changes pass/fail, never
+raises), and costs **one model call per failed step** — green runs cost nothing.
+Filter the report by `rca_category:locator-rot` to triage all locator failures
+at once.
+
+---
+
 ## Run BDDFrame's own tests
 
 ```bash
 make test            # == python -m pytest unit_tests/ -v
 ```
 
-**Expected: 212 passed, 0 failed** — no browser, no LLM, no display required.
+**Expected: 251 passed, 0 failed** — no browser, no LLM, no display required.
 
 ---
 

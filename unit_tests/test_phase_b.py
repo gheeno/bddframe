@@ -40,6 +40,18 @@ def test_pixel_diff_ignores_subthreshold_noise():
     assert _pixel_diff_ratio(a, b) == 0.0
 
 
+def test_pixel_diff_threshold_boundary_is_exclusive():
+    # Luminance diff exactly == tol must NOT count; tol+1 must. Locks the
+    # histogram slice (hist[tol+1:]) to the old `p > tol` semantics. Grey at
+    # level L has luminance L (ITU-R 601 weights sum to 1), so a solid-grey
+    # diff lands in exactly one bucket.
+    white = Image.new("RGB", (4, 4), (255, 255, 255))
+    at_tol = Image.new("RGB", (4, 4), (255 - 30, 255 - 30, 255 - 30))      # diff 30 == tol
+    over_tol = Image.new("RGB", (4, 4), (255 - 31, 255 - 31, 255 - 31))    # diff 31 > tol
+    assert _pixel_diff_ratio(white, at_tol) == 0.0
+    assert _pixel_diff_ratio(white, over_tol) == 1.0
+
+
 # --- pattern routing: pixel baseline vs LLM baseline -------------------------
 
 def _resolve(text):

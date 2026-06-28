@@ -158,6 +158,7 @@ flowchart TD
 | **Report** | `bddframe/reporting/` | Allure JSON per step, JUnit XML for Azure, annotated failure screenshots. |
 | **Trace** | `bddframe/hooks.py` (Playwright tracing) | A `trace.zip` per **failed** scenario (DOM/network/timeline); discarded on pass. |
 | **Heal telemetry** | `bddframe/healing.py` | Records every self-heal / POM-disambiguation / vision-locate → `healing.jsonl` + `pom.yaml` suggestions. |
+| **Agentic RCA** | `bddframe/rca.py` | On a step **failure** (opt-in `BDDFRAME_RCA`), a vision model classifies the root cause → `rca_category` label on the Allure result. |
 | **Secrets/config** | `bddframe/secrets_akv.py`, `environments.yaml` | Base URLs + secrets (Azure Key Vault or `secrets.env`) resolved into `[VAR]`s. |
 | **Log** | `bddframe/log.py` | One logger, `BDDFRAME_LOG_LEVEL`. |
 | **Drive** | `bddframe/cli.py` | The `bddframe` command (run, validate, list, record, report) + retry/quarantine exit code. |
@@ -500,7 +501,7 @@ flowchart TD
 
 - `before_all` clears stale `allure-results/` so the report + quarantine scan reflect only this run.
 - `before_scenario` starts a fresh `ScenarioResult` **and** Playwright tracing.
-- After **each step**, `after_step` records the result and, **on failure**, snaps a full-page screenshot (annotated by `annotate.py` with Pillow).
+- After **each step**, `after_step` records the result and, **on failure**, snaps a full-page screenshot (annotated by `annotate.py` with Pillow). If `BDDFRAME_RCA` is on, `rca.py` then classifies the failure's root cause from that screenshot and tags the result with an `rca_category` label (best-effort, never raises).
 - `after_scenario` saves the result as JSON; on failure it also writes `traces/<scenario>.zip` (trace discarded on pass).
 - `after_all` writes one `junit.xml` (Azure's Tests tab) and, if any locator healed, the `healing.jsonl` + report.
 - `builder.py` shells out to the **Allure CLI** to render `allure-results/` → `allure-report/` HTML.
@@ -561,7 +562,7 @@ newer), and why it's here.
 
 | Tech | Purpose |
 |------|---------|
-| [pytest](https://pytest.org/) | The `unit_tests/` suite — **212 tests, no browser/LLM/display needed**. `make test`. |
+| [pytest](https://pytest.org/) | The `unit_tests/` suite — **251 tests, no browser/LLM/display needed**. `make test`. |
 | Makefile | `make test`, `make vsix`, `make install-ext`, `make clean`. |
 | Azure Pipelines | `azure-pipelines.yml` (Linux) + `azure-pipelines-windows.yml` (Windows) — feature-folder **matrix sharding**, publish JUnit + Allure + failure traces. |
 | Docker / devcontainer | `Dockerfile` (Playwright base image, browsers preinstalled) + `.devcontainer/` for reproducible CI and local parity. |

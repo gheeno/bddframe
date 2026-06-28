@@ -1,6 +1,25 @@
 import os
 from .patterns import match as pattern_match, normalize_subject
 
+# Every action type the runner can dispatch (orchestrator/runner.py). The LLM
+# fallback is validated against this — a syntactically valid JSON with a bogus
+# `type` would otherwise dispatch the wrong action (or crash deep in the runner
+# with no step context). ponytail: hand-kept mirror of runner.py's if/elif;
+# the runner is a flat dispatch with no list to import. If a new action type is
+# added there, add it here (test_llm_resolve_rejects guards the common slips).
+VALID_TYPES = frozenset({
+    'api_call', 'assert_attribute', 'assert_cell', 'assert_compare',
+    'assert_count', 'assert_hidden', 'assert_row_count', 'assert_semantic',
+    'assert_state', 'assert_title', 'assert_url', 'assert_value',
+    'assert_visible', 'block_route', 'check', 'clear', 'click',
+    'click_in_row', 'click_in_section', 'close_popups', 'fill', 'hover',
+    'load_data', 'mock_route', 'navigate', 'pixel_baseline', 'press_key',
+    'run_command', 'run_script', 'screenshot', 'scroll', 'scroll_to',
+    'search', 'select', 'set_page', 'set_var', 'store_attribute',
+    'store_text', 'switch_frame', 'uncheck', 'visual_baseline', 'wait_hidden',
+    'wait_load', 'wait_networkidle', 'wait_seconds', 'wait_visible',
+})
+
 
 def resolve(step_text: str) -> dict:
     """
@@ -42,10 +61,46 @@ Param keys by type: click/hover/clear -> locator; fill -> locator,value; press_k
 Reply with JSON only, example: {{"type": "click", "locator": "Login"}}
 """
     import json
+    # One retry: models occasionally prefix the JSON with a stray sentence.
     raw = ask(prompt)
-    try:
-        return json.loads(raw.strip())
-    except json.JSONDecodeError:
+    action = _parse_action(raw)
+    if action is None:
+        raw = ask(prompt)
+        action = _parse_action(raw)
+    if action is None:
         raise AssertionError(
             f"LLM returned unparseable response for: \"{step_text}\"\nResponse: {raw}"
         )
+
+    t = action.get('type')
+    if t not in VALID_TYPES:
+        raise AssertionError(
+            f"LLM returned an unknown action type {t!r} for: \"{step_text}\"\n"
+            f"Response: {raw}\n"
+            f"  → Valid types: {', '.join(sorted(VALID_TYPES))}"
+        )
+    return action
+
+
+def _parse_action(raw: str) -> dict | None:
+    """Parse the model's reply into an action dict, or None if it isn't JSON.
+    Tolerates a ```json fence and leading/trailing prose around the object."""
+    import json
+    import re
+    if not isinstance(raw, str):
+        return None
+    text = raw.strip()
+    # Strip a markdown code fence if the model wrapped the JSON in one.
+    text = re.sub(r'^```[a-zA-Z]*\n?|\n?```$', '', text).strip()
+    try:
+        obj = json.loads(text)
+    except json.JSONDecodeError:
+        # Fall back to the first {...} object embedded in surrounding prose.
+        m = re.search(r'\{.*\}', text, re.DOTALL)
+        if not m:
+            return None
+        try:
+            obj = json.loads(m.group(0))
+        except json.JSONDecodeError:
+            return None
+    return obj if isinstance(obj, dict) else None
