@@ -3,7 +3,7 @@ Feature: Sauce Demo Products Page
 
   @web @smoke
   Scenario: Products page shows correct content after login
-    Given User is on "https://www.saucedemo.com"
+    Given User is on "[SAUCEDEMO]"
     When User enters [SAUCE_USERNAME] in the username field
     And User enters [SAUCE_PASSWORD] in the password field
     And User clicks the login button
@@ -14,7 +14,7 @@ Feature: Sauce Demo Products Page
 
   @web @headless @smoke
   Scenario: Products page works in headless mode
-    Given User is on "https://www.saucedemo.com"
+    Given User is on "[SAUCEDEMO]"
     When User enters [SAUCE_USERNAME] in the username field
     And User enters [SAUCE_PASSWORD] in the password field
     And User clicks the login button
@@ -23,7 +23,7 @@ Feature: Sauce Demo Products Page
 
   @web @slow
   Scenario: Add item to cart
-    Given User is on "https://www.saucedemo.com"
+    Given User is on "[SAUCEDEMO]"
     When User enters [SAUCE_USERNAME] in the username field
     And User enters [SAUCE_PASSWORD] in the password field
     And User clicks the login button

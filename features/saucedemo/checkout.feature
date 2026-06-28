@@ -4,7 +4,7 @@ Feature: Sauce Demo Checkout
   @web @smoke
   Scenario: User completes a purchase end to end
 
-    Given User is on "https://www.saucedemo.com"
+    Given User is on "[SAUCEDEMO]"
     When User enters [SAUCE_USERNAME] in the username field
     And User enters [SAUCE_PASSWORD] in the password field
     And User clicks the login button
@@ -34,7 +34,7 @@ Feature: Sauce Demo Checkout
   @web @smoke
   Scenario: User cancels checkout and returns to products
 
-    Given User is on "https://www.saucedemo.com"
+    Given User is on "[SAUCEDEMO]"
     When User enters [SAUCE_USERNAME] in the username field
     And User enters [SAUCE_PASSWORD] in the password field
     And User clicks the login button
