@@ -39,6 +39,8 @@ jobs:
           MY_CARD: $(MY_CARD)
           BDDFRAME_LLM_URL: $(BDDFRAME_LLM_URL)
           BDDFRAME_MODEL: $(BDDFRAME_MODEL)
+          # Optional Key Vault — see the Linux pipeline for setup notes.
+          BDDFRAME_KEYVAULT_URL: $(BDDFRAME_KEYVAULT_URL)
 
       - task: PublishTestResults@2
         condition: always()

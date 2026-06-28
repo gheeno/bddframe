@@ -1,6 +1,7 @@
 import os
 import time
 from playwright.sync_api import Page
+from bddframe.log import logger
 from .locator import find
 
 
@@ -105,7 +106,7 @@ def assert_semantic(page: Page, assertion: str):
             f"Semantic assertion failed: '{assertion}'\n"
             f"Vision LLM: {result}\nURL: {page.url}"
         )
-    print(f"\n  🤖 Semantic pass: {result.strip()}")
+    logger.info(f"\n  🤖 Semantic pass: {result.strip()}")
 
 
 def visual_baseline(page: Page, name: str, ignore: str = None):
@@ -129,7 +130,7 @@ def visual_baseline(page: Page, name: str, ignore: str = None):
             image_b64=b64,
         )
         path.write_text(description)
-        print(f"\n  📷 Baseline captured: {path}")
+        logger.info(f"\n  📷 Baseline captured: {path}")
         return
 
     baseline = path.read_text()
@@ -142,7 +143,64 @@ def visual_baseline(page: Page, name: str, ignore: str = None):
             f"Visual baseline mismatch for '{name}'\n"
             f"Baseline: {baseline}\nDiff: {result}\nURL: {page.url}"
         )
-    print(f"\n  📷 Baseline matched: {result.strip()}")
+    logger.info(f"\n  📷 Baseline matched: {result.strip()}")
+
+
+def _pixel_diff_ratio(base, current, tol: int = 30):
+    """Fraction of pixels that differ by more than `tol` (0..255) on any channel.
+    Returns None if the two images have different sizes (treated as a mismatch
+    by the caller). Pure function — no DOM — so it's unit-testable.
+    ponytail: O(pixels) Python sum; fine for a screenshot, swap to numpy if a
+    4K full-page diff ever gets slow."""
+    from PIL import ImageChops
+    base = base.convert("RGB")
+    current = current.convert("RGB")
+    if base.size != current.size:
+        return None
+    diff = ImageChops.difference(base, current).convert("L")
+    changed = sum(1 for p in diff.getdata() if p > tol)
+    total = base.size[0] * base.size[1]
+    return changed / total if total else 0.0
+
+
+def pixel_baseline(page: Page, name: str):
+    """Deterministic visual regression — pixel diff, no LLM. First run captures
+    baselines/<name>.png; later runs compare and fail if more than
+    BDDFRAME_PIXEL_THRESHOLD (default 1%) of pixels changed, saving a diff
+    image as evidence."""
+    import io
+    from pathlib import Path
+    from PIL import Image, ImageChops
+
+    os.makedirs("baselines", exist_ok=True)
+    safe = name.replace(" ", "_").replace("/", "_")
+    path = Path(f"baselines/{safe}.png")
+    shot = page.screenshot(full_page=True)
+
+    if not path.exists():
+        path.write_bytes(shot)
+        logger.info(f"\n  📐 Pixel baseline captured: {path}")
+        return
+
+    base = Image.open(path)
+    current = Image.open(io.BytesIO(shot))
+    ratio = _pixel_diff_ratio(base, current)
+    threshold = float(os.getenv("BDDFRAME_PIXEL_THRESHOLD", "0.01"))
+
+    if ratio is None:
+        raise AssertionError(
+            f"Pixel baseline '{name}': size changed "
+            f"{base.size} → {current.size}.\nURL: {page.url}"
+        )
+    if ratio > threshold:
+        os.makedirs("screenshots", exist_ok=True)
+        diff_path = f"screenshots/DIFF_{safe}.png"
+        ImageChops.difference(base.convert("RGB"), current.convert("RGB")).save(diff_path)
+        raise AssertionError(
+            f"Pixel baseline mismatch '{name}': {ratio:.2%} of pixels changed "
+            f"(threshold {threshold:.2%}).\nDiff: {diff_path}\nURL: {page.url}"
+        )
+    logger.info(f"\n  📐 Pixel baseline matched: {name} ({ratio:.2%} diff)")
 
 
 def wait_load(page: Page):
@@ -390,7 +448,7 @@ def close_popups(page: Page):
     except Exception:
         pass
     if closed:
-        print(f"\n  🧹 Closed {closed} popup(s)")
+        logger.info(f"\n  🧹 Closed {closed} popup(s)")
 
 
 # ---------------------------------------------------------------------------
@@ -403,6 +461,50 @@ def get_attribute_value(page: Page, locator_text: str, attribute: str) -> str:
     if loc is None:
         raise AssertionError(f"Could not find element to read: '{locator_text}'")
     return loc.get_attribute(attribute) or ""
+
+
+# ---------------------------------------------------------------------------
+# Phase D — network mocking, API setup/teardown, test-data fixtures
+# ---------------------------------------------------------------------------
+
+def mock_route(page: Page, url: str, status: int, body: str = None):
+    """Intercept requests matching `url` (glob) and return a canned response —
+    decouples a test from a flaky/slow/absent backend."""
+    page.route(url, lambda route: route.fulfill(
+        status=status, body=body or "", content_type="application/json"))
+    logger.info(f"\n  🔌 Mocking {url} → {status}")
+
+
+def block_route(page: Page, url: str):
+    """Abort requests matching `url` (glob) — kill analytics/ads/3rd-party noise."""
+    page.route(url, lambda route: route.abort())
+    logger.info(f"\n  🚫 Blocking {url}")
+
+
+def api_call(page: Page, method: str, url: str, body: str = None):
+    """Hit an HTTP endpoint directly (Playwright's request context — shares the
+    browser's cookies). For data setup/teardown without driving the UI. Fails on
+    a non-2xx response."""
+    resp = page.request.fetch(url, method=method, data=body)
+    if not resp.ok:
+        raise AssertionError(f"API {method} {url} → {resp.status} {resp.status_text}")
+    logger.info(f"\n  🛰  {method} {url} → {resp.status}")
+
+
+def flatten_data(data: dict) -> dict:
+    """Map a fixture dict to run-store keys (UPPER, spaces→underscores). Pure —
+    unit-testable without a file."""
+    return {str(k).upper().replace(" ", "_"): str(v) for k, v in (data or {}).items()}
+
+
+def load_data(file: str) -> dict:
+    """Read a YAML/JSON fixture into a flat {KEY: value} dict for the var store."""
+    import yaml
+    from pathlib import Path
+    raw = yaml.safe_load(Path(file).read_text()) or {}
+    if not isinstance(raw, dict):
+        raise AssertionError(f"Test data '{file}' must be a top-level mapping, got {type(raw).__name__}")
+    return flatten_data(raw)
 
 
 def assert_compare(left: str, op: str, right: str):

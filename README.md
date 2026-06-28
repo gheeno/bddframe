@@ -234,7 +234,7 @@ Full detail (client module, prompts, diagrams): **[docs/architecture.md → The 
 make test            # == python -m pytest tests/ -v
 ```
 
-**Expected: 172 passed, 0 failed** — no browser, no LLM, no display required.
+**Expected: 200 passed, 0 failed** — no browser, no LLM, no display required.
 
 ---
 

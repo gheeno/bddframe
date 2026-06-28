@@ -1,5 +1,6 @@
 import os
 import re
+from bddframe.log import logger
 from bddframe.resolver.step_resolver import resolve
 from bddframe.agents.web import actions
 
@@ -79,6 +80,8 @@ def execute_step(step_text: str, context):
         actions.assert_semantic(page, action['assertion'])
     elif t == 'visual_baseline':
         actions.visual_baseline(page, action['name'], action.get('ignore'))
+    elif t == 'pixel_baseline':
+        actions.pixel_baseline(page, action['name'])
     elif t == 'screenshot':
         actions.screenshot(page, action['name'])
     elif t == 'search':
@@ -103,7 +106,7 @@ def execute_step(step_text: str, context):
     elif t == 'store_text':
         key = action['var'].upper().replace(" ", "_")
         context._vars[key] = actions.get_text(page, action['locator'])
-        print(f"\n  💾 Stored `{key}` = {context._vars[key]!r}")
+        logger.info(f"\n  💾 Stored `{key}` = {context._vars[key]!r}")
     elif t == 'click_in_row':
         actions.click_in_row(page, action['locator'], action['row'])
     elif t == 'click_in_section':
@@ -118,12 +121,22 @@ def execute_step(step_text: str, context):
     elif t == 'set_var':
         key = action['var'].upper().replace(" ", "_")
         context._vars[key] = action['value']
-        print(f"\n  💾 Set `{key}` = {context._vars[key]!r}")
+        logger.info(f"\n  💾 Set `{key}` = {context._vars[key]!r}")
     elif t == 'store_attribute':
         key = action['var'].upper().replace(" ", "_")
         context._vars[key] = actions.get_attribute_value(page, action['locator'], action['attribute'])
-        print(f"\n  💾 Stored `{key}` = {context._vars[key]!r}")
+        logger.info(f"\n  💾 Stored `{key}` = {context._vars[key]!r}")
     elif t == 'assert_compare':
         actions.assert_compare(action['left'], action['op'], action['right'])
+    # --- Phase D ---
+    elif t == 'mock_route':
+        actions.mock_route(page, action['url'], action['status'], action.get('body'))
+    elif t == 'block_route':
+        actions.block_route(page, action['url'])
+    elif t == 'api_call':
+        actions.api_call(page, action['method'], action['url'], action.get('body'))
+    elif t == 'load_data':
+        context._vars.update(actions.load_data(action['file']))
+        logger.info(f"\n  📦 Loaded test data from {action['file']}")
     else:
         raise AssertionError(f"Unknown action type: '{t}'")

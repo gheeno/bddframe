@@ -44,6 +44,10 @@ jobs:
           MY_CARD: $(MY_CARD)
           BDDFRAME_LLM_URL: $(BDDFRAME_LLM_URL)
           BDDFRAME_MODEL: $(BDDFRAME_MODEL)
+          # Optional: pull secrets from Key Vault instead of the variable group.
+          # Set BDDFRAME_KEYVAULT_URL in the group + grant the agent identity
+          # 'get'/'list' on the vault. Unset → variable-group env is used.
+          BDDFRAME_KEYVAULT_URL: $(BDDFRAME_KEYVAULT_URL)
 
       - task: PublishTestResults@2
         condition: always()

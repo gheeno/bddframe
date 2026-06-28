@@ -533,7 +533,7 @@ newer), and why it's here.
 
 | Tech | Purpose |
 |------|---------|
-| [pytest](https://pytest.org/) | The `tests/` suite — **172 tests, no browser/LLM/display needed**. `make test`. |
+| [pytest](https://pytest.org/) | The `tests/` suite — **200 tests, no browser/LLM/display needed**. `make test`. |
 | Makefile | `make test`, `make vsix`, `make install-ext`, `make clean`. |
 | Azure Pipelines | `azure-pipelines.yml` (Linux) + `azure-pipelines-windows.yml` (Windows) run the suite and publish JUnit + Allure. |
 

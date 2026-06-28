@@ -9,6 +9,12 @@ Selenium / Selenide **including** their self-healing add-ons (Healenium / Autohe
 
 ## Verdict
 
+> **Update 2026-06-27: Phases A–D implemented.** The operational gaps below are
+> closed — parallelism (CI sharding), retry/quarantine, failure traces,
+> deterministic visual diff, structured logging, Key Vault secrets, healing
+> telemetry, Docker, and API/mock/test-data steps all landed. Suite: 200 tests
+> green. The sections below are kept as the original assessment.
+
 Architecturally ahead of Selenium/Selenide; operationally not yet enterprise-grade.
 
 The core bet — accessibility-first locators, no hand-written selectors — is
@@ -99,28 +105,49 @@ which we mostly already do. Lean into that and close the debug/scale gap.
       the existing attachment path doesn't copy files into allure-results/ (pre-
       existing latent bug, see Phase B logging/reporting cleanup).*
 
-### Phase B — CI maturity (1–2 wks)
+### Phase B — CI maturity — DONE 2026-06-27
 
-- [ ] Retry: rerun failed scenarios once (behave `--rerun` file or thin wrapper);
-      `@quarantine` tag = non-blocking.
-- [ ] Deterministic visual diff: Playwright `expect(page).to_have_screenshot()`
-      (pixel diff, baselines in git) as default; keep LLM baseline as opt-in
-      "semantic" tier.
-- [ ] Replace `print()` with `logging` + `--log-level`; emoji as a TTY formatter.
+- [x] Retry via behave's `scenario_autoretry` (`hooks.before_feature`), gated by
+      `BDDFRAME_RETRIES` (default 1; `--retries` flag). Retries fire only on
+      failure → green scenarios cost nothing. `@no_retry` opts out.
+      `@quarantine` = non-blocking: `cli.run` scans this run's Allure results and
+      exits 0 if every failure is quarantined (`_all_failures_quarantined`).
+      `before_all` now clears stale `allure-results` so the scan + report reflect
+      only this run.
+- [x] Deterministic pixel diff with Pillow (no new dep): `pixel_baseline` action
+      + step "the [\"name\"] screen should match the baseline", threshold
+      `BDDFRAME_PIXEL_THRESHOLD` (default 1%), diff image saved on mismatch. LLM
+      baseline kept as the opt-in semantic tier.
+      *Skipped: Playwright `to_have_screenshot` — its pytest-oriented baseline/
+      first-run semantics fought the BDD flow; Pillow gave full control in ~25
+      lines.*
+- [x] `bddframe/log.py` logger, `BDDFRAME_LOG_LEVEL` + `--log-level`; runtime
+      breadcrumbs migrated off `print()` (live-stdout handler keeps capsys/behave
+      output intact). *Skipped: migrating CLI command UX prints — those are user
+      output, not runtime telemetry.*
 
-### Phase C — Enterprise integration (2–4 wks)
+### Phase C — Enterprise integration — DONE 2026-06-27
 
-- [ ] Azure Key Vault secret loader in `before_all` (managed identity → `.env`
-      fallback locally). One module, env-flag gated.
-- [ ] Healing telemetry: when self-heal or vision-locate fires, append
-      `{step, original, healed-to, strategy}` to a run log + emit a `pom.yaml`
-      suggestion. The Healenium-killer.
-- [ ] Docker image / devcontainer for reproducible CI + local parity.
+- [x] `bddframe/secrets_akv.py` — Key Vault loader gated by
+      `BDDFRAME_KEYVAULT_URL`, `DefaultAzureCredential` (managed identity in CI,
+      `az login` locally), dash→underscore name mapping. `[azure]` extra. Wired
+      into `hooks.before_all`; `$(VAR)`-literal guarded. Unset → `.env` fallback.
+- [x] `bddframe/healing.py` — every self-heal (scroll/partial), POM
+      disambiguation and vision-locate is recorded; `after_all` writes
+      `healing.jsonl` + a report with one `pom.yaml` suggestion per healed
+      locator. The Healenium-killer: we report what broke *and* the deterministic
+      fix.
+- [x] `Dockerfile` (Playwright base image, browsers preinstalled) +
+      `.devcontainer/` + `.dockerignore` for reproducible CI/local parity.
 
-### Phase D — Nice-to-have
+### Phase D — Nice-to-have — DONE 2026-06-27
 
-- [ ] API setup/teardown hooks + network mocking (Playwright `route`); test-data
-      fixtures.
+- [x] Network mocking — `mock_route` ("mocks \"glob\" with status N and body ...")
+      + `block_route` ("blocks requests to \"glob\""), via Playwright `route`.
+- [x] API setup/teardown — `api_call` ("calls POST \"url\" with body ...") via
+      Playwright's request context (shares browser cookies, no new dep).
+- [x] Test-data fixtures — `load_data` ("loads test data from \"file.yaml\"")
+      merges a YAML/JSON mapping into the run-scoped variable store.
 
 ---
 
