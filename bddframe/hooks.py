@@ -1,4 +1,5 @@
 import os
+from collections import defaultdict
 from pathlib import Path
 from dotenv import load_dotenv
 from playwright.sync_api import sync_playwright
@@ -8,6 +9,38 @@ from bddframe.agents.web import pom as pom_module
 from bddframe.agents.web import locator as locator_module
 
 _VALID_BROWSERS = {"chromium", "firefox", "webkit"}
+
+# --- Custom hook registry ---
+# Valid events mirror behave's lifecycle names.
+_VALID_EVENTS = frozenset({
+    "before_all", "before_feature", "before_scenario",
+    "after_step", "after_scenario", "after_all",
+})
+_registry: dict[str, list] = defaultdict(list)
+
+
+def register(event: str, fn):
+    """Register a callable for a lifecycle event.
+
+    Note: before_all hooks must be registered in environment.py (step files
+    are loaded after before_all fires and would miss it).
+    """
+    if event not in _VALID_EVENTS:
+        raise ValueError(f"Unknown hook event {event!r}. Valid: {sorted(_VALID_EVENTS)}")
+    _registry[event].append(fn)
+
+
+def hook(event: str):
+    """Decorator — @hook('before_scenario') def my_hook(context, scenario): ..."""
+    def decorator(fn):
+        register(event, fn)
+        return fn
+    return decorator
+
+
+def _run_hooks(event: str, *args):
+    for fn in _registry[event]:
+        fn(*args)
 
 try:
     from bddframe.reporting import writer as _writer
@@ -42,6 +75,7 @@ def before_all(context):
     _clean_allure_results()
     healing.reset()
     _load_keyvault()
+    _run_hooks("before_all", context)
 
 
 def _clean_allure_results():
@@ -69,6 +103,7 @@ def before_feature(context, feature):
         for scenario in feature.scenarios:
             if 'no_retry' not in scenario.effective_tags:
                 patch_scenario_with_autoretry(scenario, max_attempts=retries + 1)
+    _run_hooks("before_feature", context, feature)
 
 
 def before_scenario(context, scenario):
@@ -149,6 +184,7 @@ def before_scenario(context, scenario):
     # UI test runs (the JDBC-fixture analog). Setup failures abort the scenario.
     from bddframe import preconditions
     preconditions.run(scenario, "setup")
+    _run_hooks("before_scenario", context, scenario)
 
 
 def _allure_result(context):
@@ -165,6 +201,7 @@ def _allure_result(context):
 
 
 def after_step(context, step):
+    _run_hooks("after_step", context, step)
     if step.status == "failed":
         context._scenario_failed = True
         os.makedirs("screenshots", exist_ok=True)
@@ -189,6 +226,9 @@ def after_step(context, step):
 
 
 def after_scenario(context, scenario):
+    # User after_scenario hooks run first — context.page is still alive here.
+    _run_hooks("after_scenario", context, scenario)
+
     # Teardown first, so it always runs even if the scenario failed (the point of
     # teardown). Failures here are logged, not raised — see preconditions.run.
     from bddframe import preconditions
@@ -234,6 +274,7 @@ def after_scenario(context, scenario):
 
 
 def after_all(context):
+    _run_hooks("after_all", context)
     healing.write_report()
     if _REPORTING and _suite_results:
         _junit.write_junit(_suite_results)
