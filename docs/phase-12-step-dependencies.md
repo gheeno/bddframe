@@ -4,9 +4,10 @@
 "`store Y here, assert on Y there`" need — using plain Gherkin, with no DI
 container and no expression engine.
 
-> Status: **Plan**. Builds directly on Phase 11.1 (`store_text`,
-> `context._vars`, `[VAR]` substitution), which already provides the
-> write-and-read plumbing. Branch when picked up: `BFRAME_00XX`.
+> Status: **Implemented** (12.1, 12.2). 12.3 deferred (YAGNI). Builds on
+> Phase 11.1 (`store_text`, `context._vars`, `[VAR]` substitution). Tests in
+> `tests/test_patterns_phase12.py`; runnable demo in
+> `features/fallback-demo/step_dependencies.feature` (verified green via behave).
 
 ---
 

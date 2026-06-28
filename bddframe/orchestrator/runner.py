@@ -95,5 +95,16 @@ def execute_step(step_text: str, context):
         actions.assert_row_count(page, action['count'])
     elif t == 'switch_frame':
         actions.switch_frame(page, action['name'])
+    # --- Phase 12 ---
+    elif t == 'set_var':
+        key = action['var'].upper().replace(" ", "_")
+        context._vars[key] = action['value']
+        print(f"\n  💾 Set [{key}] = {context._vars[key]!r}")
+    elif t == 'store_attribute':
+        key = action['var'].upper().replace(" ", "_")
+        context._vars[key] = actions.get_attribute_value(page, action['locator'], action['attribute'])
+        print(f"\n  💾 Stored [{key}] = {context._vars[key]!r}")
+    elif t == 'assert_compare':
+        actions.assert_compare(action['left'], action['op'], action['right'])
     else:
         raise AssertionError(f"Unknown action type: '{t}'")

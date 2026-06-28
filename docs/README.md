@@ -57,7 +57,7 @@ flowchart TD
 | [9 — Element Disambiguation](phase-09-element-disambiguation.md) | Correct-element resolution: ambiguity detection, page-scoped POM | Plan |
 | [10 — Local Agent Framework (Foundry Local)](phase-10-foundry-local-agent.md) | Run Agent Framework on a locked-down network (no HF/Ollama) via Foundry Local; uv-first | Plan |
 | [11 — Step Coverage Expansion](phase-11-step-coverage.md) | Keyboard, hover, element/attr asserts, D365 tables, SVG/shadow/container handling | Done |
-| [12 — Step Dependencies & Shared State](phase-12-step-dependencies.md) | Carry a value between steps ([VAR] store), seed/capture, comparison assertions | Plan |
+| [12 — Step Dependencies & Shared State](phase-12-step-dependencies.md) | Carry a value between steps ([VAR] store), seed/capture, comparison assertions | Done |
 | [Writing a Test](writing-a-test.md) | Step-by-step: happy path + problematic locators | Guide |
 | [Run Examples](run-examples.md) | Commands to see logs, the Allure report, and the Azure dashboard | Guide |
 | [How It Works (ELI5)](how-it-works-eli5.md) | Beginner walkthrough w/ Mermaid: class calls, LLM timing, report origin (vs Selenium POM) | Guide |

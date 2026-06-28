@@ -344,3 +344,50 @@ def switch_frame(page: Page, name: str):
             f"{[f.name or f.url for f in page.frames]}"
         )
     set_frame(frame)
+
+
+# ---------------------------------------------------------------------------
+# Phase 12 — step dependencies & shared state
+# ---------------------------------------------------------------------------
+
+def get_attribute_value(page: Page, locator_text: str, attribute: str) -> str:
+    """Read an element's attribute — used by store_attribute."""
+    loc = find(page, locator_text)
+    if loc is None:
+        raise AssertionError(f"Could not find element to read: '{locator_text}'")
+    return loc.get_attribute(attribute) or ""
+
+
+def assert_compare(left: str, op: str, right: str):
+    """Compare two already-substituted values. Numeric when both parse as
+    numbers; otherwise string. No page/DOM access — operands are literals."""
+    def _num(v):
+        try:
+            return float(v)
+        except (TypeError, ValueError):
+            return None
+
+    ln, rn = _num(left), _num(right)
+    numeric = ln is not None and rn is not None
+    l, r = (ln, rn) if numeric else (str(left), str(right))
+
+    ops = {
+        '>':  lambda: l > r,
+        '<':  lambda: l < r,
+        '>=': lambda: l >= r,
+        '<=': lambda: l <= r,
+        '==': lambda: l == r,
+        '!=': lambda: l != r,
+        'contains': lambda: str(right) in str(left),
+    }
+    if op in ('>', '<', '>=', '<=') and not numeric:
+        raise AssertionError(
+            f"Cannot compare non-numeric values with '{op}': '{left}' vs '{right}'"
+        )
+    if op not in ops:
+        raise AssertionError(f"Unknown comparison operator '{op}'")
+    if not ops[op]():
+        raise AssertionError(
+            f"Comparison failed: '{left}' {op} '{right}' is not true"
+            + (" (compared as numbers)" if numeric else " (compared as text)")
+        )

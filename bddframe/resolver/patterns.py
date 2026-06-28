@@ -52,6 +52,7 @@ _FIRST_TO_THIRD = {
     'hover': 'hovers',
     'store': 'stores',
     'switch': 'switches',
+    'set': 'sets',
 }
 
 
@@ -111,6 +112,15 @@ PATTERNS = [
 
     # Hover (11.1)
     (r'^hovers? (?:over|on) (?:the )?(.+)$',        'hover',          lambda m: {'locator': _q(m.group(1))}),
+
+    # Seed a literal into a [variable] (12.1) — e.g. an expected value.
+    (r'^sets? \[([^\]]+)\] to ["\'](.+?)["\']$',
+                                                   'set_var',        lambda m: {'var': m.group(1), 'value': _q(m.group(2))}),
+
+    # Store an element ATTRIBUTE into a [variable] (12.1) — MUST precede the
+    # generic store-text pattern below, which would otherwise eat the phrase.
+    (r'^stores? attribute ["\'](.+?)["\'] of (?:the )?(.+?) (?:as|into|in) \[([^\]]+)\]$',
+                                                   'store_attribute', lambda m: {'attribute': _q(m.group(1)), 'locator': _q(m.group(2)), 'var': m.group(3)}),
 
     # Store element text into a [variable] (11.1) — usable by later steps.
     (r'^stores? (?:the )?(.+?) (?:as|into|in) \[([^\]]+)\]$',
@@ -186,6 +196,24 @@ PATTERNS = [
                                                    'assert_value',    lambda m: {'locator': _q(m.group(1)), 'value': _q(m.group(2))}),
     (r'^the ["\']?(.+?)["\']?(?: (?:button|field|input|box|link|checkbox|element|icon|dropdown|menu))? should be (enabled|disabled|checked|unchecked|selected|editable|read-?only)$',
                                                    'assert_state',    lambda m: {'locator': _q(m.group(1)), 'state': m.group(2)}),
+
+    # Value comparison assertions (12.2) — both operands are already [VAR]-
+    # substituted to literals by the time we get here. Order: longest operator
+    # phrase first so "greater than or equal to" isn't eaten by "greater than".
+    (r'^["\']?(.+?)["\']? should be (?:greater than or equal to|at least) ["\']?(.+?)["\']?$',
+                                                   'assert_compare',  lambda m: {'left': _q(m.group(1)), 'op': '>=', 'right': _q(m.group(2))}),
+    (r'^["\']?(.+?)["\']? should be (?:less than or equal to|at most) ["\']?(.+?)["\']?$',
+                                                   'assert_compare',  lambda m: {'left': _q(m.group(1)), 'op': '<=', 'right': _q(m.group(2))}),
+    (r'^["\']?(.+?)["\']? should be (?:greater than|more than) ["\']?(.+?)["\']?$',
+                                                   'assert_compare',  lambda m: {'left': _q(m.group(1)), 'op': '>', 'right': _q(m.group(2))}),
+    (r'^["\']?(.+?)["\']? should be (?:less than|fewer than) ["\']?(.+?)["\']?$',
+                                                   'assert_compare',  lambda m: {'left': _q(m.group(1)), 'op': '<', 'right': _q(m.group(2))}),
+    (r'^["\']?(.+?)["\']? should not (?:equal|be equal to) ["\']?(.+?)["\']?$',
+                                                   'assert_compare',  lambda m: {'left': _q(m.group(1)), 'op': '!=', 'right': _q(m.group(2))}),
+    (r'^["\']?(.+?)["\']? should (?:equal|be equal to) ["\']?(.+?)["\']?$',
+                                                   'assert_compare',  lambda m: {'left': _q(m.group(1)), 'op': '==', 'right': _q(m.group(2))}),
+    (r'^["\']?(.+?)["\']? should contain ["\']?(.+?)["\']?$',
+                                                   'assert_compare',  lambda m: {'left': _q(m.group(1)), 'op': 'contains', 'right': _q(m.group(2))}),
 
     # Semantic (vision LLM) assertions
     (r'^the (.+?) should (?:show|display|have) (?:a )?(.+)$',
