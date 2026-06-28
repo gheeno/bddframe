@@ -1,0 +1,18 @@
+# Shared page object — Saucedemo header/chrome elements that appear across
+# pages (login -> inventory -> cart -> checkout). No `match:` block, so these
+# resolve page-agnostically. Page-specific selectors would go in their own
+# <page>_pom.yaml alongside this file.
+#
+# These have no usable accessible text label, hence explicit selectors:
+
+burger menu:
+  id: react-burger-menu-btn
+
+shopping cart:
+  css: ".shopping_cart_link"
+
+product list:
+  css: ".inventory_list"
+
+cart badge:
+  css: ".shopping_cart_badge"
