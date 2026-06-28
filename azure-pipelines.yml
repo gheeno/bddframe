@@ -9,19 +9,31 @@ pool:
 variables:
   - group: bddframe-secrets   # BASE_URL, MY_EMAIL, MY_CARD, BDDFRAME_LLM_URL
 
-# Parallelism via sharding: one agent per feature folder. Each shard runs in its
-# own workspace and publishes its own junit.xml — Azure aggregates them into one
-# test run. Add a row here per feature folder to scale out. (behave itself is
-# single-process; we get parallelism from the agent matrix, no in-process pool.)
+# Parallelism via file-level sharding (Phase E). The `discover` job lists every
+# WEB .feature file and emits a dynamic matrix; the `tests` job runs one file
+# per agent. Adding a .feature file auto-appears as a shard — no YAML edit.
+# behave itself is single-process; parallelism comes from the agent matrix.
+#
+# WEB ONLY: scripts/list_features.py excludes files tagged for other platforms
+# (@appium/@mobile/@desktop). Mobile/desktop suites can't shard this way — they
+# need a device or host per shard — so they get their own pipeline later.
 jobs:
+  - job: discover
+    steps:
+      - task: UsePythonVersion@0
+        inputs:
+          versionSpec: '3.11'
+      - script: |
+          MATRIX=$(python scripts/list_features.py)
+          echo "##vso[task.setvariable variable=matrix;isOutput=true]$MATRIX"
+        name: gen
+        displayName: 'Discover web feature files'
+
   - job: tests
+    dependsOn: discover
     strategy:
       maxParallel: 4
-      matrix:
-        saucedemo:
-          featurePath: 'features/saucedemo/'
-        canadiantire:
-          featurePath: 'features/canadiantire/'
+      matrix: $[ dependencies.discover.outputs['gen.matrix'] ]
 
     steps:
       - task: UsePythonVersion@0

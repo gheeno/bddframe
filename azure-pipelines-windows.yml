@@ -9,16 +9,26 @@ pool:
 variables:
   - group: bddframe-secrets
 
-# Parallelism via sharding — one agent per feature folder (see Linux pipeline).
+# File-level web sharding (Phase E) — see the Linux pipeline for the full notes.
+# `discover` emits a dynamic matrix of WEB .feature files; `tests` runs one per
+# agent. Other platforms (@appium/@desktop) are excluded and shard elsewhere.
 jobs:
+  - job: discover
+    steps:
+      - task: UsePythonVersion@0
+        inputs:
+          versionSpec: '3.11'
+      - powershell: |
+          $matrix = python scripts/list_features.py
+          Write-Host "##vso[task.setvariable variable=matrix;isOutput=true]$matrix"
+        name: gen
+        displayName: 'Discover web feature files'
+
   - job: tests
+    dependsOn: discover
     strategy:
       maxParallel: 4
-      matrix:
-        saucedemo:
-          featurePath: 'features/saucedemo/'
-        canadiantire:
-          featurePath: 'features/canadiantire/'
+      matrix: $[ dependencies.discover.outputs['gen.matrix'] ]
 
     steps:
       - task: UsePythonVersion@0

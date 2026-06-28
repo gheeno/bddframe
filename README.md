@@ -204,12 +204,21 @@ bddframe record --output features/myapp/login.feature --name "Login Flow"
 out, or `@quarantine` to keep it running but **non-blocking** — quarantined
 failures don't fail the build.
 
-### Parallel / sharded runs
+### Parallel / sharded runs (web only)
 
-BDDFrame parallelizes by **sharding feature folders across agents** (behave
-itself is single-process, so each shard is a separate process with its own
-workspace and `allure-results/`). In Azure DevOps a matrix runs one folder per
-agent and the Tests tab aggregates them — see
+> **Scope:** parallel sharding applies to **web tests only**. Mobile
+> (`@appium`) and native-desktop suites can't shard this way — each needs a
+> dedicated device or host per shard, not a stateless CI agent — so they'll get
+> their own pipelines as those test types land. The discovery script
+> automatically excludes any feature file tagged for a non-web platform.
+
+BDDFrame parallelizes by **sharding individual `.feature` files across agents**
+(behave itself is single-process, so each shard is a separate process with its
+own workspace and `allure-results/`). In Azure DevOps a `discover` job lists
+every web `.feature` file via [`scripts/list_features.py`](scripts/list_features.py)
+and emits a **dynamic matrix**; the `tests` job then runs one file per agent and
+the Tests tab aggregates them. Adding a `.feature` file anywhere under
+`features/` auto-appears as a shard — **no YAML edit**. See
 [`azure-pipelines.yml`](azure-pipelines.yml) and the
 [Guide → CI](docs/guide.md#11-ci--azure-devops). Because a run rewrites
 `allure-results/`, don't run two shards against the same working directory; give
@@ -360,7 +369,7 @@ Built for running at scale in Azure DevOps. Each item links to the detail:
 
 | Capability | How |
 |------------|-----|
-| **Parallel execution** | Feature-folder sharding across CI agents — [Guide → CI](docs/guide.md#11-ci--azure-devops) |
+| **Parallel execution** | Web-only file-level sharding across CI agents (dynamic matrix) — [Guide → CI](docs/guide.md#11-ci--azure-devops) |
 | **Flaky-test retries** | `--retries` / `BDDFRAME_RETRIES`; `@no_retry`, `@quarantine` (non-blocking) |
 | **Failure traces** | Playwright `trace.zip` per failed scenario, published as a CI artifact |
 | **Deterministic visual diff** | `the screen should match the baseline` — pixel diff via Pillow, no LLM |
