@@ -114,7 +114,7 @@ class TestScenarioResult:
 class TestWriteResult:
     def test_writes_valid_json_file(self, tmp_path, monkeypatch):
         from bddframe.reporting import writer
-        monkeypatch.setattr(writer, "ALLURE_DIR", tmp_path)
+        monkeypatch.setenv("BDDFRAME_RESULTS_DIR", str(tmp_path))
 
         sr = writer.ScenarioResult(_make_scenario("Demo", "Demo Feature"))
         sr.add_step(_make_step(), "passed")
@@ -130,7 +130,7 @@ class TestWriteResult:
     def test_creates_allure_dir_if_missing(self, tmp_path, monkeypatch):
         from bddframe.reporting import writer
         target = tmp_path / "new-allure-results"
-        monkeypatch.setattr(writer, "ALLURE_DIR", target)
+        monkeypatch.setenv("BDDFRAME_RESULTS_DIR", str(target))
 
         sr = writer.ScenarioResult(_make_scenario())
         sr.finish(_make_scenario())

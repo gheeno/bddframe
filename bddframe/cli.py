@@ -38,6 +38,7 @@ def run(
     browser: str = typer.Option("chromium", "--browser", "-b", help="chromium | firefox | webkit"),
     retries: int = typer.Option(None, "--retries", help="Re-run a failed scenario N extra times (default 1; 0 disables)"),
     log_level: str = typer.Option(None, "--log-level", help="DEBUG | INFO | WARNING | ERROR"),
+    parallel: int = typer.Option(0, "--parallel", help="Run N feature files at once via behavex (web only; use --headless). 0 = single process."),
 ):
     """Run .feature files."""
     # Bug 2: reject mutually exclusive flags up front
@@ -69,6 +70,11 @@ def run(
         env["BDDFRAME_RETRIES"] = str(retries)
     if log_level is not None:
         env["BDDFRAME_LOG_LEVEL"] = log_level
+
+    # Parallel: behavex runs N behave workers, each writing to its own results
+    # subdir (set in hooks.before_all). We clean once, run, flatten, report.
+    if parallel > 0:
+        raise typer.Exit(_run_parallel(path, parallel, tag, env))
 
     # Bug 5: derive behave base from the passed path, not a hardcoded 'features/'
     if path.endswith(".feature"):
@@ -115,6 +121,58 @@ def _all_failures_quarantined(results_dir: str):
     if not failed:
         return None
     return all(failed)
+
+
+def _run_parallel(path: str, processes: int, tag: str, env: dict) -> int:
+    """Run feature files concurrently via behavex, then merge into one report."""
+    try:
+        import behavex  # noqa: F401
+    except ImportError:
+        raise typer.BadParameter(
+            'Parallel runs need behavex. Install: pip install -e ".[parallel]"',
+            param_hint="'--parallel'",
+        )
+    results = Path("allure-results")
+    _clean_results_root(results)            # workers skip the wipe in parallel mode
+    env = {**env, "BDDFRAME_PARALLEL": "1"}
+    args = ["behavex", path, "--parallel-processes", str(processes),
+            "--parallel-scheme", "feature"]
+    if tag:
+        args += ["--tags", tag]
+    rc = subprocess.run(args, env=env).returncode
+    _merge_worker_results(results)          # flatten p*/ so report + scan read one dir
+
+    if rc != 0 and _all_failures_quarantined("allure-results") is True:
+        typer.echo("\n  🔶 Only @quarantine scenarios failed — not failing the build.")
+        rc = 0
+    from bddframe.reporting.builder import generate
+    generate("allure-results", "allure-report")
+    return rc
+
+
+def _clean_results_root(results: Path):
+    """Pre-run wipe of last run's flattened results + leftover worker subdirs."""
+    if not results.is_dir():
+        return
+    import shutil
+    for f in results.glob("*-result.json"):
+        f.unlink(missing_ok=True)
+    (results / "junit.xml").unlink(missing_ok=True)
+    for d in results.glob("p*"):
+        if d.is_dir():
+            shutil.rmtree(d, ignore_errors=True)
+
+
+def _merge_worker_results(results: Path):
+    """Move each worker's result files up into the shared dir so the existing
+    report build + quarantine scan (both read the flat dir) work unchanged.
+    uuid filenames don't collide; per-worker junit.xml is left in its subdir."""
+    for d in sorted(results.glob("p*")):
+        if not d.is_dir():
+            continue
+        for f in d.iterdir():
+            if f.is_file() and f.name != "junit.xml":
+                f.rename(results / f.name)
 
 
 @app.command()
