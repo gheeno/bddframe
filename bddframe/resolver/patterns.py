@@ -113,20 +113,19 @@ PATTERNS = [
     # Hover (11.1)
     (r'^hovers? (?:over|on) (?:the )?(.+)$',        'hover',          lambda m: {'locator': _q(m.group(1))}),
 
-    # Seed a literal into a [variable] (12.1) — e.g. an expected value.
-    (r'^sets? \[([^\]]+)\] to ["\'](.+?)["\']$',
+    # Variable write target: `name` (captured, preferred) or [name] (legacy).
+    # Seed a literal into a variable (12.1) — e.g. an expected value.
+    (r'^sets? [\[`]([^\]`]+)[\]`] to ["\'](.+?)["\']$',
                                                    'set_var',        lambda m: {'var': m.group(1), 'value': _q(m.group(2))}),
 
-    # Store an element ATTRIBUTE into a [variable] (12.1) — MUST precede the
+    # Store an element ATTRIBUTE into a variable (12.1) — MUST precede the
     # generic store-text pattern below, which would otherwise eat the phrase.
-    (r'^stores? attribute ["\'](.+?)["\'] of (?:the )?(.+?) (?:as|into|in) \[([^\]]+)\]$',
+    (r'^stores? attribute ["\'](.+?)["\'] of (?:the )?(.+?) (?:as|into|in) [\[`]([^\]`]+)[\]`]$',
                                                    'store_attribute', lambda m: {'attribute': _q(m.group(1)), 'locator': _q(m.group(2)), 'var': m.group(3)}),
 
-    # Store element text into a [variable] (11.1) — usable by later steps.
-    (r'^stores? (?:the )?(.+?) (?:as|into|in) \[([^\]]+)\]$',
+    # Store element text into a variable (11.1) — usable by later steps.
+    (r'^stores? (?:the )?(.+?) (?:as|into|in) [\[`]([^\]`]+)[\]`]$',
                                                    'store_text',     lambda m: {'locator': _q(m.group(1)), 'var': m.group(2)}),
-    (r'^stores? (?:the )?(.+?) (?:as|into|in) ["\'](.+?)["\']$',
-                                                   'store_text',     lambda m: {'locator': _q(m.group(1)), 'var': _q(m.group(2))}),
 
     # Switch into an iframe (11.2)
     (r'^switches? to (?:the )?["\'](.+?)["\'] (?:frame|iframe)$',

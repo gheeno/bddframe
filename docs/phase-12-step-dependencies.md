@@ -34,7 +34,25 @@ A value (`Y`) created mid-scenario must be reusable in a later step. In Selenium
 | Reference the object in **Java code** | Reference it in the **sentence** via `[VAR]` |
 | Spring resolves the dependency | `substitute()` expands `[VAR]` → value **before** the step resolves |
 
-`context` **is** the scenario-scoped bean; `[VAR]` substitution **is** the
+### Variable syntax — two delimiters, on purpose
+
+| Syntax | Source | Use for |
+|--------|--------|---------|
+| `` `name` `` | the run store (`context._vars`) — **never .env** | values **captured during the test** (`store`/`set`) |
+| `[name]` | `.env` / config (store fallback for back-compat) | secrets & config (`[SAUCE_USERNAME]`) |
+
+Backticks keep a captured value visually distinct from a `.env` secret, so a
+reader can tell at a glance where a value comes from. Quotes are **not** used for
+variables — they already mean string literals in a step (`"mastercraft"`).
+
+```gherkin
+When User stores the firstresulttitle as `title`     # capture → run store
+And  User enters "`title`" in the searchbox field     # reuse captured value
+Then `title` should equal `second_title`              # compare two captures
+And  User logs in with [SAUCE_USERNAME]               # .env secret (unchanged)
+```
+
+`context` **is** the scenario-scoped bean; variable substitution **is** the
 injection. Phase 11.1 already ships:
 - `store_text` → writes `context._vars[KEY]`.
 - `substitute(text, context._vars)` → reads it back into any later sentence.

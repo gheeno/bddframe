@@ -5,14 +5,29 @@ from bddframe.agents.web import actions
 
 
 def substitute(text: str, extra: dict | None = None) -> str:
-    """Replace [variable name] with a run-stored value (11.1) or env var."""
+    """Expand variable references:
+
+      `name`  → a value captured during this run (set/store) — NEVER .env.
+      [name]  → a .env / config value (with captured-store fallback for
+                backward compatibility).
+
+    The two delimiters keep secrets (`[...]`) visually separate from values
+    produced mid-scenario (backticks). Unknown refs are left untouched.
+    """
     extra = extra or {}
-    def lookup(m):
-        key = m.group(1).upper().replace(" ", "_")
+    def _key(raw: str) -> str:
+        return raw.upper().replace(" ", "_")
+
+    def backtick(m):                       # captured values only
+        return extra.get(_key(m.group(1)), m.group(0))
+    text = re.sub(r'`([^`]+)`', backtick, text)
+
+    def bracket(m):                        # .env / config (store fallback)
+        key = _key(m.group(1))
         if key in extra:
             return extra[key]
         return os.getenv(key, m.group(0))
-    return re.sub(r'\[([^\]]+)\]', lookup, text)
+    return re.sub(r'\[([^\]]+)\]', bracket, text)
 
 
 def execute_step(step_text: str, context):
@@ -84,7 +99,7 @@ def execute_step(step_text: str, context):
     elif t == 'store_text':
         key = action['var'].upper().replace(" ", "_")
         context._vars[key] = actions.get_text(page, action['locator'])
-        print(f"\n  💾 Stored [{key}] = {context._vars[key]!r}")
+        print(f"\n  💾 Stored `{key}` = {context._vars[key]!r}")
     elif t == 'click_in_row':
         actions.click_in_row(page, action['locator'], action['row'])
     elif t == 'click_in_section':
@@ -99,11 +114,11 @@ def execute_step(step_text: str, context):
     elif t == 'set_var':
         key = action['var'].upper().replace(" ", "_")
         context._vars[key] = action['value']
-        print(f"\n  💾 Set [{key}] = {context._vars[key]!r}")
+        print(f"\n  💾 Set `{key}` = {context._vars[key]!r}")
     elif t == 'store_attribute':
         key = action['var'].upper().replace(" ", "_")
         context._vars[key] = actions.get_attribute_value(page, action['locator'], action['attribute'])
-        print(f"\n  💾 Stored [{key}] = {context._vars[key]!r}")
+        print(f"\n  💾 Stored `{key}` = {context._vars[key]!r}")
     elif t == 'assert_compare':
         actions.assert_compare(action['left'], action['op'], action['right'])
     else:

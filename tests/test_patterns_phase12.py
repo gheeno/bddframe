@@ -19,6 +19,15 @@ def test_set_var():
     assert match('sets [TAX] to "0.13"') == ("set_var", {"var": "TAX", "value": "0.13"})
 
 
+def test_set_var_backtick():
+    assert match('sets `tax` to "0.13"') == ("set_var", {"var": "tax", "value": "0.13"})
+
+
+def test_store_backtick():
+    assert match("stores the result as `title`") == \
+        ("store_text", {"locator": "result", "var": "title"})
+
+
 def test_store_attribute_precedes_store_text():
     assert match('stores attribute "data-id" of the row as [ID]') == \
         ("store_attribute", {"attribute": "data-id", "locator": "row", "var": "ID"})
@@ -97,3 +106,21 @@ def test_failing_comparison_raises_through_execute_step():
     execute_step('User sets [Y] to "3"', ctx)
     with pytest.raises(AssertionError):
         execute_step('[Y] should be greater than "10"', ctx)
+
+
+def test_backtick_is_capture_only_not_env(monkeypatch):
+    from bddframe.orchestrator.runner import substitute
+    monkeypatch.setenv("SECRET", "from-env")
+    # backticks read ONLY the run store, never .env
+    assert substitute("`SECRET`", {}) == "`SECRET`"            # not in store -> untouched
+    assert substitute("`SECRET`", {"SECRET": "captured"}) == "captured"
+    # brackets still read .env
+    assert substitute("[SECRET]", {}) == "from-env"
+
+
+def test_backtick_round_trip_through_execute_step():
+    ctx = _ctx()
+    execute_step('User sets `price` to "42"', ctx)
+    assert ctx._vars == {"PRICE": "42"}
+    execute_step('`price` should equal "42"', ctx)             # passes
+    execute_step('`price` should be less than "50"', ctx)      # passes
