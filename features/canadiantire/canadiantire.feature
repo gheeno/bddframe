@@ -3,7 +3,8 @@ Feature: Canadian Tire Product Search
 
   # Guest user, three real pages: home -> search results -> product detail.
   # The search box / submit / first-result have no usable accessible label,
-  # so they resolve via the page-scoped pom.yaml in this folder.
+  # so they resolve via the per-page files in pageobjects/ (home_pom.yaml,
+  # results_pom.yaml), scoped by URL.
   # Single-word locator keys (searchbox, searchbutton, firstresult) are used
   # on purpose: a multi-word label triggers the partial-text self-heal, which
   # would grab the wrong button before the POM is consulted.

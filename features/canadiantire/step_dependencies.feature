@@ -13,7 +13,8 @@
 #   `name`     → a value CAPTURED during this run (scenario-scoped store)
 #   [name]     → a value from .env / config (e.g. [SAUCE_USERNAME])
 #
-# Selectors (searchbox/secondresulttitle) come from this folder's pom.yaml.
+# Selectors (searchbox/secondresulttitle) come from pageobjects/home_pom.yaml
+# and pageobjects/results_pom.yaml in this folder.
 #
 # Run it:   behave features/canadiantire/step_dependencies.feature --no-capture
 # Live site: needs network + the settle waits; ordering can change over time, so
