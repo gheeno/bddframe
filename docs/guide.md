@@ -496,6 +496,23 @@ Given User loads test data from "fixtures/users.yaml"
 When  User enters "`username`" in the username field
 ```
 
+### Running scripts & commands
+Invoke any external script (py/js/jar/sh/…) or shell command as a step — seed a
+DB, run a jar, call a CLI tool. Interpreter inferred from the extension; a
+non-zero exit **fails the step**. stdout is captured into `` `SCRIPT_OUTPUT` ``
+(and any var you name), so a later step can assert on it. `[VAR]` refs in the
+path/args/command are substituted from config first. Timeout:
+`BDDFRAME_SCRIPT_TIMEOUT` (default 60s).
+```gherkin
+Given the script "scripts/seed_db.py" runs
+And   `SCRIPT_OUTPUT` should contain "seeded 42 rows"
+Given User runs the script "tool.jar" with "--env staging" storing the output as `RESULT`
+Given User runs the command "java -jar tool.jar [BUSTERBLOCK]"
+```
+> Feature files are trusted code (like step definitions) — `run the command` uses
+> a shell. Don't drive these steps from untrusted input. Full guide: README →
+> "Run a script from a step".
+
 ### Screenshots
 ```gherkin
 And User takes a screenshot "after-login"
