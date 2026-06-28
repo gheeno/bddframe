@@ -7,3 +7,7 @@ __pycache__/
 screenshots/
 allure-results/
 allure-report/
+traces/
+videos/
+healing-report.txt
+healing.jsonl

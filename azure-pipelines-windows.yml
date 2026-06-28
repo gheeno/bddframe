@@ -9,36 +9,57 @@ pool:
 variables:
   - group: bddframe-secrets
 
-steps:
-  - task: UsePythonVersion@0
-    inputs:
-      versionSpec: '3.11'
+# Parallelism via sharding — one agent per feature folder (see Linux pipeline).
+jobs:
+  - job: tests
+    strategy:
+      maxParallel: 4
+      matrix:
+        saucedemo:
+          featurePath: 'features/saucedemo/'
+        canadiantire:
+          featurePath: 'features/canadiantire/'
 
-  - script: |
-      pip install bddframe
-      playwright install chromium --with-deps
-    displayName: Install BDDFrame
+    steps:
+      - task: UsePythonVersion@0
+        inputs:
+          versionSpec: '3.11'
 
-  - script: |
-      bddframe run features/ --headless
-    displayName: Run tests
-    env:
-      BASE_URL: $(BASE_URL)
-      MY_EMAIL: $(MY_EMAIL)
-      MY_CARD: $(MY_CARD)
-      BDDFRAME_LLM_URL: $(BDDFRAME_LLM_URL)
-      BDDFRAME_MODEL: $(BDDFRAME_MODEL)
+      - script: |
+          pip install -e ".[all]"
+          playwright install chromium --with-deps
+        displayName: Install BDDFrame
 
-  - task: PublishTestResults@2
-    condition: always()
-    inputs:
-      testResultsFormat: JUnit
-      testResultsFiles: allure-results/junit.xml
-      testRunTitle: BDDFrame — $(Build.SourceBranchName)
+      - script: |
+          bddframe run $(featurePath) --headless
+        displayName: 'Run tests — $(featurePath)'
+        env:
+          BASE_URL: $(BASE_URL)
+          MY_EMAIL: $(MY_EMAIL)
+          MY_CARD: $(MY_CARD)
+          BDDFRAME_LLM_URL: $(BDDFRAME_LLM_URL)
+          BDDFRAME_MODEL: $(BDDFRAME_MODEL)
+          # Optional Key Vault — see the Linux pipeline for setup notes.
+          BDDFRAME_KEYVAULT_URL: $(BDDFRAME_KEYVAULT_URL)
 
-  - task: PublishPipelineArtifact@1
-    condition: always()
-    inputs:
-      targetPath: allure-report
-      artifact: TestReport
-      publishLocation: pipeline
+      - task: PublishTestResults@2
+        condition: always()
+        inputs:
+          testResultsFormat: JUnit
+          testResultsFiles: allure-results/junit.xml
+          testRunTitle: 'BDDFrame — $(Build.SourceBranchName) — $(featurePath)'
+
+      - task: PublishPipelineArtifact@1
+        condition: always()
+        inputs:
+          targetPath: allure-report
+          artifact: 'TestReport-$(System.JobName)'
+          publishLocation: pipeline
+
+      # Playwright traces for failed scenarios — open with `playwright show-trace`.
+      - task: PublishPipelineArtifact@1
+        condition: failed()
+        inputs:
+          targetPath: traces
+          artifact: 'Traces-$(System.JobName)'
+          publishLocation: pipeline

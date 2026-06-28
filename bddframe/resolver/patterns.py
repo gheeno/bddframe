@@ -84,6 +84,19 @@ PATTERNS = [
     # Search — fill the search box and submit, in one step
     (r'^searches? for ["\'](.+?)["\']$',           'search',         lambda m: {'query': _q(m.group(1))}),
 
+    # --- Phase D: network mocking, API setup/teardown, test data -------------
+    # Mock a network response (Playwright route.fulfill).
+    (r'^mocks? ["\'](.+?)["\'] with status (\d+)(?: and body ["\'](.+?)["\'])?$',
+                                                   'mock_route',     lambda m: {'url': _q(m.group(1)), 'status': int(m.group(2)), 'body': m.group(3)}),
+    # Block requests to a URL glob (route.abort) — e.g. analytics/ads.
+    (r'^blocks? requests? to ["\'](.+?)["\']$',    'block_route',    lambda m: {'url': _q(m.group(1))}),
+    # API setup/teardown — call an endpoint directly (no browser nav).
+    (r'^calls? (GET|POST|PUT|DELETE|PATCH) ["\'](.+?)["\'](?: with body ["\'](.+?)["\'])?$',
+                                                   'api_call',       lambda m: {'method': m.group(1).upper(), 'url': _q(m.group(2)), 'body': m.group(3)}),
+    # Load a YAML/JSON fixture file into the run-scoped variable store.
+    (r'^loads? (?:test )?data from ["\'](.+?)["\']$',
+                                                   'load_data',      lambda m: {'file': _q(m.group(1))}),
+
     # Navigate
     (r'^is on ["\'](.+)["\']$',                   'navigate',       lambda m: {'url': _q(m.group(1))}),
     (r'^navigates? to ["\'](.+)["\']$',            'navigate',       lambda m: {'url': _q(m.group(1))}),
@@ -230,7 +243,14 @@ PATTERNS = [
     (r'^the (.+?) should look (.+)$',
                                                    'assert_semantic', lambda m: {'assertion': f"{m.group(1)} looks {m.group(2)}"}),
 
-    # Visual baseline
+    # Deterministic pixel baseline (no LLM) — MUST precede the LLM visual_baseline
+    # so "should match the baseline" routes to the pixel diff, not the model.
+    (r'^the screen should match (?:the )?(?:pixel )?baseline$',
+                                                   'pixel_baseline', lambda m: {'name': 'default'}),
+    (r'^the ["\'](.+?)["\'] screen should match (?:the )?(?:pixel )?baseline$',
+                                                   'pixel_baseline', lambda m: {'name': _q(m.group(1))}),
+
+    # Visual baseline (semantic, LLM)
     (r'^the screen should look the same as before(?: ignoring (?:the )?(.+))?$',
                                                    'visual_baseline', lambda m: {'name': 'default', 'ignore': m.group(1)}),
     (r'^the ["\'](.+?)["\'] screen should look the same as before(?: ignoring (?:the )?(.+))?$',

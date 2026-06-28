@@ -89,7 +89,7 @@ Covered by `tests/test_cli_hardening.py` and `tests/test_hooks_hardening.py`.
 **Goal:** one command to run, one to record, drop-in pipeline YAML.
 
 - **Recorder** (`recorder/recorder.py`) — `bddframe record` opens a visible browser, watches navigate/click/fill events via Playwright, and writes human-readable steps (not raw selectors). `recorder/sensitives.py` auto-redacts emails/cards/passwords to `[VARIABLE]`.
-- **CLI** (`cli.py`, Typer): `run` (`--headless`/`--headed`/`--tag`/`--browser`/`--workers`), `validate`, `list`, `record`, `report open`/`generate`.
+- **CLI** (`cli.py`, Typer): `run` (`--headless`/`--headed`/`--tag`/`--browser`), `validate`, `list`, `record`, `report open`/`generate`.
 - **Azure pipelines** — Linux (`azure-pipelines.yml`, Xvfb for headed/visual) and Windows (`azure-pipelines-windows.yml`, native GUI) templates that publish JUnit + Allure.
 
 ## Phase 7 — Syntax Highlighting & Editor

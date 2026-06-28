@@ -7,12 +7,15 @@ No selectors. No Page Object classes. No step definitions. No code.
 ```gherkin
 @web @smoke
 Scenario: Valid user can log in
-  Given User is on "https://www.saucedemo.com"
+  Given User is on "[SAUCEDEMO]"
   When User enters [SAUCE_USERNAME] in the username field
   And User enters [SAUCE_PASSWORD] in the password field
   And User clicks the login button
   Then User should see "Products"
 ```
+
+`[SAUCEDEMO]` is a base URL from `environments.yaml`; `[SAUCE_USERNAME]` is a
+secret from `secrets.env` (or Azure Key Vault). See [Configure](#configure).
 
 That's the whole test — no Python, no `By.id`, no glue.
 
@@ -36,12 +39,14 @@ That's the whole test — no Python, no `By.id`, no glue.
 flowchart TD
     QA["QA Analyst\nwrites .feature file\nin plain sentences"]
     REC["bddframe record\ncaptures browser actions"]
+    CFG["environments.yaml (base URLs)\nsecrets.env / Azure Key Vault (secrets)"]
 
     QA -->|hand-write| F["checkout.feature\nGherkin"]
     REC -->|auto-generates| F
+    CFG -.->|[VAR] substitution| F
 
-    F --> P["behave\nparses steps"]
-    P --> SR["Step Resolver\n40+ built-in patterns\nno LLM cost"]
+    F --> P["behave\nparses steps + retries flaky ones"]
+    P --> SR["Step Resolver\n50+ built-in patterns\nno LLM cost"]
 
     SR -->|pattern matched| ROT{"Orchestrator\nroutes by tag"}
     SR -->|no match| LLM["LLM fallback\nopt-in via BDDFRAME_MODEL\nnever called if a pattern matches"]
@@ -53,10 +58,12 @@ flowchart TD
     W --> C["Result Collector\npass / fail + screenshot"]
     V --> C
 
-    C --> REP["Allure Report\nannotated screenshots\nJUnit XML for Azure DevOps"]
+    C --> REP["Allure + JUnit XML\nannotated screenshots\ntrace.zip on failure\nhealing telemetry"]
+    REP --> AZ["Azure DevOps\nTests tab · sharded across agents"]
 
     style QA       fill:#4a4a6a,color:#e8e8ff,stroke:#7a7aaa
     style REC      fill:#4a4a6a,color:#e8e8ff,stroke:#7a7aaa
+    style CFG      fill:#4a4a6a,color:#e8e8ff,stroke:#7a7aaa
     style F        fill:#2d4a3e,color:#b8f5d8,stroke:#4aaa80
     style SR       fill:#3a3a3a,color:#d0d0d0,stroke:#666
     style LLM      fill:#4a3a2a,color:#f5d8b8,stroke:#aa804a,stroke-dasharray:4 4
@@ -64,13 +71,14 @@ flowchart TD
     style W        fill:#1e3a5f,color:#b8d8f5,stroke:#4a80aa
     style V        fill:#1e3a5f,color:#b8d8f5,stroke:#4a80aa
     style REP      fill:#1e3a5f,color:#b8d8f5,stroke:#4a80aa
+    style AZ       fill:#1e3a5f,color:#b8d8f5,stroke:#4a80aa
 ```
 
-1. `behave` parses the `.feature` file into steps.
-2. The resolver matches each step against 40+ built-in patterns — **no LLM call**.
+1. `behave` parses the `.feature` file into steps (and retries flaky scenarios — see [Run](#write--run-a-test)).
+2. The resolver matches each step against 50+ built-in patterns — **no LLM call**.
 3. The orchestrator routes by scenario tag (`@web`, `@visual`).
-4. The web agent finds elements by what they *are* (visible label, ARIA role, text) — no CSS selectors. Ambiguous? It consults `pom.yaml`, then warns (or fails under strict mode) rather than guessing.
-5. On failure: an annotated screenshot is embedded in the Allure report.
+4. The web agent finds elements by what they *are* (visible label, ARIA role, text) — no CSS selectors. Ambiguous? It consults `pom.yaml`, then warns (or fails under strict mode) rather than guessing. Self-heals are recorded to a `healing.jsonl` telemetry log.
+5. On failure: an annotated screenshot **and a Playwright `trace.zip`** (open with `playwright show-trace`) are captured and embedded in the Allure report.
 
 > **There is no LLM by default.** With no `BDDFRAME_MODEL` set, BDDFrame is fully
 > local (patterns + Playwright + POM + OpenCV) and anything it can't resolve fails
@@ -101,27 +109,40 @@ Core only? `uv pip install -e .`. Or pick extras: `llm`, `reporting`, `visual`,
 
 ## Configure
 
+Config lives in **three files** by purpose, so secrets never sit next to base
+URLs and CI can swap them independently:
+
+| File | Holds | Committed? |
+|------|-------|------------|
+| `environments.yaml` | base URLs per environment (`[SAUCEDEMO]`, `[STAGING]`) | ✅ yes |
+| `secrets.env` | credentials / tokens (`[SAUCE_USERNAME]`) — or [Azure Key Vault](docs/guide.md#secrets--azure-key-vault) | ❌ gitignored |
+| `.env` | browser & run settings (no secrets) | ✅ yes |
+
 ```bash
-cp .env.example .env
+cp .env.example .env                 # run/browser settings
+cp secrets.env.example secrets.env   # then fill in your credentials
+```
+
+```yaml
+# environments.yaml — base URLs (referenced as [SAUCEDEMO] in features)
+saucedemo: https://www.saucedemo.com
+staging:   https://staging.example.com
 ```
 
 ```bash
-# Browser defaults
+# .env — settings only, NO secrets
 BDDFRAME_BROWSER=chromium        # chromium | firefox | webkit
 BDDFRAME_HEADLESS=false          # true in CI
 BDDFRAME_STRICT_LOCATOR=false    # true = ambiguous locators FAIL (recommended in CI)
-
-# App under test (bundled example uses the public saucedemo.com)
-SAUCE_USERNAME=standard_user
-SAUCE_PASSWORD=secret_sauce
-BASE_URL=https://www.saucedemo.com
+BDDFRAME_RETRIES=1               # re-run a failed scenario N extra times
 ```
 
-Any `[variable]` in a feature file maps to the matching env var (uppercased,
-spaces → underscores): `[sauce username]` → `SAUCE_USERNAME`. Values load from
-`.env` first, then the shell (so CI pipeline variables work unchanged).
+Any `[variable]` in a feature maps to the matching key (uppercased, spaces →
+underscores): `[sauce username]` → `SAUCE_USERNAME`. Resolution order, highest
+wins: **Key Vault** (if `BDDFRAME_KEYVAULT_URL` set) → **shell / CI variables** →
+`.env` → `secrets.env` → `environments.yaml`.
 
-Full setup, including the LLM env vars, is in the **[Guide](docs/guide.md#2-configure--env)**.
+Full setup — LLM vars, Key Vault, all toggles — is in the **[Guide](docs/guide.md#2-configure)**.
 
 ---
 
@@ -142,10 +163,28 @@ bddframe run features/saucedemo/      # a folder
 bddframe run --tag smoke              # only @smoke
 bddframe run --headless               # no visible browser
 bddframe run --browser firefox        # chromium | firefox | webkit
+bddframe run --retries 2              # re-run a failed scenario up to 2x (flaky guard)
+bddframe run --log-level WARNING      # quieter output (DEBUG|INFO|WARNING|ERROR)
 bddframe list                         # discovered scenarios (no browser)
 bddframe validate                     # check syntax + [variables] (no browser)
 bddframe record --output features/myapp/login.feature --name "Login Flow"
 ```
+
+**Flaky-test handling:** failed scenarios are retried once by default
+(`BDDFRAME_RETRIES`, only fires on failure). Tag a scenario `@no_retry` to opt
+out, or `@quarantine` to keep it running but **non-blocking** — quarantined
+failures don't fail the build.
+
+### Parallel / sharded runs
+
+BDDFrame parallelizes by **sharding feature folders across agents** (behave
+itself is single-process, so each shard is a separate process with its own
+workspace and `allure-results/`). In Azure DevOps a matrix runs one folder per
+agent and the Tests tab aggregates them — see
+[`azure-pipelines.yml`](azure-pipelines.yml) and the
+[Guide → CI](docs/guide.md#11-ci--azure-devops). Because a run rewrites
+`allure-results/`, don't run two shards against the same working directory; give
+each its own checkout (what the CI matrix does automatically).
 
 `bddframe record` opens a browser, watches you click through a flow, and writes
 the `.feature` file (sensitive values auto-redacted to `[VARIABLE]`).
@@ -160,7 +199,8 @@ the **[Guide](docs/guide.md)**.
 Per run:
 
 - Pass/fail printed per scenario.
-- On failure: `screenshots/FAILED_<step>.png` (annotated).
+- On failure: `screenshots/FAILED_<step>.png` (annotated) **+ `traces/<scenario>.zip`** — a full Playwright trace (DOM snapshots, network, timeline). Open it with `playwright show-trace traces/<scenario>.zip`.
+- If any locator self-healed: `healing.jsonl` + a `healing-report.txt` with `pom.yaml` suggestions to make it deterministic.
 - With `[reporting]`: Allure JSON written to `allure-results/` automatically.
 
 ```bash
@@ -176,6 +216,30 @@ step), each failed step with error + annotated screenshot, and a timeline. In CI
 the JUnit XML at `allure-results/junit.xml` drives the Azure DevOps **Tests tab**.
 See the **[Guide → Reports](docs/guide.md#8-reports)** and
 **[CI](docs/guide.md#11-ci--azure-devops)**.
+
+---
+
+## Enterprise & CI
+
+Built for running at scale in Azure DevOps. Each item links to the detail:
+
+| Capability | How |
+|------------|-----|
+| **Parallel execution** | Feature-folder sharding across CI agents — [Guide → CI](docs/guide.md#11-ci--azure-devops) |
+| **Flaky-test retries** | `--retries` / `BDDFRAME_RETRIES`; `@no_retry`, `@quarantine` (non-blocking) |
+| **Failure traces** | Playwright `trace.zip` per failed scenario, published as a CI artifact |
+| **Deterministic visual diff** | `the screen should match the baseline` — pixel diff via Pillow, no LLM |
+| **Secrets in Azure Key Vault** | `BDDFRAME_KEYVAULT_URL` + `pip install -e ".[azure]"` — [Guide → Secrets](docs/guide.md#secrets--azure-key-vault) |
+| **Self-heal telemetry** | `healing.jsonl` + `pom.yaml` suggestions for every healed locator |
+| **Reproducible runner** | `Dockerfile` (browsers preinstalled) + `.devcontainer/` |
+
+```bash
+# Run the whole suite in the reproducible container
+docker build -t bddframe . && docker run --rm bddframe
+```
+
+The full gap analysis and what was built is in
+**[docs/enterprise-plan.md](docs/enterprise-plan.md)**.
 
 ---
 
@@ -234,7 +298,7 @@ Full detail (client module, prompts, diagrams): **[docs/architecture.md → The 
 make test            # == python -m pytest tests/ -v
 ```
 
-**Expected: 172 passed, 0 failed** — no browser, no LLM, no display required.
+**Expected: 200 passed, 0 failed** — no browser, no LLM, no display required.
 
 ---
 
@@ -245,5 +309,6 @@ make test            # == python -m pytest tests/ -v
 | **[Guide](docs/guide.md)** | New & veteran testers — install → write → run → `pom.yaml` → shared state → reports → CI → editor. |
 | **[Architecture](docs/architecture.md)** | The tech, end to end — mental model, component map, resolution hierarchy, the LLM layer, tech stack (Mermaid throughout). |
 | **[Design History](docs/design-history.md)** | The rationale trail behind every capability (the 12 build phases, condensed). |
+| **[Enterprise Plan](docs/enterprise-plan.md)** | Enterprise-grade gap analysis + what was built (parallelism, retries, traces, Key Vault, healing telemetry, Docker). |
 | **[docs/](docs/README.md)** | Documentation index. |
 </content>

@@ -1,3 +1,4 @@
+import json
 import os
 import subprocess
 from pathlib import Path
@@ -35,7 +36,8 @@ def run(
     headed: bool = typer.Option(False, "--headed", help="Force browser visible (overrides --headless and .env)"),
     tag: str = typer.Option(None, "--tag", "-t", help="Filter by tag e.g. smoke"),
     browser: str = typer.Option("chromium", "--browser", "-b", help="chromium | firefox | webkit"),
-    workers: int = typer.Option(1, "--workers", "-w", help="Parallel scenario workers (phase 6)"),
+    retries: int = typer.Option(None, "--retries", help="Re-run a failed scenario N extra times (default 1; 0 disables)"),
+    log_level: str = typer.Option(None, "--log-level", help="DEBUG | INFO | WARNING | ERROR"),
 ):
     """Run .feature files."""
     # Bug 2: reject mutually exclusive flags up front
@@ -63,6 +65,10 @@ def run(
         env["BDDFRAME_HEADLESS"] = _normalize_headless(env.get("BDDFRAME_HEADLESS", "false"))
 
     env["BDDFRAME_BROWSER"] = browser
+    if retries is not None:
+        env["BDDFRAME_RETRIES"] = str(retries)
+    if log_level is not None:
+        env["BDDFRAME_LOG_LEVEL"] = log_level
 
     # Bug 5: derive behave base from the passed path, not a hardcoded 'features/'
     if path.endswith(".feature"):
@@ -76,7 +82,39 @@ def run(
         args += ["--tags", tag]
 
     result = subprocess.run(args, env=env)
-    raise typer.Exit(result.returncode)
+    rc = result.returncode
+
+    # @quarantine is non-blocking: if every failed scenario this run is tagged
+    # @quarantine, don't fail the build — they still ran and report as failed.
+    if rc != 0 and _all_failures_quarantined("allure-results") is True:
+        typer.echo("\n  🔶 Only @quarantine scenarios failed — not failing the build.")
+        rc = 0
+
+    raise typer.Exit(rc)
+
+
+def _all_failures_quarantined(results_dir: str):
+    """Scan this run's Allure results. Returns:
+      True  — there were failures and ALL are @quarantine
+      False — at least one non-quarantine failure
+      None  — nothing to judge (no results / reporting off / no failures)
+    """
+    d = Path(results_dir)
+    files = list(d.glob("*-result.json")) if d.is_dir() else []
+    if not files:
+        return None
+    failed = []
+    for f in files:
+        try:
+            r = json.loads(f.read_text())
+        except (json.JSONDecodeError, OSError):
+            continue
+        if r.get("status") == "failed":
+            tags = {l.get("value") for l in r.get("labels", []) if l.get("name") == "tag"}
+            failed.append("quarantine" in tags)
+    if not failed:
+        return None
+    return all(failed)
 
 
 @app.command()

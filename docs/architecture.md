@@ -109,9 +109,14 @@ flowchart TD
     VIS["agents/visual/*<br/>OpenCV · OCR · PyAutoGUI"]
     PW["Playwright (browser)"]
     LLM["llm/client.py<br/>ask() / ask_vision() → LiteLLM"]
-    HOOK["hooks.py<br/>behave lifecycle + browser + reporting"]
+    HOOK["hooks.py<br/>behave lifecycle · browser · retries · tracing"]
     REP["reporting/*<br/>Allure JSON · JUnit XML · annotate"]
+    SEC["secrets_akv.py + environments.yaml<br/>config / secrets → [VAR]"]
+    HEAL["healing.py<br/>self-heal telemetry → pom.yaml suggestions"]
+    LOG["log.py<br/>BDDFRAME_LOG_LEVEL"]
+    TRACE["traces/*.zip (on failure)<br/>playwright show-trace"]
 
+    SEC -.-> HOOK
     FEAT --> BEHAVE --> GLUE
     GLUE -->|"@visual tag"| VRUN --> VIS --> PW
     GLUE -->|"everything else"| RUN
@@ -121,7 +126,9 @@ flowchart TD
     LOC -. "not found" .-> POM
     POM -. "still not found + model set" .-> LLM
     ACT -. "semantic assertion" .-> LLM
+    LOC -. "self-heal" .-> HEAL
     HOOK -.-> REP
+    HOOK -. "on failure" .-> TRACE
     BEHAVE -.-> HOOK
 
     style FEAT fill:#2d4a3e,color:#b8f5d8,stroke:#4aaa80
@@ -129,6 +136,8 @@ flowchart TD
     style POM fill:#1e3a5f,color:#b8d8f5,stroke:#4a80aa
     style VIS fill:#1e3a5f,color:#b8d8f5,stroke:#4a80aa
     style LLM fill:#3a2a4a,color:#e8d8f5,stroke:#8a6aaa
+    style TRACE fill:#1e3a5f,color:#b8d8f5,stroke:#4a80aa
+    style HEAL fill:#1e3a5f,color:#b8d8f5,stroke:#4a80aa
 ```
 
 | Layer | Module(s) | Job |
@@ -141,7 +150,11 @@ flowchart TD
 | **Act (visual)** | `bddframe/agents/visual/` | OpenCV template match + Tesseract OCR + PyAutoGUI for non-DOM UIs. |
 | **LLM** | `bddframe/llm/client.py` | The single gateway to any model via LiteLLM. Reached only as a leaf-level fallback. |
 | **Report** | `bddframe/reporting/` | Allure JSON per step, JUnit XML for Azure, annotated failure screenshots. |
-| **Drive** | `bddframe/cli.py` | The `bddframe` command (run, validate, list, record, report). |
+| **Trace** | `bddframe/hooks.py` (Playwright tracing) | A `trace.zip` per **failed** scenario (DOM/network/timeline); discarded on pass. |
+| **Heal telemetry** | `bddframe/healing.py` | Records every self-heal / POM-disambiguation / vision-locate → `healing.jsonl` + `pom.yaml` suggestions. |
+| **Secrets/config** | `bddframe/secrets_akv.py`, `environments.yaml` | Base URLs + secrets (Azure Key Vault or `secrets.env`) resolved into `[VAR]`s. |
+| **Log** | `bddframe/log.py` | One logger, `BDDFRAME_LOG_LEVEL`. |
+| **Drive** | `bddframe/cli.py` | The `bddframe` command (run, validate, list, record, report) + retry/quarantine exit code. |
 | **Edit** | `bddframe/lsp/` + `vscode-extension/` | LSP step validation, tag/variable autocomplete, syntax highlighting. |
 
 ---
@@ -455,27 +468,35 @@ into an Allure report + Azure-ready JUnit XML.
 
 ```mermaid
 flowchart TD
-    H1["hooks.before_scenario()"] -->|"new notepad"| WR["reporting/writer.py<br/>ScenarioResult"]
+    H0["hooks.before_all()"] -->|"clear stale results"| RESULTS["allure-results/"]
+    H1["hooks.before_scenario()"] -->|"new notepad · start tracing"| WR["reporting/writer.py<br/>ScenarioResult"]
     STEP["each step runs"] --> H2["hooks.after_step()"]
     H2 -->|"if failed"| SHOT["📸 screenshots/FAILED_*.png<br/>(reporting/annotate.py)"]
     H2 -->|"record result"| WR
-    H3["hooks.after_scenario()"] -->|"save JSON"| RESULTS["allure-results/"]
+    H3["hooks.after_scenario()"] -->|"save JSON"| RESULTS
+    H3 -->|"if failed: save trace"| TRACE["🧭 traces/*.zip<br/>playwright show-trace"]
     WR --> RESULTS
     H4["hooks.after_all()"] --> JUNIT["reporting/junit.py<br/>allure-results/junit.xml"]
+    H4 -->|"if any heal"| HEAL["🩹 healing.jsonl<br/>+ pom.yaml suggestions"]
 
     RESULTS --> GEN["reporting/builder.py<br/>generate() → allure CLI"]
     GEN --> HTML["allure-report/<br/>HTML 🎉"]
     JUNIT --> AZURE["Azure DevOps<br/>Tests tab"]
+    TRACE --> AZART["Azure DevOps<br/>Traces artifact"]
 
     style SHOT fill:#4a2a2a,color:#f5b8b8,stroke:#aa4a4a
+    style TRACE fill:#4a2a2a,color:#f5b8b8,stroke:#aa4a4a
+    style HEAL fill:#4a3a2a,color:#f5d8b8,stroke:#aa804a
     style HTML fill:#1e3a5f,color:#b8d8f5,stroke:#4a80aa
     style AZURE fill:#1e3a5f,color:#b8d8f5,stroke:#4a80aa
+    style AZART fill:#1e3a5f,color:#b8d8f5,stroke:#4a80aa
 ```
 
-- `before_scenario` starts a fresh `ScenarioResult`.
+- `before_all` clears stale `allure-results/` so the report + quarantine scan reflect only this run.
+- `before_scenario` starts a fresh `ScenarioResult` **and** Playwright tracing.
 - After **each step**, `after_step` records the result and, **on failure**, snaps a full-page screenshot (annotated by `annotate.py` with Pillow).
-- `after_scenario` saves the result as JSON in `allure-results/`.
-- `after_all` writes one `junit.xml` — what Azure DevOps reads for its Tests tab.
+- `after_scenario` saves the result as JSON; on failure it also writes `traces/<scenario>.zip` (trace discarded on pass).
+- `after_all` writes one `junit.xml` (Azure's Tests tab) and, if any locator healed, the `healing.jsonl` + report.
 - `builder.py` shells out to the **Allure CLI** to render `allure-results/` → `allure-report/` HTML.
 
 Compared to Selenium: like TestNG/JUnit reports + a screenshot listener, except
@@ -506,7 +527,7 @@ newer), and why it's here.
 | [playwright](https://playwright.dev/python/) | `1.40.0` | Browser automation (Web Agent). Sync API. Chromium / Firefox / WebKit. |
 | [typer](https://typer.tiangolo.com/) | `0.9.0` | The `bddframe` CLI. |
 | [python-dotenv](https://github.com/theskumar/python-dotenv) | `1.0.0` | Loads `.env` config + credentials. |
-| [pillow](https://python-pillow.org/) | `10.0.0` | Screenshot annotation. |
+| [pillow](https://python-pillow.org/) | `10.0.0` | Screenshot annotation **and deterministic pixel-diff baselines** (`pixel_baseline`). |
 | [pyyaml](https://pyyaml.org/) | `6.0` | Parses `pom.yaml`. |
 
 ### Optional extras
@@ -517,6 +538,7 @@ newer), and why it's here.
 | `[lsp]` | [pygls](https://github.com/openlawlibrary/pygls) `1.3.0`, [lsprotocol](https://github.com/microsoft/lsprotocol) `2023.0.0` | VS Code step validation/autocomplete. |
 | `[reporting]` | [allure-python-commons](https://github.com/allure-framework/allure-python) `2.13.0` | Emits Allure result JSON. |
 | `[visual]` | [opencv-python](https://github.com/opencv/opencv-python) `4.8.0`, [pytesseract](https://github.com/madmaze/pytesseract) `0.3.10`, [pyautogui](https://github.com/asweigart/pyautogui) `0.9.54`, [mss](https://github.com/BoboTiG/python-mss) `9.0.1` | Template matching, OCR, desktop control, screen capture. |
+| `[azure]` | [azure-identity](https://github.com/Azure/azure-sdk-for-python) `1.15.0`, [azure-keyvault-secrets](https://github.com/Azure/azure-sdk-for-python) `4.7.0` | Load secrets from Azure Key Vault (managed identity). |
 | `[all]` | all of the above | Everything. |
 
 ### External binaries (not pip/uv installed)
@@ -533,9 +555,10 @@ newer), and why it's here.
 
 | Tech | Purpose |
 |------|---------|
-| [pytest](https://pytest.org/) | The `tests/` suite — **172 tests, no browser/LLM/display needed**. `make test`. |
+| [pytest](https://pytest.org/) | The `tests/` suite — **200 tests, no browser/LLM/display needed**. `make test`. |
 | Makefile | `make test`, `make vsix`, `make install-ext`, `make clean`. |
-| Azure Pipelines | `azure-pipelines.yml` (Linux) + `azure-pipelines-windows.yml` (Windows) run the suite and publish JUnit + Allure. |
+| Azure Pipelines | `azure-pipelines.yml` (Linux) + `azure-pipelines-windows.yml` (Windows) — feature-folder **matrix sharding**, publish JUnit + Allure + failure traces. |
+| Docker / devcontainer | `Dockerfile` (Playwright base image, browsers preinstalled) + `.devcontainer/` for reproducible CI and local parity. |
 
 ---
 

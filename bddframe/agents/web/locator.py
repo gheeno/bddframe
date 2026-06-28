@@ -1,6 +1,8 @@
 import os
 import re
 from playwright.sync_api import Page, Locator
+from bddframe.log import logger
+from bddframe import healing
 from . import pom
 
 # Strict locator mode: when an accessibility strategy matches MORE THAN ONE
@@ -52,7 +54,8 @@ def find(page: Page, text: str, scope=None) -> Locator | None:
         # scopes to the intended element; otherwise escalate per mode.
         scoped = pom.locate(page, text)
         if scoped is not None:
-            print(f"\n  📋 POM: disambiguated '{text}' via pom.yaml")
+            logger.info(f"\n  📋 POM: disambiguated '{text}' via pom.yaml")
+            healing.record(text, "pom-disambiguation")
             return scoped
         return _on_ambiguous(page, text, loc)
 
@@ -61,7 +64,8 @@ def find(page: Page, text: str, scope=None) -> Locator | None:
     page.mouse.wheel(0, 300)
     loc, ambiguous = _try_strategies(search, text)
     if loc is not None and not ambiguous:
-        print(f"\n  🔧 Healed: found '{text}' after scroll")
+        logger.info(f"\n  🔧 Healed: found '{text}' after scroll")
+        healing.record(text, "scroll")
         return loc.first
 
     # Self-heal 2: partial text (first word)
@@ -69,19 +73,21 @@ def find(page: Page, text: str, scope=None) -> Locator | None:
     if first_word != text:
         loc2, amb2 = _try_strategies(search, first_word)
         if loc2 is not None and not amb2:
-            print(f"\n  🔧 Healed: matched '{text}' via partial text '{first_word}'")
+            logger.info(f"\n  🔧 Healed: matched '{text}' via partial text '{first_word}'")
+            healing.record(text, "partial-text", f"matched on '{first_word}'")
             return loc2.first
 
     # Fallback 1: POM YAML
     loc = pom.locate(page, text)
     if loc:
-        print(f"\n  📋 POM: resolved '{text}' via pom.yaml")
+        logger.info(f"\n  📋 POM: resolved '{text}' via pom.yaml")
         return loc
 
     # Fallback 2: vision LLM
     loc = _vision_locate(page, text)
     if loc:
-        print(f"\n  🔧 Healed: found '{text}' via vision LLM")
+        logger.info(f"\n  🔧 Healed: found '{text}' via vision LLM")
+        healing.record(text, "vision-llm")
         return loc
 
     return None
@@ -190,7 +196,7 @@ def _on_ambiguous(page: Page, text: str, loc: Locator):
     )
     if _is_strict():
         raise AssertionError(msg)
-    print(f"\n  ⚠️  {msg}\n  (lenient mode — using the first match; "
+    logger.warning(f"\n  ⚠️  {msg}\n  (lenient mode — using the first match; "
           f"set BDDFRAME_STRICT_LOCATOR=true or @strict to fail instead)")
     return loc.first
 

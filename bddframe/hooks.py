@@ -2,6 +2,8 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 from playwright.sync_api import sync_playwright
+from bddframe.log import logger
+from bddframe import healing
 from bddframe.agents.web import pom as pom_module
 from bddframe.agents.web import locator as locator_module
 
@@ -37,11 +39,36 @@ def before_all(context):
     load_dotenv("secrets.env")             # secrets (gitignored) — soon AKV
     _load_environments()
     _suite_results.clear()
+    _clean_allure_results()
+    healing.reset()
+    _load_keyvault()
+
+
+def _clean_allure_results():
+    """Delete stale per-scenario JSON + junit from a previous run so the report
+    and the quarantine exit-code scan (cli.py) only reflect THIS run. Keeps the
+    dir itself and allure-report/history (trend data lives there)."""
+    results = Path("allure-results")
+    if not results.is_dir():
+        return
+    for f in results.glob("*-result.json"):
+        f.unlink(missing_ok=True)
+    (results / "junit.xml").unlink(missing_ok=True)
 
 
 def before_feature(context, feature):
     # Tell POM loader which folder to look in for local pom.yaml
     pom_module.set_context(str(Path(feature.filename).parent))
+
+    # Flaky-test retry: re-run a failed scenario up to BDDFRAME_RETRIES extra
+    # times (default 1). Retries fire ONLY on failure, so green scenarios cost
+    # nothing. @no_retry opts a scenario out (e.g. a known-failing assertion).
+    retries = int(os.getenv("BDDFRAME_RETRIES", "1"))
+    if retries > 0:
+        from behave.contrib.scenario_autoretry import patch_scenario_with_autoretry
+        for scenario in feature.scenarios:
+            if 'no_retry' not in scenario.effective_tags:
+                patch_scenario_with_autoretry(scenario, max_attempts=retries + 1)
 
 
 def before_scenario(context, scenario):
@@ -52,11 +79,12 @@ def before_scenario(context, scenario):
     locator_module.set_frame(None)        # 11.2 — clear any iframe scope
     pom_module.set_active_page(None)
     context._vars = {}                     # 11.1 — run-scoped stored values
+    context._scenario_failed = False       # set by after_step; gates trace save
 
     # Bug 3: warn when @headed and @headless both appear — @headed wins but conflict
     # is almost always a forgotten debug tag that will break CI silently.
     if 'headed' in tags and 'headless' in tags:
-        print(
+        logger.warning(
             f"\n  [bddframe] WARNING: scenario '{scenario.name}' has both @headed and "
             f"@headless — @headed wins. Remove one tag to suppress this warning."
         )
@@ -99,6 +127,18 @@ def before_scenario(context, scenario):
         ctx_opts['record_video_dir'] = "videos/"
 
     context._bctx = context._browser.new_context(**ctx_opts)
+
+    # Playwright tracing — DOM snapshots + network + sources. Started for every
+    # scenario, but only SAVED on failure (after_scenario); discarded on pass so
+    # green runs cost no disk. The trace viewer is the headline debugging edge
+    # over Selenium/Selenide. ponytail: always-on capture, save-on-fail; the only
+    # cheaper option (start-on-retry) needs a retry loop we don't have yet.
+    try:
+        context._bctx.tracing.start(screenshots=True, snapshots=True, sources=True)
+        context._tracing = True
+    except Exception:
+        context._tracing = False
+
     context.page = context._bctx.new_page()
     context.page.set_default_timeout(timeout)
 
@@ -121,13 +161,14 @@ def _allure_result(context):
 
 def after_step(context, step):
     if step.status == "failed":
+        context._scenario_failed = True
         os.makedirs("screenshots", exist_ok=True)
         safe_name = step.name.replace(" ", "_").replace("/", "_")[:80]
         raw_path = f"screenshots/FAILED_{safe_name}.png"
         annotated_path = None
         try:
             context.page.screenshot(path=raw_path, full_page=True)
-            print(f"\n  📸 Screenshot saved: {raw_path}")
+            logger.info(f"\n  📸 Screenshot saved: {raw_path}")
             ar = _allure_result(context)
             if ar is not None:
                 annotated_path = _annotate.draw_not_found(raw_path, step.name[:60])
@@ -149,6 +190,23 @@ def after_scenario(context, scenario):
         _writer.write_result(ar)
         _suite_results.append(ar)
 
+    # Stop tracing BEFORE closing the context (tracing.stop needs it alive).
+    # Save the zip only when the scenario failed; otherwise discard.
+    if getattr(context, "_tracing", False):
+        bctx = getattr(context, "_bctx", None)
+        try:
+            if context._scenario_failed and bctx is not None:
+                os.makedirs("traces", exist_ok=True)
+                safe_name = scenario.name.replace(" ", "_").replace("/", "_")[:80]
+                trace_path = f"traces/{safe_name}.zip"
+                bctx.tracing.stop(path=trace_path)
+                logger.info(f"\n  🧭 Trace saved: {trace_path}"
+                            f"\n     View it: playwright show-trace {trace_path}")
+            elif bctx is not None:
+                bctx.tracing.stop()       # passed — discard
+        except Exception:
+            pass
+
     # Bug 6: clean up each resource independently so a failure on one
     # (e.g. _bctx never created) does not skip stopping _pw and leak
     # an orphaned browser process.
@@ -166,6 +224,27 @@ def after_scenario(context, scenario):
 
 
 def after_all(context):
+    healing.write_report()
     if _REPORTING and _suite_results:
         _junit.write_junit(_suite_results)
         _builder.generate()
+
+
+def _load_keyvault():
+    """Load secrets from Azure Key Vault when BDDFRAME_KEYVAULT_URL is set
+    (managed identity / az login in CI). No URL → no-op, .env is used. Fetched
+    secrets override env so the vault is the source of truth when configured."""
+    url = os.getenv("BDDFRAME_KEYVAULT_URL")
+    # Azure leaves "$(VAR)" literal when the variable is undefined — treat that
+    # (and empty) as "no vault configured".
+    if not url or url.startswith("$("):
+        return
+    try:
+        from bddframe.secrets_akv import load_into_environ
+    except ImportError as e:
+        raise RuntimeError(
+            "BDDFRAME_KEYVAULT_URL is set but the Azure SDK is missing — "
+            "install with: pip install bddframe[azure]"
+        ) from e
+    count = load_into_environ(url)
+    logger.info(f"\n  🔑 Loaded {count} secret(s) from Key Vault")
