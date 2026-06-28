@@ -3,7 +3,7 @@ import time
 import uuid
 from pathlib import Path
 
-ALLURE_DIR = Path("allure-results")
+from bddframe.reporting.paths import results_dir
 
 
 class ScenarioResult:
@@ -62,7 +62,8 @@ class ScenarioResult:
 
 
 def write_result(scenario_result: ScenarioResult):
-    ALLURE_DIR.mkdir(exist_ok=True)
-    path = ALLURE_DIR / f"{scenario_result.uuid}-result.json"
+    d = results_dir()
+    d.mkdir(parents=True, exist_ok=True)
+    path = d / f"{scenario_result.uuid}-result.json"
     path.write_text(json.dumps(scenario_result.result, indent=2))
     return path

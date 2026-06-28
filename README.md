@@ -224,6 +224,36 @@ the Tests tab aggregates them. Adding a `.feature` file anywhere under
 `allure-results/`, don't run two shards against the same working directory; give
 each its own checkout (what the CI matrix does automatically).
 
+**Locally**, get the same parallelism on one machine with `--parallel N`:
+
+```bash
+pip install -e ".[parallel]"               # adds behavex
+bddframe run features/ --parallel 4 --headless    # 4 feature files at once
+bddframe run features/ --headless                 # single process (default)
+```
+
+This runs up to 4 feature files at once (feature-level scheme — scenarios that
+share a `Background` stay on one process). Each worker writes to its own
+`allure-results/p<pid>/` subdir; BDDFrame cleans once up front, then flattens
+and merges everything into **one** Allure report and **one** `junit.xml` at the
+end — same artifacts a single-process run produces, no clobbering, no leftover
+worker dirs. **Use `--headless`**: N visible browsers at once is heavy.
+
+**Toggleable, everywhere.** Parallelism is off by default. Flip it without
+changing the command via the `BDDFRAME_PARALLEL_PROCESSES` env var (the
+`--parallel` flag overrides it):
+
+```bash
+BDDFRAME_PARALLEL_PROCESSES=4 bddframe run features/ --headless
+```
+
+The same toggle is a pipeline variable (`parallelProcesses`) in both Azure
+files. Single-process and multi-process produce identical artifacts, so **the
+suite runs in either mode on macOS, Windows, Linux, and CI** — pure stdlib paths
+(`pathlib`/`shutil`), no OS-specific code. CI keeps its dynamic matrix as the
+default; don't stack per-job `--parallel` on top of the per-agent sharding
+unless a shard runs a whole folder (it double-parallelizes otherwise).
+
 > **Shared-backend data isolation.** Sharding gives each agent its own
 > *workspace*, not its own *backend*. If two shards seed the same test server
 > (e.g. both run `POST /api/test/reset` [preconditions](#preconditions--teardowns)),
@@ -369,7 +399,7 @@ Built for running at scale in Azure DevOps. Each item links to the detail:
 
 | Capability | How |
 |------------|-----|
-| **Parallel execution** | Web-only file-level sharding across CI agents (dynamic matrix) — [Guide → CI](docs/guide.md#11-ci--azure-devops) |
+| **Parallel execution** | Web-only — CI: file-level dynamic matrix; local: `bddframe run --parallel N` (behavex) — [Guide → CI](docs/guide.md#11-ci--azure-devops) |
 | **Flaky-test retries** | `--retries` / `BDDFRAME_RETRIES`; `@no_retry`, `@quarantine` (non-blocking) |
 | **Failure traces** | Playwright `trace.zip` per failed scenario, published as a CI artifact |
 | **Deterministic visual diff** | `the screen should match the baseline` — pixel diff via Pillow, no LLM |

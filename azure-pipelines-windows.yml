@@ -8,6 +8,9 @@ pool:
 
 variables:
   - group: bddframe-secrets
+  # Parallelism toggle — see the Linux pipeline. 0 = single process per shard.
+  - name: parallelProcesses
+    value: 0
 
 # File-level web sharding (Phase E) — see the Linux pipeline for the full notes.
 # `discover` emits a dynamic matrix of WEB .feature files; `tests` runs one per
@@ -49,6 +52,7 @@ jobs:
           MY_CARD: $(MY_CARD)
           BDDFRAME_LLM_URL: $(BDDFRAME_LLM_URL)
           BDDFRAME_MODEL: $(BDDFRAME_MODEL)
+          BDDFRAME_PARALLEL_PROCESSES: $(parallelProcesses)   # 0 = single process
           # Optional Key Vault — see the Linux pipeline for setup notes.
           BDDFRAME_KEYVAULT_URL: $(BDDFRAME_KEYVAULT_URL)
 

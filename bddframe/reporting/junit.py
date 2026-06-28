@@ -49,3 +49,24 @@ def write_junit(results: list, path: str = "allure-results/junit.xml"):
     out.parent.mkdir(exist_ok=True)
     tree.write(str(out), encoding="unicode", xml_declaration=True)
     return out
+
+
+def merge_junits(suite_paths, out_path="allure-results/junit.xml"):
+    """Combine per-worker <testsuite> files into one <testsuites> root so the
+    parallel run publishes a single junit.xml — identical artifact to a
+    single-process run. Missing/malformed files are skipped."""
+    root = ET.Element("testsuites")
+    for p in suite_paths:
+        p = Path(p)
+        if not p.is_file():
+            continue
+        try:
+            root.append(ET.parse(str(p)).getroot())
+        except ET.ParseError:
+            continue
+    tree = ET.ElementTree(root)
+    ET.indent(tree, space="  ")
+    out = Path(out_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    tree.write(str(out), encoding="unicode", xml_declaration=True)
+    return out

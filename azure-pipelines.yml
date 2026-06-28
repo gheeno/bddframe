@@ -8,6 +8,12 @@ pool:
 
 variables:
   - group: bddframe-secrets   # BASE_URL, MY_EMAIL, MY_CARD, BDDFRAME_LLM_URL
+  # Parallelism toggle. 0 = single process per shard (default — the matrix
+  # already gives one .feature file per agent). Set >0 (e.g. at queue time) to
+  # also run feature files multi-process *within* a job via behavex — useful
+  # only when a shard runs a folder rather than a single file. Web only.
+  - name: parallelProcesses
+    value: 0
 
 # Parallelism via file-level sharding (Phase E). The `discover` job lists every
 # WEB .feature file and emits a dynamic matrix; the `tests` job runs one file
@@ -56,6 +62,7 @@ jobs:
           MY_CARD: $(MY_CARD)
           BDDFRAME_LLM_URL: $(BDDFRAME_LLM_URL)
           BDDFRAME_MODEL: $(BDDFRAME_MODEL)
+          BDDFRAME_PARALLEL_PROCESSES: $(parallelProcesses)   # 0 = single process
           # Optional: pull secrets from Key Vault instead of the variable group.
           # Set BDDFRAME_KEYVAULT_URL in the group + grant the agent identity
           # 'get'/'list' on the vault. Unset → variable-group env is used.

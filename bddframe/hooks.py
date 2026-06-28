@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from playwright.sync_api import sync_playwright
 from bddframe.log import logger
 from bddframe import healing
+from bddframe.reporting import paths as _paths
 from bddframe.agents.web import pom as pom_module
 from bddframe.agents.web import locator as locator_module
 
@@ -72,7 +73,13 @@ def before_all(context):
     load_dotenv("secrets.env")             # secrets (gitignored) — soon AKV
     _load_environments()
     _suite_results.clear()
-    _clean_allure_results()
+    if os.getenv("BDDFRAME_PARALLEL_WORKER") == "1":
+        # Each behavex worker is its own process — give it a private results
+        # subdir so workers don't wipe/overwrite each other's files. The CLI
+        # cleans the shared parent once, before spawning the workers.
+        os.environ["BDDFRAME_RESULTS_DIR"] = f"allure-results/p{os.getpid()}"
+    else:
+        _clean_allure_results()
     healing.reset()
     _load_keyvault()
     _run_hooks("before_all", context)
@@ -285,10 +292,15 @@ def after_scenario(context, scenario):
 
 def after_all(context):
     _run_hooks("after_all", context)
-    healing.write_report()
+    parallel = os.getenv("BDDFRAME_PARALLEL_WORKER") == "1"
+    rdir = _paths.results_dir()
+    # In parallel mode keep every output inside the worker's own dir and skip
+    # the report build — the CLI merges all worker dirs into one report once.
+    healing.write_report(str(rdir / "healing-report.txt") if parallel else "healing-report.txt")
     if _REPORTING and _suite_results:
-        _junit.write_junit(_suite_results)
-        _builder.generate()
+        _junit.write_junit(_suite_results, str(rdir / "junit.xml"))
+        if not parallel:
+            _builder.generate()
 
 
 def _load_keyvault():

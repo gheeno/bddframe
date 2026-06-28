@@ -47,10 +47,13 @@ dependencies. behave stays single-process per shard — we just shard finer.
 - No agent runs more than one feature file per job.
 - Existing JUnit + Allure artifact publishing is unchanged.
 
-### Skipped for now
+### Follow-up — local parallelism (BFRAME_0022) ✅ Done
 
-- `behavex` / `pytest-bdd` migration — adds risk with no benefit over the
-  dynamic matrix for the Azure-first use case.
+- `behavex` added as an opt-in `[parallel]` extra for **local** multi-process
+  runs (`bddframe run --parallel N`, web only). CI stays on the dynamic matrix;
+  the two aren't stacked. Reporting was made parallel-safe (per-worker
+  `allure-results/p<pid>/` dirs, merged on completion).
+- `pytest-bdd` migration — still skipped; no benefit over behave + behavex.
 
 ---
 
