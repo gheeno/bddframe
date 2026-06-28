@@ -18,3 +18,8 @@ pages:
     match: { url_contains: "search-results" }
     firstresult:
       css: 'a[href*="pdp"]:visible'
+    # the title text node inside the first result card. The anchor's full text
+    # also includes "Best Seller"/"Options" badges + newlines, so target the
+    # title element specifically for a clean, single-line capture.
+    firstresulttitle:
+      css: 'a[href*="pdp"]:visible [class*="title" i]'
