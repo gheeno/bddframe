@@ -3,6 +3,15 @@ import re
 from bddframe.log import logger
 from bddframe.resolver.step_resolver import resolve
 from bddframe.agents.web import actions
+from bddframe.orchestrator import script_runner
+
+
+def _store_script_output(context, out: str, var: str | None):
+    """Stash a script's stdout in `SCRIPT_OUTPUT` (always) and an optional named
+    var, so a later step can assert on it (e.g. `SCRIPT_OUTPUT` should contain …)."""
+    context._vars['SCRIPT_OUTPUT'] = out
+    if var:
+        context._vars[var.upper().replace(" ", "_")] = out
 
 
 def substitute(text: str, extra: dict | None = None) -> str:
@@ -138,5 +147,14 @@ def execute_step(step_text: str, context):
     elif t == 'load_data':
         context._vars.update(actions.load_data(action['file']))
         logger.info(f"\n  📦 Loaded test data from {action['file']}")
+    # --- BFRAME_0016: run an external script / command -----------------------
+    elif t == 'run_script':
+        out = script_runner.run_script(action['path'], action.get('args'))
+        _store_script_output(context, out, action.get('var'))
+        logger.info(f"\n  🛠  Ran script {action['path']} → {out!r}")
+    elif t == 'run_command':
+        out = script_runner.run_command(action['command'])
+        _store_script_output(context, out, action.get('var'))
+        logger.info(f"\n  🛠  Ran command {action['command']!r} → {out!r}")
     else:
         raise AssertionError(f"Unknown action type: '{t}'")

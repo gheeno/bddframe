@@ -29,9 +29,10 @@ That's the whole test — no Python, no `By.id`, no glue.
 4. [Run the bundled test app (BusterBlock)](#run-the-bundled-test-app-busterblock)
 5. [Write & run a test](#write--run-a-test)
 6. [Preconditions & teardowns](#preconditions--teardowns)
-7. [Reports — what to expect](#reports--what-to-expect)
-8. [The LLM — when it triggers](#the-llm--when-it-triggers)
-9. [Docs](#docs)
+7. [Run a script from a step](#run-a-script-from-a-step)
+8. [Reports — what to expect](#reports--what-to-expect)
+9. [The LLM — when it triggers](#the-llm--when-it-triggers)
+10. [Docs](#docs)
 
 ---
 
@@ -274,6 +275,52 @@ Design rationale and the phase plan: **[docs/preconditions-plan.md](docs/precond
 
 ---
 
+## Run a script from a step
+
+When a test needs something the browser can't do — seed a database, run a Java
+jar, call a shell tool — invoke **any external script or command as a step**. No
+glue code: the interpreter is inferred from the file extension, and a non-zero
+exit **fails the step** (so a broken setup script fails the test loudly).
+
+```gherkin
+Given the script "scripts/seed_db.py" runs
+And `SCRIPT_OUTPUT` should contain "seeded 42 rows"
+When User is on "[BUSTERBLOCK]"
+Then the cell in row "Jaws" column "Stock" should be "Out"
+```
+
+**Phrasings:**
+
+| Step | Runs |
+|------|------|
+| `the script "path/x.py" runs` (or `… executes`) | infer interpreter, no args |
+| `run the script "x.jar" with "--env staging"` | with arguments |
+| `run the script "x.py" with "[BUSTERBLOCK]" storing the output as` `` `RESULT` `` | capture stdout into a named var |
+| `run the command "java -jar tool.jar [BUSTERBLOCK]"` | arbitrary shell command |
+
+**Interpreter inference** (by extension): `.py` → the venv Python · `.js`/`.mjs`
+→ `node` · `.jar` → `java -jar` · `.sh` → `bash` · `.rb` → `ruby` · `.pl` →
+`perl` · anything else → run the file directly (must be executable). `[VAR]`
+references in the path/args/command are substituted from config first, so a
+script can be handed `[BUSTERBLOCK]`.
+
+**Using the result.** stdout is captured into `` `SCRIPT_OUTPUT` `` (and any var
+you name with `storing the output as`), so a later step can assert on it:
+`` `SCRIPT_OUTPUT` should contain "…" ``. Timeout is `BDDFRAME_SCRIPT_TIMEOUT`
+(default 60s).
+
+> **Trust boundary:** feature files are trusted code, like step definitions —
+> `run the command` uses a shell. Don't drive these steps from untrusted input.
+
+Worked example (BusterBlock must be running) — a Python script forces a movie out
+of stock, then the UI is asserted:
+
+```bash
+bddframe run features/busterblock/run_script.feature
+```
+
+---
+
 ## Reports — what to expect
 
 Per run:
@@ -378,7 +425,7 @@ Full detail (client module, prompts, diagrams): **[docs/architecture.md → The 
 make test            # == python -m pytest unit_tests/ -v
 ```
 
-**Expected: 205 passed, 0 failed** — no browser, no LLM, no display required.
+**Expected: 212 passed, 0 failed** — no browser, no LLM, no display required.
 
 ---
 
@@ -388,7 +435,7 @@ make test            # == python -m pytest unit_tests/ -v
 |-----|-----|
 | **[Guide](docs/guide.md)** | New & veteran testers — install → write → run → `pom.yaml` → shared state → reports → CI → editor. |
 | **[Architecture](docs/architecture.md)** | The tech, end to end — mental model, component map, resolution hierarchy, the LLM layer, tech stack (Mermaid throughout). |
-| **[Design History](docs/design-history.md)** | The rationale trail behind every capability (the 12 build phases, condensed). |
+| **[Design History](docs/design-history.md)** | The rationale trail behind every capability (the build phases, condensed). |
 | **[Enterprise Plan](docs/enterprise-plan.md)** | Enterprise-grade gap analysis + what was built (parallelism, retries, traces, Key Vault, healing telemetry, Docker). |
 | **[Preconditions Plan](docs/preconditions-plan.md)** | The phase plan + rationale for tag-driven data preconditions & teardowns (the JDBC-fixture analog). |
 | **[docs/](docs/README.md)** | Documentation index. |

@@ -9,7 +9,7 @@ current; this page is the rationale trail behind them.
 > changed during implementation (e.g. an early "LangGraph orchestrator" and a
 > `parser/feature_loader.py` became the simpler `orchestrator/runner.py` +
 > `resolver/`). Where a phase says "Plan", treat it as intent, not current code.
-> The shipped surface is whatever Architecture/Guide and the `tests/` suite show.
+> The shipped surface is whatever Architecture/Guide and the `unit_tests/` suite show.
 
 | Phase | Topic | Status |
 |-------|-------|--------|
@@ -25,6 +25,9 @@ current; this page is the rationale trail behind them.
 | 10 | Foundry Local — local model on a locked-down network | Plan / research |
 | 11 | Step-coverage expansion — keyboard, tables, asserts | Done (11.1–11.3; 11.4 deferred) |
 | 12 | Step dependencies & shared state | Done (12.1–12.2; 12.3 deferred) |
+| D | Network mocking · API setup/teardown · test-data fixtures | Done |
+| 13 | Bundled test app (BusterBlock) + data preconditions/teardowns | Done |
+| 14 | Run external scripts/commands as steps | Done |
 
 ---
 
@@ -62,14 +65,14 @@ LiteLLM gateway carried through unchanged.
 5. **Hardcoded `features/` base** — the behave root is now derived from the passed path (nearest ancestor with `steps/` or `environment.py`), so non-standard layouts work.
 6. **Cleanup leak** — per-resource `try/except` with guards in `after_scenario`, so a failed close no longer orphans Playwright processes.
 
-Covered by `tests/test_cli_hardening.py` and `tests/test_hooks_hardening.py`.
+Covered by `unit_tests/test_cli_hardening.py` and `unit_tests/test_hooks_hardening.py`.
 
 ## Phase 4 — Visual / Desktop Agent
 
 **Goal:** automate anything on screen that isn't a browser DOM — desktop, Electron, Citrix, legacy.
 
 - Tag `@visual` routes to `agents/visual/`. Three locator types:
-  1. **Image match** — OpenCV `matchTemplate` against a reference PNG in `tests/assets/`, with DPI-scale variants (0.8×–1.2×).
+  1. **Image match** — OpenCV `matchTemplate` against a reference PNG (a path relative to the run dir, e.g. `assets/`), with DPI-scale variants (0.8×–1.2×).
   2. **OCR** — `pytesseract` reads on-screen text (grayscale + contrast preprocessing).
   3. **Description** — vision LLM coordinate fallback, gated on `BDDFRAME_VISION_MODEL`.
 - **PyAutoGUI** performs click/type/key/drag/scroll; **mss** captures the screen.
@@ -176,4 +179,50 @@ design: `` `name` `` reads the **run store** (values captured during the test),
 Rejected throughout: a Spring-style DI container (nothing to inject into), an
 expression mini-language (`${A+B}` turns the feature file into code), and
 cross-scenario globals (makes tests order-dependent).
+
+## Phase D — Network mocking, API setup/teardown & test data
+
+**Goal:** decouple a UI test from a flaky/slow/absent backend, and seed/clean data
+without driving the browser.
+
+- **Network mocking** (`mock_route`/`block_route`) — Playwright routing fulfils or
+  aborts matched requests, so a test can run against a stubbed API or silence
+  third-party noise.
+- **API setup/teardown** (`api_call`) — hit an endpoint directly via Playwright's
+  request context (shares browser cookies); fails on a non-2xx.
+- **Test-data fixtures** (`load_data`) — load a YAML/JSON mapping into the
+  run-scoped store, referenced later as `` `backtick` `` captures.
+
+Three edits each (regex + action + LLM action-list), same as Phase 11.
+
+## Phase 13 — Bundled test app & data preconditions
+
+**Goal:** a self-contained app the examples run against, and a way to seed its
+data before a scenario — the JDBC-fixture pattern, in Gherkin.
+
+- **BusterBlock** (`test-app-vhs-vault/`) — a Node/Express VHS-rental site with
+  in-memory data and test-only `/api/test/*` endpoints (reset / set-stock /
+  seed-cart) gated behind `BB_TEST_API`. The in-memory store *is* the "database".
+- **Tag-driven preconditions** (`bddframe/preconditions.py`) — `@precondition:NAME`
+  runs a fixture's `setup:` HTTP calls in `before_scenario` and its `teardown:`
+  calls in `after_scenario` (**even on failure**), from a per-folder
+  `preconditions.yaml`. stdlib `urllib`, no new dependency.
+
+Chosen over a `Background:`-only approach (no teardown) and a real SQLite DB
+(needless rewrite of the test app). Full rationale:
+[docs/preconditions-plan.md](preconditions-plan.md).
+
+## Phase 14 — Run external scripts/commands as steps
+
+**Goal:** invoke anything a test needs that the browser can't do — seed a DB with
+Python, run a Java jar, call a shell tool — as a plain Gherkin step.
+
+- `run_script` / `run_command` (`bddframe/orchestrator/script_runner.py`) — the
+  interpreter is inferred from the file extension (`.py`/`.js`/`.jar`/`.sh`/…); a
+  non-zero exit **fails the step**; stdout is captured into `` `SCRIPT_OUTPUT` ``
+  (plus an optional named var) for downstream assertions. Same three-edit shape as
+  the other action families.
+
+Trust boundary noted: feature files are trusted code (like step definitions), so
+`run the command` uses a shell — not for untrusted input.
 </content>

@@ -97,6 +97,19 @@ PATTERNS = [
     (r'^loads? (?:test )?data from ["\'](.+?)["\']$',
                                                    'load_data',      lambda m: {'file': _q(m.group(1))}),
 
+    # --- Run an external script / command as a step (BFRAME_0016) -------------
+    # Execute a user script (py/js/jar/sh/...) or a shell command — e.g. seed a
+    # database before the UI test. stdout is captured into `SCRIPT_OUTPUT` (and an
+    # optional named var), so a later step can assert on the result.
+    (r'^runs? (?:the )?script ["\'](.+?)["\'](?: with (?:args? )?["\'](.+?)["\'])?(?: (?:and )?stor(?:e|ing) (?:the )?output (?:as|in) [\[`]([^\]`]+)[\]`])?$',
+                                                   'run_script',     lambda m: {'path': _q(m.group(1)), 'args': m.group(2), 'var': m.group(3)}),
+    (r'^(?:the )?script ["\'](.+?)["\'] (?:runs?|executes?|is executed|completes? successfully)$',
+                                                   'run_script',     lambda m: {'path': _q(m.group(1)), 'args': None, 'var': None}),
+    (r'^runs? (?:the )?command ["\'](.+?)["\'](?: (?:and )?stor(?:e|ing) (?:the )?output (?:as|in) [\[`]([^\]`]+)[\]`])?$',
+                                                   'run_command',    lambda m: {'command': _q(m.group(1)), 'var': m.group(2)}),
+    (r'^(?:the )?command ["\'](.+?)["\'] (?:runs?|executes?|is executed)$',
+                                                   'run_command',    lambda m: {'command': _q(m.group(1)), 'var': None}),
+
     # Navigate
     (r'^is on ["\'](.+)["\']$',                   'navigate',       lambda m: {'url': _q(m.group(1))}),
     (r'^navigates? to ["\'](.+)["\']$',            'navigate',       lambda m: {'url': _q(m.group(1))}),
