@@ -57,6 +57,11 @@ _FIRST_TO_THIRD = {
     'close': 'closes',
     'grab': 'grabs',
     'focus': 'focuses',
+    'submit': 'submits',
+    'reload': 'reloads',
+    'refresh': 'refreshes',
+    'double-click': 'double-clicks',
+    'right-click': 'right-clicks',
 }
 
 
@@ -117,6 +122,20 @@ PATTERNS = [
     (r'^opens? ["\'](.+)["\']$',                   'navigate',       lambda m: {'url': _q(m.group(1))}),
     (r'^goes? to ["\'](.+)["\']$',                 'navigate',       lambda m: {'url': _q(m.group(1))}),
 
+    # Browser history (BFRAME_0025) — back / forward / reload.
+    (r'^goes? back$',                              'go_back',        lambda m: {}),
+    (r'^goes? forward$',                           'go_forward',     lambda m: {}),
+    (r'^(?:reloads?|refreshes?) (?:the )?page$',   'reload',         lambda m: {}),
+
+    # Tab / window management (BFRAME_0025) — handled in execute_step (it owns
+    # the browser context that holds every page). "a new tab should open" both
+    # asserts and focuses the newest page so following steps act on it.
+    (r'^a new (?:tab|window) should open$',        'assert_new_tab', lambda m: {}),
+    (r'^switches? to (?:the )?(new|last|previous|original|first|main) (?:tab|window)$',
+                                                   'switch_tab',     lambda m: {'target': m.group(1).lower()}),
+    (r'^closes? (?:the )?(?:new |current )?(?:tab|window)$',
+                                                   'close_tab',      lambda m: {}),
+
     # Fill / Enter / Type
     (r'^enters? (.+?) in(?:to)? (?:the )?(.+?) (?:field|box|input)$',
                                                    'fill',           lambda m: {'value': _q(m.group(1)), 'locator': _q(m.group(2))}),
@@ -154,6 +173,18 @@ PATTERNS = [
     (r'^clicks? on (?:the )?(?:screen )?text ["\'](.+?)["\']$',
                                                    'click_text',     lambda m: {'text': _q(m.group(1))}),
 
+    # Double / right click (BFRAME_0025) — MUST precede the generic click
+    # catch-alls (which start with "clicks", so they can't match these anyway,
+    # but keep them grouped). Strip an optional quoted locator with _q.
+    (r'^double[- ]clicks? (?:on )?(?:the )?(.+?)(?: button| link)?$',
+                                                   'double_click',   lambda m: {'locator': _q(m.group(1))}),
+    (r'^right[- ]clicks? (?:on )?(?:the )?(.+?)(?: button| link)?$',
+                                                   'right_click',    lambda m: {'locator': _q(m.group(1))}),
+
+    # Submit a form (BFRAME_0025) — the form name is descriptive only; we click
+    # the form's submit control. MUST precede the generic click catch-alls.
+    (r'^submits? (?:the )?(.+?) form$',            'submit',         lambda m: {'locator': _q(m.group(1))}),
+
     # Click / Press / Tap
     (r'^clicks? (?:the )?(.+?) button$',           'click',          lambda m: {'locator': _q(m.group(1))}),
     (r'^clicks? (?:the )?(.+?) link$',             'click',          lambda m: {'locator': _q(m.group(1))}),
@@ -183,8 +214,8 @@ PATTERNS = [
     (r'^switches? to (?:the )?["\'](.+?)["\'] (?:frame|iframe)$',
                                                    'switch_frame',   lambda m: {'name': _q(m.group(1))}),
 
-    # Select / Check
-    (r'^selects? ["\'](.+?)["\'] from (?:the )?(.+)$',
+    # Select / Check — accept "from the X" and "in the X" (BFRAME_0025).
+    (r'^selects? ["\'](.+?)["\'] (?:from|in) (?:the )?(.+)$',
                                                    'select',         lambda m: {'value': _q(m.group(1)), 'locator': _q(m.group(2))}),
     (r'^checks? (?:the )?["\']?(.+?)["\']? checkbox$',
                                                    'check',          lambda m: {'locator': _q(m.group(1))}),

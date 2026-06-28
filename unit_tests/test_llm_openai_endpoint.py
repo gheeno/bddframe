@@ -87,12 +87,12 @@ def test_ask_round_trips_through_the_endpoint(foundry):
 
 
 def test_resolve_falls_back_to_llm_on_no_pattern_match(foundry):
-    # "submits" is not a known verb -> no regex matches -> Trigger 1 fires.
+    # "does a barrel roll" is not a known verb -> no regex matches -> Trigger 1 fires.
     foundry.reply = '{"type": "click", "locator": "Login"}'
-    action = step_resolver.resolve("User submits the login form")
+    action = step_resolver.resolve("User does a barrel roll")
     assert action == {"type": "click", "locator": "Login"}
     # the step text bddframe asked the model to interpret reached the endpoint
-    assert "submits the login form" in foundry.last_prompt
+    assert "does a barrel roll" in foundry.last_prompt
 
 
 def test_unset_api_key_is_the_documented_gotcha(foundry, monkeypatch):
@@ -121,7 +121,7 @@ def test_resolve_accepts_advertised_type_the_old_list_missed(foundry):
 
 def test_resolve_strips_markdown_fence(foundry):
     foundry.reply = '```json\n{"type": "click", "locator": "Login"}\n```'
-    action = step_resolver.resolve("User submits the login form")
+    action = step_resolver.resolve("User does a barrel roll")
     assert action == {"type": "click", "locator": "Login"}
 
 

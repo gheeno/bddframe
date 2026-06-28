@@ -430,6 +430,9 @@ When User navigates to "https://example.com/cart"
 When User goes to "https://example.com/checkout"
 When User opens "https://example.com"
 Given User is on the "results" page          # pin a POM page (SPAs)
+When User goes back                           # browser history
+When User goes forward
+When User reloads the page                    # or: refreshes the page
 ```
 
 ### Forms
@@ -442,6 +445,8 @@ When User clears the search field
 When User selects "Medium" from the size dropdown
 When User checks the "Remember me" checkbox
 When User unchecks the newsletter checkbox
+When User selects "Action" in the genre filter  # "in" or "from"
+When User submits the login form                 # clicks the form's submit control
 ```
 
 ### Clicks, keyboard & hover
@@ -451,8 +456,19 @@ When User clicks "Submit"
 When User clicks the "Proceed to Checkout" link
 When User presses the confirm button          # a click
 When User taps "Menu"
+When User double-clicks "Jaws"                 # dblclick
+When User right-clicks "File"                  # context-menu click
 When User presses Enter                        # a keyboard key
 When User hovers over the "Account" menu
+```
+
+### Tabs & windows
+```gherkin
+When User clicks "Preview"                     # opens a new tab
+Then a new tab should open                      # asserts + focuses the new tab
+And User should see "Details" in the new tab    # any step + " in the new tab"
+When User switches to the previous tab          # new / previous / original / first
+When User closes the tab
 ```
 
 ### Waiting & scrolling

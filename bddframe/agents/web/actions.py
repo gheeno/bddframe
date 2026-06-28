@@ -29,6 +29,44 @@ def click(page: Page, locator_text: str):
     loc.click()
 
 
+def double_click(page: Page, locator_text: str):
+    loc = find(page, locator_text)
+    if loc is None:
+        raise AssertionError(f"Could not find element to double-click: '{locator_text}'")
+    loc.dblclick()
+
+
+def right_click(page: Page, locator_text: str):
+    loc = find(page, locator_text)
+    if loc is None:
+        raise AssertionError(f"Could not find element to right-click: '{locator_text}'")
+    loc.click(button="right")
+
+
+def submit(page: Page, locator_text: str):
+    """Submit a form. The locator is descriptive ("login") — we click the form's
+    submit control. ponytail: first submit-typed control on the page; pass a
+    precise button text via `clicks the X button` if a page has several forms."""
+    loc = page.locator(
+        "form button[type=submit], form input[type=submit], form button:not([type])"
+    ).first
+    if loc.count() == 0:
+        raise AssertionError(f"No submit control found for the '{locator_text}' form")
+    loc.click()
+
+
+def go_back(page: Page):
+    page.go_back(wait_until="domcontentloaded")
+
+
+def go_forward(page: Page):
+    page.go_forward(wait_until="domcontentloaded")
+
+
+def reload(page: Page):
+    page.reload(wait_until="domcontentloaded")
+
+
 def fill(page: Page, locator_text: str, value: str):
     loc = find(page, locator_text)
     if loc is None:
