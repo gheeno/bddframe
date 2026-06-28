@@ -28,6 +28,21 @@ def test_store_backtick():
         ("store_text", {"locator": "result", "var": "title"})
 
 
+def test_grab_is_alias_for_store():
+    assert match("grabs the secondresulttitle as `result`") == \
+        ("store_text", {"locator": "secondresulttitle", "var": "result"})
+
+
+def test_search_step():
+    assert match('searches for "mastercraft toolbox"') == \
+        ("search", {"query": "mastercraft toolbox"})
+
+
+def test_close_popups_step():
+    assert match("closes all popups") == ("close_popups", {})
+    assert match("closes the popup window") == ("close_popups", {})
+
+
 def test_store_attribute_precedes_store_text():
     assert match('stores attribute "data-id" of the row as [ID]') == \
         ("store_attribute", {"attribute": "data-id", "locator": "row", "var": "ID"})

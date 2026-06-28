@@ -53,6 +53,9 @@ _FIRST_TO_THIRD = {
     'store': 'stores',
     'switch': 'switches',
     'set': 'sets',
+    'search': 'searches',
+    'close': 'closes',
+    'grab': 'grabs',
 }
 
 
@@ -73,6 +76,13 @@ PATTERNS = [
     # Page pin (9.3) — set the active POM page for SPAs where the URL is static.
     # Must precede the navigate patterns; ends in " page" so it can't be a URL.
     (r'^is on (?:the )?["\'](.+?)["\'] page$',     'set_page',       lambda m: {'name': _q(m.group(1))}),
+
+    # Close popups / cookie banners / modals (best-effort, never fails)
+    (r'^closes? (?:all )?(?:the )?(?:pop-?ups?|modals?|dialogs?|banners?)(?: windows?)?$',
+                                                   'close_popups',   lambda m: {}),
+
+    # Search — fill the search box and submit, in one step
+    (r'^searches? for ["\'](.+?)["\']$',           'search',         lambda m: {'query': _q(m.group(1))}),
 
     # Navigate
     (r'^is on ["\'](.+)["\']$',                   'navigate',       lambda m: {'url': _q(m.group(1))}),
@@ -123,8 +133,8 @@ PATTERNS = [
     (r'^stores? attribute ["\'](.+?)["\'] of (?:the )?(.+?) (?:as|into|in) [\[`]([^\]`]+)[\]`]$',
                                                    'store_attribute', lambda m: {'attribute': _q(m.group(1)), 'locator': _q(m.group(2)), 'var': m.group(3)}),
 
-    # Store element text into a variable (11.1) — usable by later steps.
-    (r'^stores? (?:the )?(.+?) (?:as|into|in) [\[`]([^\]`]+)[\]`]$',
+    # Store/grab element text into a variable (11.1) — usable by later steps.
+    (r'^(?:stores?|grabs?) (?:the )?(.+?) (?:as|into|in) [\[`]([^\]`]+)[\]`]$',
                                                    'store_text',     lambda m: {'locator': _q(m.group(1)), 'var': m.group(2)}),
 
     # Switch into an iframe (11.2)

@@ -346,6 +346,53 @@ def switch_frame(page: Page, name: str):
     set_frame(frame)
 
 
+def search(page: Page, query: str):
+    """Fill the search box and submit (Enter) in one step. Resolves the box via
+    the 'searchbox' POM key, then a 'search' label, then the searchbox role."""
+    loc = find(page, "searchbox")
+    if loc is None:
+        loc = find(page, "search")
+    if loc is None:
+        role_loc = page.get_by_role("searchbox")
+        if role_loc.count() == 0:
+            raise AssertionError("Could not find a search box on the page")
+        loc = role_loc.first
+    loc.fill(query)
+    page.keyboard.press("Enter")
+
+
+def close_popups(page: Page):
+    """Best-effort dismiss of cookie banners / modals / promo popups. Never
+    fails — clicks any matching dismiss control it finds, then presses Escape.
+    # ponytail: a short selector list covers the common cases; extend if a
+    # specific site needs a bespoke close button."""
+    selectors = [
+        '#onetrust-accept-btn-handler',
+        'button[aria-label="Close" i]',
+        'button[aria-label="Dismiss" i]',
+        '[class*="modal" i] button[class*="close" i]',
+        'button:has-text("Accept All")',
+        'button:has-text("Accept")',
+    ]
+    closed = 0
+    for sel in selectors:
+        try:
+            loc = page.locator(sel)
+            for i in range(min(loc.count(), 3)):
+                el = loc.nth(i)
+                if el.is_visible():
+                    el.click(timeout=2000)
+                    closed += 1
+        except Exception:
+            pass
+    try:
+        page.keyboard.press("Escape")
+    except Exception:
+        pass
+    if closed:
+        print(f"\n  🧹 Closed {closed} popup(s)")
+
+
 # ---------------------------------------------------------------------------
 # Phase 12 — step dependencies & shared state
 # ---------------------------------------------------------------------------

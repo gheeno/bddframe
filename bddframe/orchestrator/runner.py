@@ -81,6 +81,10 @@ def execute_step(step_text: str, context):
         actions.visual_baseline(page, action['name'], action.get('ignore'))
     elif t == 'screenshot':
         actions.screenshot(page, action['name'])
+    elif t == 'search':
+        actions.search(page, action['query'])
+    elif t == 'close_popups':
+        actions.close_popups(page)
     # --- Phase 11 ---
     elif t == 'press_key':
         actions.press_key(page, action['key'])

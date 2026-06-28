@@ -1,50 +1,39 @@
 # ============================================================================
 # STEP DEPENDENCIES DEMO (Phase 12) — live site (canadiantire.ca).
 #
-# Flow: search "mastercraft tool box" -> capture the first result's title into
-#       `title` -> go back home -> search for `title` -> the new first result's
-#       title must EQUAL the one captured earlier.
+# Flow: go to the site -> close popups -> search "mastercraft toolbox" ->
+#       GRAB the second result's title (a value only known at runtime) ->
+#       ASSERT it equals the known expected title.
+#
+# The dependency is on the grab step: `result` holds the live second-result
+# title, and the next step asserts that captured value against a literal.
 #
 # Variable syntax:
-#   `name`  → a value CAPTURED during this run (scenario-scoped store).
-#   [name]  → a value from .env / config (e.g. [SAUCE_USERNAME]).
-#   `name` is written by `stores ... as `name`` and substituted back into a
-#   later step BEFORE it runs — the BDDFrame equivalent of dependency injection.
+#   "literal"  → a fixed string you type (the URL, the search, the expected title)
+#   `name`     → a value CAPTURED during this run (scenario-scoped store)
+#   [name]     → a value from .env / config (e.g. [SAUCE_USERNAME])
 #
-# Selectors (searchbox/firstresulttitle) come from this folder's pom.yaml —
-# the search box / first result have no usable accessibility label.
+# Selectors (searchbox/secondresulttitle) come from this folder's pom.yaml.
 #
 # Run it:   behave features/canadiantire/step_dependencies.feature --no-capture
-# Live site: needs network + the 5s waits; titles are read from the live DOM.
+# Live site: needs network + the settle waits; ordering can change over time, so
+# the expected title may need updating if Canadian Tire reorders results.
 # ============================================================================
 @web @headless @step_dependencies
 Feature: Step Dependencies and Shared State
 
   @web @smoke
-  Scenario: Capture a result's title, then reuse it in a fresh search
+  Scenario: Grab the second result's title and assert its value
     Given User is on "https://www.canadiantire.ca"
     And User waits 5 seconds
+    And User closes all popups
 
-    # search for a product, land on the results page (multi-word query keeps us
-    # on /search-results, where the firstresulttitle POM selector applies)
-    When User enters "mastercraft tool box" in the searchbox field
-    And User presses Enter
+    When User searches for "mastercraft toolbox"
     And User waits until "Mastercraft" is visible
     And User waits 5 seconds
 
-    # capture the first result's title into the shared store
-    And User stores the firstresulttitle as `title`
+    # grab the second result's title into the shared store (the dependency)
+    And User grabs the secondresulttitle as `result`
 
-    # go back to the main page
-    And User is on "https://www.canadiantire.ca"
-    And User waits 5 seconds
-
-    # search again, this time using the captured title (`title` is substituted)
-    And User enters "`title`" in the searchbox field
-    And User presses Enter
-    And User waits until "Mastercraft" is visible
-    And User waits 5 seconds
-
-    # the new first result's title must match the one we captured first
-    And User stores the firstresulttitle as `second_title`
-    Then `second_title` should equal `title`
+    # assert the captured value equals the actual expected title
+    Then `result` should equal "Mastercraft Mini Toolbox with 2 Drawers, Lilac"

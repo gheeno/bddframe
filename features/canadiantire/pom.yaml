@@ -23,3 +23,8 @@ pages:
     # title element specifically for a clean, single-line capture.
     firstresulttitle:
       css: 'a[href*="pdp"]:visible [class*="title" i]'
+    # second result card's title. Each product link contains the title twice
+    # (mobile + desktop copies), so scope to the 2nd ANCHOR (card) first, then
+    # take its title — :nth-match on the title alone would hit a duplicate.
+    secondresulttitle:
+      css: ':nth-match(a[href*="pdp"]:visible, 2) [class*="title" i]'
