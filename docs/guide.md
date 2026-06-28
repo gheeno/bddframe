@@ -25,6 +25,7 @@ Just want the elevator pitch and copy-paste commands? The
 11. [CI — Azure DevOps](#11-ci--azure-devops)
 12. [VS Code extension](#12-vs-code-extension)
 13. [Testing the framework itself](#13-testing-the-framework-itself)
+14. [Custom hooks](#14-custom-hooks)
 
 ---
 
@@ -771,12 +772,123 @@ make test                               # == python -m pytest unit_tests/ -v
 python -m pytest unit_tests/test_lsp.py -v   # a single file
 ```
 
-**Expected: 212 passed, 0 failed.** Coverage spans CLI hardening, hooks
+**Expected: 216 passed, 0 failed.** Coverage spans CLI hardening, hooks
 lifecycle, step patterns (incl. tables and shared-state), visual patterns,
 OpenCV matcher (mocked), Allure writer, JUnit output, screenshot annotation,
 recorder + sensitive redaction, LSP validation, page-scoped POM lookup, locator
 ambiguity detection, and the enterprise additions — deterministic pixel diff,
 quarantine exit-code scan, healing telemetry, Key Vault merge, the
-mock/API/test-data steps, **data preconditions/teardowns, and the
-script/command runner**.
+mock/API/test-data steps, **data preconditions/teardowns, the script/command
+runner, and the custom hook registry**.
+
+---
+
+## 14. Custom hooks
+
+Custom hooks let you inject cross-cutting behaviour — timing, session tracking,
+extra logging, tag-conditional setup — without touching your `.feature` files or
+the framework internals. They mirror Cucumber's `Before`/`After` hooks.
+
+### How to register a hook
+
+Create any `*.py` file in `features/steps/` and use the `@hook` decorator:
+
+```python
+# features/steps/custom_hooks.py
+import time, uuid
+from bddframe.hooks import hook
+from bddframe.log import logger
+
+@hook("before_scenario")
+def assign_session(context, scenario):
+    context.session_id = str(uuid.uuid4())[:8]
+    context._start = time.monotonic()
+
+@hook("after_scenario")
+def log_timing(context, scenario):
+    elapsed = time.monotonic() - getattr(context, "_start", 0)
+    status = "PASSED" if "passed" in str(scenario.status) else "FAILED"
+    logger.info(f"\n  🪝 [{context.session_id}] {scenario.name} — {status} ({elapsed:.1f}s)")
+    if "audit" in scenario.effective_tags:
+        logger.info(f"\n  📋 AUDIT: {scenario.feature.name} / {scenario.name}")
+```
+
+behave auto-loads every `*.py` in `features/steps/`, so the hooks register
+before any scenario runs. The `@hook` decorator is the only API you need.
+
+### Supported events
+
+| Event | Fires | Arguments |
+|---|---|---|
+| `before_all` | once, before the suite | `(context,)` |
+| `before_feature` | once per feature file | `(context, feature)` |
+| `before_scenario` | before each scenario | `(context, scenario)` |
+| `after_step` | after each step | `(context, step)` |
+| `after_scenario` | after each scenario | `(context, scenario)` |
+| `after_all` | once, after the suite | `(context,)` |
+
+Alternatively, call `register(event, fn)` directly (no decorator):
+
+```python
+from bddframe.hooks import register
+register("after_all", lambda ctx: print("suite done"))
+```
+
+### Execution order within each event
+
+- **`before_*`** — framework setup runs first (browser is already open), then your hook. `context.page` is available.
+- **`after_scenario`** — your hook runs first (page is still open), then data teardown, then browser close.
+- **`after_all`** — your hook runs first, then the Allure/JUnit report is generated.
+- Multiple hooks for the same event fire in registration order (first registered, first called).
+
+### `before_all` — one timing constraint
+
+`before_all` fires before behave loads step files, so a `@hook("before_all")`
+placed in a file under `features/steps/` will **not** run — the file hasn't
+been imported yet. Register `before_all` hooks in `features/environment.py`
+instead:
+
+```python
+# features/environment.py
+from bddframe.hooks import before_all, ..., register
+
+def my_before_all(context):
+    context.suite_start = time.monotonic()
+
+register("before_all", my_before_all)
+```
+
+All other events are safe to register from step files.
+
+### Demo
+
+`features/busterblock/hooks_demo.feature` shows hooks in action against
+BusterBlock. The `@audit` tag triggers an extra log line from the
+`after_scenario` hook — no change to the feature file required:
+
+```gherkin
+@smoke @audit
+Scenario: Catalog is visible and the run is audit-logged
+  Then User should see "VHS Catalog"
+  And User should see "Jaws"
+```
+
+Terminal output when `custom_hooks.py` is loaded:
+
+```
+  🪝 [a3f1bc2e] Catalog is visible and the run is audit-logged — PASSED (1.2s)
+  📋 AUDIT: Hooks demo — cross-cutting behaviour via custom hooks / Catalog is visible and the run is audit-logged
+```
+
+### Tag-conditional hooks
+
+Hooks receive the full `scenario` object, so any tag-based branching is plain
+Python — no special syntax:
+
+```python
+@hook("before_scenario")
+def maybe_seed(context, scenario):
+    if "needs_admin" in scenario.effective_tags:
+        context.admin_token = fetch_admin_token()
+```
 </content>

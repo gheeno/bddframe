@@ -219,3 +219,71 @@ class TestAfterScenarioCleanup:
         scenario = _make_scenario()
 
         hooks.after_scenario(context, scenario)  # must not raise
+
+
+# ---------------------------------------------------------------------------
+# Custom hook registry
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(autouse=False)
+def clean_registry():
+    """Clear _registry before and after each test that touches it."""
+    from bddframe import hooks
+    hooks._registry.clear()
+    yield
+    hooks._registry.clear()
+
+
+class TestCustomHookRegistry:
+    def test_register_and_call_before_scenario(self, clean_registry):
+        from bddframe import hooks
+
+        calls = []
+        hooks.register("before_scenario", lambda ctx, sc: calls.append((ctx, sc)))
+
+        context = MagicMock()
+        scenario = _make_scenario()
+
+        with patch("bddframe.hooks.sync_playwright") as mock_pw_fn:
+            mock_pw = MagicMock()
+            mock_pw_fn.return_value.start.return_value = mock_pw
+            mock_pw.chromium.launch.return_value = MagicMock()
+            hooks.before_scenario(context, scenario)
+
+        assert len(calls) == 1
+        assert calls[0][1] is scenario
+
+    def test_hook_decorator(self, clean_registry):
+        from bddframe import hooks
+
+        calls = []
+
+        @hooks.hook("after_all")
+        def my_hook(ctx):
+            calls.append(ctx)
+
+        ctx = MagicMock()
+        with patch("bddframe.hooks.healing"), \
+             patch("bddframe.hooks._REPORTING", False):
+            hooks.after_all(ctx)
+
+        assert calls == [ctx]
+
+    def test_invalid_event_raises(self, clean_registry):
+        from bddframe import hooks
+
+        with pytest.raises(ValueError, match="Unknown hook event"):
+            hooks.register("before_step", lambda: None)
+
+    def test_multiple_hooks_same_event_called_in_order(self, clean_registry):
+        from bddframe import hooks
+
+        order = []
+        hooks.register("after_all", lambda ctx: order.append(1))
+        hooks.register("after_all", lambda ctx: order.append(2))
+
+        with patch("bddframe.hooks.healing"), \
+             patch("bddframe.hooks._REPORTING", False):
+            hooks.after_all(MagicMock())
+
+        assert order == [1, 2]
