@@ -49,6 +49,9 @@ _FIRST_TO_THIRD = {
     'go': 'goes',
     'navigate': 'navigates',
     'should': 'should',  # modal — no change
+    'hover': 'hovers',
+    'store': 'stores',
+    'switch': 'switches',
 }
 
 
@@ -86,6 +89,18 @@ PATTERNS = [
     (r'^clears? (?:the )?(.+?) (?:field|box|input)$',
                                                    'clear',          lambda m: {'locator': _q(m.group(1))}),
 
+    # Scoped clicks (11.2) — MUST precede the generic click catch-alls below,
+    # which would otherwise swallow the whole "X in the row/section ..." phrase.
+    (r'^clicks? ["\']?(.+?)["\']? in (?:the )?row (?:containing|with) ["\'](.+?)["\']$',
+                                                   'click_in_row',   lambda m: {'locator': _q(m.group(1)), 'row': _q(m.group(2))}),
+    (r'^clicks? ["\']?(.+?)["\']? in (?:the )?["\'](.+?)["\'] (?:section|panel|dialog|region|area)$',
+                                                   'click_in_section', lambda m: {'locator': _q(m.group(1)), 'section': _q(m.group(2))}),
+
+    # Keyboard keys (11.1) — a real keypress, distinct from "press the X button"
+    # (a click). MUST precede the press-button + click catch-alls.
+    (r'^presses? (?:the )?["\']?(Enter|Return|Tab|Escape|Esc|Space|Backspace|Delete|ArrowUp|ArrowDown|ArrowLeft|ArrowRight|Up|Down|Left|Right|Home|End|PageUp|PageDown)["\']?(?: key)?$',
+                                                   'press_key',      lambda m: {'key': m.group(1)}),
+
     # Click / Press / Tap
     (r'^clicks? (?:the )?(.+?) button$',           'click',          lambda m: {'locator': _q(m.group(1))}),
     (r'^clicks? (?:the )?(.+?) link$',             'click',          lambda m: {'locator': _q(m.group(1))}),
@@ -93,6 +108,19 @@ PATTERNS = [
     (r'^clicks? (?:the )?(.+)$',                   'click',          lambda m: {'locator': _q(m.group(1))}),
     (r'^presses? (?:the )?(.+?) button$',          'click',          lambda m: {'locator': _q(m.group(1))}),
     (r'^taps? (?:the )?(.+)$',                     'click',          lambda m: {'locator': _q(m.group(1))}),
+
+    # Hover (11.1)
+    (r'^hovers? (?:over|on) (?:the )?(.+)$',        'hover',          lambda m: {'locator': _q(m.group(1))}),
+
+    # Store element text into a [variable] (11.1) — usable by later steps.
+    (r'^stores? (?:the )?(.+?) (?:as|into|in) \[([^\]]+)\]$',
+                                                   'store_text',     lambda m: {'locator': _q(m.group(1)), 'var': m.group(2)}),
+    (r'^stores? (?:the )?(.+?) (?:as|into|in) ["\'](.+?)["\']$',
+                                                   'store_text',     lambda m: {'locator': _q(m.group(1)), 'var': _q(m.group(2))}),
+
+    # Switch into an iframe (11.2)
+    (r'^switches? to (?:the )?["\'](.+?)["\'] (?:frame|iframe)$',
+                                                   'switch_frame',   lambda m: {'name': _q(m.group(1))}),
 
     # Select / Check
     (r'^selects? ["\'](.+?)["\'] from (?:the )?(.+)$',
@@ -113,6 +141,10 @@ PATTERNS = [
                                                    'wait_visible',     lambda m: {'text': _q(m.group(1))}),
     (r'^waits? until (.+?) (?:is visible|appears?|loads?)$',
                                                    'wait_visible',     lambda m: {'text': m.group(1)}),
+    (r'^waits? until ["\'](.+?)["\'] (?:disappears?|is hidden|is gone|vanishes)$',
+                                                   'wait_hidden',      lambda m: {'text': _q(m.group(1))}),
+    (r'^waits? until (.+?) (?:disappears?|is hidden|is gone|vanishes)$',
+                                                   'wait_hidden',      lambda m: {'text': m.group(1)}),
     (r'^waits? (\d+) seconds?$',                   'wait_seconds',     lambda m: {'seconds': int(m.group(1))}),
 
     # Scroll
@@ -121,6 +153,9 @@ PATTERNS = [
     (r'^scrolls? to ["\'](.+?)["\']$',             'scroll_to',      lambda m: {'locator': _q(m.group(1))}),
 
     # Assertions
+    # Count assertion (11.1) — MUST precede the generic "should see X" below.
+    (r'^should see (\d+) ["\']?(.+?)["\']?(?: items?| results?| rows?| elements?| entries?)?$',
+                                                   'assert_count',   lambda m: {'count': int(m.group(1)), 'locator': _q(m.group(2))}),
     (r'^should see ["\'](.+?)["\']$',              'assert_visible', lambda m: {'text': _q(m.group(1))}),
     (r'^should see (.+)$',                         'assert_visible', lambda m: {'text': m.group(1)}),
     (r'^should not see ["\'](.+?)["\']$',          'assert_hidden',  lambda m: {'text': _q(m.group(1))}),
@@ -133,6 +168,24 @@ PATTERNS = [
     # Title assertion
     (r'^the page title should (?:contain|include) ["\'](.+?)["\']$',
                                                    'assert_title',    lambda m: {'fragment': _q(m.group(1))}),
+
+    # Table / grid assertions (11.2) — MUST precede the semantic catch-all,
+    # which would otherwise eat "... should have ..." / "... should be ...".
+    (r'^the (?:grid|table) should have (\d+) rows?$',
+                                                   'assert_row_count', lambda m: {'count': int(m.group(1))}),
+    (r'^the cell in (?:the )?row ["\'](.+?)["\'] column ["\'](.+?)["\'] should (?:be|contain|equal|show) ["\'](.+?)["\']$',
+                                                   'assert_cell',     lambda m: {'row': _q(m.group(1)), 'column': _q(m.group(2)), 'expected': _q(m.group(3))}),
+
+    # Element-scoped assertions (11.1) — attribute / value / state. Also before
+    # the semantic catch-all for the same reason.
+    (r'^the (.+?) should have attribute ["\'](.+?)["\'] (?:equal to|=|of) ["\'](.+?)["\']$',
+                                                   'assert_attribute', lambda m: {'locator': _q(m.group(1)), 'attribute': _q(m.group(2)), 'value': _q(m.group(3))}),
+    (r'^the ["\']?(.+?)["\']? (?:field|input|box) should (?:contain|have|show)(?: the)?(?: value| text)? ["\'](.+?)["\']$',
+                                                   'assert_value',    lambda m: {'locator': _q(m.group(1)), 'value': _q(m.group(2))}),
+    (r'^the ["\']?(.+?)["\']? should have value ["\'](.+?)["\']$',
+                                                   'assert_value',    lambda m: {'locator': _q(m.group(1)), 'value': _q(m.group(2))}),
+    (r'^the ["\']?(.+?)["\']?(?: (?:button|field|input|box|link|checkbox|element|icon|dropdown|menu))? should be (enabled|disabled|checked|unchecked|selected|editable|read-?only)$',
+                                                   'assert_state',    lambda m: {'locator': _q(m.group(1)), 'state': m.group(2)}),
 
     # Semantic (vision LLM) assertions
     (r'^the (.+?) should (?:show|display|have) (?:a )?(.+)$',

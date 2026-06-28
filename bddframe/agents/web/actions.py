@@ -178,3 +178,169 @@ def screenshot(page: Page, name: str, path: str = "screenshots"):
     file_path = f"{path}/{name}.png"
     page.screenshot(path=file_path, full_page=True)
     return file_path
+
+
+# ---------------------------------------------------------------------------
+# Phase 11 — coverage expansion
+# ---------------------------------------------------------------------------
+
+_KEY_ALIASES = {"esc": "Escape", "return": "Enter", "up": "ArrowUp",
+                "down": "ArrowDown", "left": "ArrowLeft", "right": "ArrowRight"}
+
+
+def press_key(page: Page, key: str):
+    """A real keypress (Enter/Tab/Escape/arrows…) — not a button click."""
+    page.keyboard.press(_KEY_ALIASES.get(key.lower(), key))
+
+
+def hover(page: Page, locator_text: str):
+    loc = find(page, locator_text)
+    if loc is None:
+        raise AssertionError(f"Could not find element to hover: '{locator_text}'")
+    loc.hover()
+
+
+def wait_hidden(page: Page, text: str):
+    from .locator import wait_hidden as _wait_hidden
+    _wait_hidden(page, text)
+
+
+def get_text(page: Page, locator_text: str) -> str:
+    """Read an element's value (inputs) or visible text — used by store_text."""
+    loc = find(page, locator_text)
+    if loc is None:
+        raise AssertionError(f"Could not find element to read: '{locator_text}'")
+    try:
+        val = loc.input_value()
+        if val:
+            return val
+    except Exception:
+        pass
+    return (loc.inner_text() or "").strip()
+
+
+def assert_value(page: Page, locator_text: str, value: str):
+    actual = get_text(page, locator_text)
+    if value != actual and value not in actual:
+        raise AssertionError(
+            f"Expected '{locator_text}' to contain '{value}' — actual: '{actual}'\nURL: {page.url}"
+        )
+
+
+def assert_state(page: Page, locator_text: str, state: str):
+    loc = find(page, locator_text)
+    if loc is None:
+        raise AssertionError(f"Could not find element: '{locator_text}'")
+    state = state.lower().replace("-", "").replace("read only", "readonly")
+    try:
+        ok = {
+            "enabled":   loc.is_enabled(),
+            "disabled":  not loc.is_enabled(),
+            "checked":   loc.is_checked(),
+            "unchecked": not loc.is_checked(),
+            "selected":  loc.is_checked(),
+            "editable":  loc.is_editable(),
+            "readonly":  not loc.is_editable(),
+        }[state]
+    except KeyError:
+        raise AssertionError(f"Unknown state '{state}' for '{locator_text}'")
+    if not ok:
+        raise AssertionError(f"Expected '{locator_text}' to be {state} — it is not.\nURL: {page.url}")
+
+
+def assert_attribute(page: Page, locator_text: str, attribute: str, value: str):
+    loc = find(page, locator_text)
+    if loc is None:
+        raise AssertionError(f"Could not find element: '{locator_text}'")
+    actual = loc.get_attribute(attribute)
+    if actual != value and (actual is None or value not in actual):
+        raise AssertionError(
+            f"Expected '{locator_text}' attribute '{attribute}' = '{value}' — actual: '{actual}'"
+        )
+
+
+def assert_count(page: Page, count: int, locator_text: str):
+    actual = page.get_by_text(locator_text, exact=False).count()
+    if actual != count:
+        raise AssertionError(
+            f"Expected {count} '{locator_text}' — found {actual}.\nURL: {page.url}"
+        )
+
+
+def click_in_row(page: Page, locator_text: str, row: str):
+    """Click an element scoped to the grid row containing `row` text (D365)."""
+    row_loc = page.get_by_role("row").filter(has_text=row)
+    if row_loc.count() == 0:
+        raise AssertionError(f"No row containing '{row}' found.\nURL: {page.url}")
+    loc = find(page, locator_text, scope=row_loc.first)
+    if loc is None:
+        raise AssertionError(f"Could not find '{locator_text}' in row '{row}'")
+    loc.click()
+
+
+def click_in_section(page: Page, locator_text: str, section: str):
+    """Click an element scoped to a named container/section."""
+    container = find(page, section)
+    if container is None:
+        raise AssertionError(f"Could not find section '{section}'")
+    loc = find(page, locator_text, scope=container)
+    if loc is None:
+        raise AssertionError(f"Could not find '{locator_text}' in section '{section}'")
+    loc.click()
+
+
+def assert_cell(page: Page, row: str, column: str, expected: str):
+    """Assert a grid cell (row identified by text, column by header name)."""
+    row_loc = page.get_by_role("row").filter(has_text=row)
+    if row_loc.count() == 0:
+        raise AssertionError(f"No row containing '{row}' found.\nURL: {page.url}")
+
+    headers = page.get_by_role("columnheader")
+    idx = None
+    for i in range(headers.count()):
+        if column.lower() in (headers.nth(i).inner_text() or "").lower():
+            idx = i
+            break
+
+    cells = row_loc.first.get_by_role("cell")
+    # ponytail: header-index mapping; falls back to whole-row text if no
+    # columnheader role exists. Upgrade to aria-colindex if a grid needs it.
+    if idx is not None and idx < cells.count():
+        actual = (cells.nth(idx).inner_text() or "").strip()
+    else:
+        actual = (row_loc.first.inner_text() or "").strip()
+
+    if expected != actual and expected not in actual:
+        raise AssertionError(
+            f"Cell [row '{row}', column '{column}'] expected '{expected}' — actual: '{actual}'"
+        )
+
+
+def assert_row_count(page: Page, count: int):
+    rows = page.get_by_role("row")
+    total = rows.count()
+    has_header = page.get_by_role("columnheader").count() > 0
+    data_rows = total - (1 if has_header else 0)
+    # ponytail: accept either data-row count or raw row count — grids vary in
+    # whether the header is a role="row". Tighten if a suite needs exactness.
+    if count not in (data_rows, total):
+        raise AssertionError(
+            f"Expected {count} rows — found {data_rows} data rows ({total} total).\nURL: {page.url}"
+        )
+
+
+def switch_frame(page: Page, name: str):
+    """Scope subsequent element lookups to an iframe (by name/id/url substring)."""
+    from .locator import set_frame
+    frame = page.frame(name=name)
+    if frame is None:
+        for f in page.frames:
+            if name.lower() in (f.name or "").lower() or name.lower() in (f.url or "").lower():
+                frame = f
+                break
+    if frame is None:
+        raise AssertionError(
+            f"No frame matching '{name}'. Available: "
+            f"{[f.name or f.url for f in page.frames]}"
+        )
+    set_frame(frame)

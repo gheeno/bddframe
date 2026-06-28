@@ -15,19 +15,34 @@ def set_strict(value: bool | None):
     _strict = value
 
 
+# Active iframe scope (11.2). When set by actions.switch_frame, element lookups
+# resolve inside this frame instead of the top-level page. Reset per scenario.
+_frame = None
+
+
+def set_frame(frame):
+    global _frame
+    _frame = frame
+
+
 def _is_strict() -> bool:
     if _strict is not None:
         return _strict
     return os.getenv("BDDFRAME_STRICT_LOCATOR", "false").lower() == "true"
 
 
-def find(page: Page, text: str) -> Locator | None:
+def find(page: Page, text: str, scope=None) -> Locator | None:
     """
     Resolve a human label to a Playwright Locator.
     Order: accessibility (unique) → POM (if ambiguous or not found)
            → self-heal scroll → self-heal partial → vision LLM.
+
+    `scope` (11.2) constrains the accessibility search to a sub-region — a row
+    Locator, a named section, or a frame. Defaults to the active iframe scope
+    (set_frame) or the whole page. POM/vision self-heal still use `page`.
     """
-    loc, ambiguous = _try_strategies(page, text)
+    search = scope if scope is not None else (_frame if _frame is not None else page)
+    loc, ambiguous = _try_strategies(search, text)
 
     if loc is not None and not ambiguous:
         return loc.first  # exactly one match — safe
@@ -44,7 +59,7 @@ def find(page: Page, text: str) -> Locator | None:
     # Nothing found — run the self-heal chain.
     # Self-heal 1: scroll and retry
     page.mouse.wheel(0, 300)
-    loc, ambiguous = _try_strategies(page, text)
+    loc, ambiguous = _try_strategies(search, text)
     if loc is not None and not ambiguous:
         print(f"\n  🔧 Healed: found '{text}' after scroll")
         return loc.first
@@ -52,7 +67,7 @@ def find(page: Page, text: str) -> Locator | None:
     # Self-heal 2: partial text (first word)
     first_word = text.split()[0] if text.split() else text
     if first_word != text:
-        loc2, amb2 = _try_strategies(page, first_word)
+        loc2, amb2 = _try_strategies(search, first_word)
         if loc2 is not None and not amb2:
             print(f"\n  🔧 Healed: matched '{text}' via partial text '{first_word}'")
             return loc2.first
@@ -101,25 +116,54 @@ def wait_for(page: Page, text: str, timeout: int | None = None):
     raise AssertionError(f"Timed out waiting for visible text '{text}' ({timeout_ms}ms)")
 
 
-def _try_strategies(page: Page, text: str) -> tuple[Locator | None, bool]:
+def wait_hidden(page: Page, text: str, timeout: int | None = None):
+    """Wait until an element/text is gone or no longer visible (mirror of wait_for)."""
+    import time
+    timeout_ms = timeout or int(os.getenv("BDDFRAME_TIMEOUT", "10000"))
+
+    loc = pom.locate(page, text)
+    if loc is not None:
+        loc.wait_for(state="hidden", timeout=timeout_ms)
+        return
+
+    matches = page.get_by_text(text, exact=False)
+    deadline = time.monotonic() + timeout_ms / 1000
+    while time.monotonic() < deadline:
+        visible = False
+        for i in range(min(matches.count(), 30)):
+            try:
+                if matches.nth(i).is_visible():
+                    visible = True
+                    break
+            except Exception:
+                pass
+        if not visible:
+            return
+        page.wait_for_timeout(250)
+    raise AssertionError(f"Timed out waiting for '{text}' to disappear ({timeout_ms}ms)")
+
+
+def _try_strategies(scope, text: str) -> tuple[Locator | None, bool]:
     """
     Returns (locator, ambiguous).
-    Strategies are tried in priority order; the first one that matches wins —
-    same as before. Returns the FULL locator (not .first) so ambiguous
-    candidates can be enumerated, plus whether it matched exactly one element
-    (ambiguous=False) or several (ambiguous=True). Callers take .first.
+    `scope` is anything with the get_by_* API — a Page, Frame, or Locator —
+    so the same strategies work scoped to a row/section/frame (11.2).
+    Strategies are tried in priority order; the first one that matches wins.
+    Returns the FULL locator (not .first) so ambiguous candidates can be
+    enumerated, plus whether it matched exactly one element (ambiguous=False)
+    or several (ambiguous=True). Callers take .first.
     """
     pattern = re.compile(re.escape(text), re.IGNORECASE)
     strategies = [
-        lambda: page.get_by_role("button",   name=pattern),
-        lambda: page.get_by_role("link",     name=pattern),
-        lambda: page.get_by_label(pattern),
-        lambda: page.get_by_placeholder(pattern),
-        lambda: page.get_by_role("textbox",  name=pattern),
-        lambda: page.get_by_role("combobox", name=pattern),
-        lambda: page.get_by_role("checkbox", name=pattern),
-        lambda: page.get_by_title(pattern),
-        lambda: page.get_by_text(pattern, exact=False),
+        lambda: scope.get_by_role("button",   name=pattern),
+        lambda: scope.get_by_role("link",     name=pattern),
+        lambda: scope.get_by_label(pattern),
+        lambda: scope.get_by_placeholder(pattern),
+        lambda: scope.get_by_role("textbox",  name=pattern),
+        lambda: scope.get_by_role("combobox", name=pattern),
+        lambda: scope.get_by_role("checkbox", name=pattern),
+        lambda: scope.get_by_title(pattern),
+        lambda: scope.get_by_text(pattern, exact=False),
     ]
     for strategy in strategies:
         try:

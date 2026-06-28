@@ -35,7 +35,9 @@ def before_scenario(context, scenario):
 
     # Per-scenario locator/POM state — reset so tags/pins don't leak between scenarios.
     locator_module.set_strict('strict' in tags or None)
+    locator_module.set_frame(None)        # 11.2 — clear any iframe scope
     pom_module.set_active_page(None)
+    context._vars = {}                     # 11.1 — run-scoped stored values
 
     # Bug 3: warn when @headed and @headless both appear — @headed wins but conflict
     # is almost always a forgotten debug tag that will break CI silently.

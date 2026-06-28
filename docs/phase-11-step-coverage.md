@@ -5,8 +5,11 @@ interaction** engine — covering text extraction, element-scoped assertions,
 keyboard, hover, D365-style tables, and the SVG / container / shadow-DOM cases
 testers actually hit — without breaking the "sentences over syntax" contract.
 
-> Status: **Plan**. Builds on the Phase 9 locator/POM work and the Phase 10
-> local-model setup. Branch when picked up: `BFRAME_00XX`.
+> Status: **Implemented** (11.1–11.3). 11.4 deferred (YAGNI). Builds on the
+> Phase 9 locator/POM work and the Phase 10 local-model setup. Tests in
+> `tests/test_patterns_phase11.py`. One deliberate simplification: table
+> cell/row-count assertions use accessibility roles with a text-fallback rather
+> than aria-colindex grid parsing — see the `ponytail:` notes in `actions.py`.
 
 ---
 
