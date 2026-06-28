@@ -36,7 +36,7 @@ Feature: LLM Fallback — unmatched verb hands the step to the model
     # [LLM] "authenticates on the sample application" — verb "authenticates"
     #       appears in no pattern → resolver passes to model, which should
     #       return {"type": "click", "locator": "Log In"} or equivalent.
-    When User authenticates on the sample application
+    When User authenticates on the sample application  # llm-ok
 
     # [A11Y] plain DOM text assertion — no model
     Then User should see "Welcome, admin!"
@@ -52,4 +52,4 @@ Feature: LLM Fallback — unmatched verb hands the step to the model
 
     # [LLM] "confirm the outcome shows a welcome message" — verb "confirm" not
     #       in any pattern → model interprets as a visual/semantic assertion
-    Then User confirms the outcome shows a welcome message
+    Then User confirms the outcome shows a welcome message  # llm-ok

@@ -1,68 +1,71 @@
-@rest
+@rest @api
 Feature: REST API — GET operations against restful-api.dev
-  # Exercises: calls GET, run_command with curl, SCRIPT_OUTPUT variable assertions.
+  # Exercises: REST GET calls using the proper HTTP client (no curl).
   #
-  # Two resolution paths:
-  #   calls GET 'URL'           → Playwright request context → asserts 2xx only
-  #   run_command 'curl -s URL' → shell curl → SCRIPT_OUTPUT → body content assert
+  # Resolution path:
+  #   performs a GET call at '/path' → rest_client (urllib) → REST_STATUS, REST_BODY
   #
-  # The pre-seeded object list at /objects always includes "id" and "name" fields.
-  # Objects 1-13 are permanent fixtures the server guarantees.
+  # Assertions:
+  #   the response status should be 200     → status code check
+  #   the response body should contain 'x'  → string-contains on body
+  #   the response body should contain:     → table-driven key/value checks
+  #     | Key | Value |
+  #
+  # Objects 1–13 are permanent fixtures the server guarantees.
   #
   # Run it:
   #   bddframe run features/persona_test/11_rest_get.feature --no-capture
-  #
-  # No browser needed — but the @rest tag still opens one (Playwright request
-  # context needs a page). Future: @api tag would skip the browser entirely.
-  #
-  # Capability tier: PATTERN (api_call) + PATTERN (run_command + assert_compare).
+
+  Background:
+    Given sets `REST_BASE_URL` to '[RESTFULAPI]'
 
   @smoke
   Scenario: GET all objects returns 200 OK
-    # Built-in api_call pattern — asserts 2xx, no body inspection.
-    Given User navigates to '[RESTFULAPI]/objects'
-    When User calls GET '[RESTFULAPI]/objects'
-    Then User should see "Google Pixel 6 Pro"
+    When performs a GET call at '/objects'
+    Then the response status should be 200
 
   @smoke
   Scenario: GET all objects body contains expected shape
-    # run_command bridges to shell curl so we can assert on the response body.
-    When User runs the command 'curl -s "[RESTFULAPI]/objects"'
-    Then `SCRIPT_OUTPUT` should contain 'id'
-    And `SCRIPT_OUTPUT` should contain 'name'
-    And `SCRIPT_OUTPUT` should contain 'data'
+    When performs a GET call at '/objects'
+    Then the response status should be 200
+    And the response body should contain:
+      | Key  | Value |
+      | id   |       |
+      | name |       |
+      | data |       |
 
   @smoke
-  Scenario: GET single object by ID returns 200 OK
-    When User calls GET '[RESTFULAPI]/objects/1'
-    Then User should see "Google Pixel 6 Pro"
+  Scenario Outline: GET object by ID returns the expected name
+    When performs a GET call at '/objects/<id>'
+    Then the response status should be 200
+    And the response body should contain '<name>'
 
-  @smoke
-  Scenario: GET single object body contains the object name
-    When User runs the command 'curl -s "[RESTFULAPI]/objects/1"'
-    Then `SCRIPT_OUTPUT` should contain 'Google Pixel 6 Pro'
-    And `SCRIPT_OUTPUT` should contain 'id'
-
-  @smoke
-  Scenario: GET multiple objects by query param IDs
-    When User runs the command 'curl -s "[RESTFULAPI]/objects?id=3&id=5&id=10"'
-    Then `SCRIPT_OUTPUT` should contain 'id'
-    And `SCRIPT_OUTPUT` should contain 'name'
+    Examples:
+      | id | name                    |
+      | 1  | Google Pixel 6 Pro      |
+      | 5  | Samsung Galaxy Z Fold2  |
 
   @smoke
   Scenario: GET object and store response for downstream assertion
-    When User runs the command 'curl -s "[RESTFULAPI]/objects/1"' and storing the output in `OBJECT_1`
+    When performs a GET call at '/objects/1' storing response in `OBJECT_1`
     Then `OBJECT_1` should contain 'Google Pixel 6 Pro'
+    And `OBJECT_1` should contain 'id'
 
   @smoke
-  Scenario: GET non-existent object returns an error shape (not 2xx, uses curl)
-    # api_call would fail the step on 404. curl lets us assert on the error body.
-    When User runs the command 'curl -s "[RESTFULAPI]/objects/nonexistent-id-99999"'
-    Then `SCRIPT_OUTPUT` should contain 'error'
+  Scenario: GET by query params returns matching objects
+    When performs a GET call at '/objects?id=3&id=5&id=10'
+    Then the response status should be 200
+    And the response body should contain 'id'
+    And the response body should contain 'name'
 
   @smoke
-  Scenario: Browser renders the JSON list (navigating to the API endpoint)
-    # GET via browser navigation — the raw JSON renders in the browser.
-    # Confirms the endpoint is reachable and contains expected device names.
-    Given User navigates to '[RESTFULAPI]/objects/3'
-    Then User should see "name"
+  Scenario: GET non-existent object returns 404 with error body
+    When performs a GET call at '/objects/nonexistent-id-99999'
+    Then the response status should be 404
+    And the response body should contain 'error'
+
+  @smoke
+  Scenario: GET response includes expected Content-Type header
+    When performs a GET call at '/objects/1'
+    Then the response status should be 200
+    And the response header 'Content-Type' should contain 'application/json'

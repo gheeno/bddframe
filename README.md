@@ -452,6 +452,10 @@ Built for running at scale in Azure DevOps. Each item links to the detail:
 docker build -t bddframe . && docker run --rm bddframe
 ```
 
+> **Docker is a CI convenience, not a local requirement.** The image bundles
+> browsers + system deps so CI agents don't need `apt-get`. Locally, Python +
+> `playwright install` is all you need — no Docker required.
+
 The full gap analysis and what was built is in
 **[docs/enterprise-plan.md](docs/enterprise-plan.md)**.
 
@@ -466,15 +470,49 @@ resolved the step.
 
 BDDFrame is **model-agnostic** via [LiteLLM](https://github.com/BerriAI/litellm) —
 point it at Ollama, hosted OpenAI, or [Foundry Local](https://learn.microsoft.com/azure/foundry-local/)
-with one env var:
+with one env var.
+
+### Setup
+
+**Option A — Ollama (local, free, no API key)**
+
+1. Install Ollama: `brew install ollama` (macOS) — or download from [ollama.com](https://ollama.com/download)
+2. Open a terminal and start the server — leave it running:
+   ```bash
+   ollama serve
+   ```
+3. Pull a model (in a second terminal):
+   ```bash
+   ollama pull llama3          # text steps (step resolver fallback)
+   ollama pull llava           # vision-capable (element finding + semantic assertions)
+   ```
+4. Install the BDDFrame LLM extra and configure `.env`:
+   ```bash
+   uv pip install -e ".[llm]"
+   ```
+   ```bash
+   # .env
+   BDDFRAME_MODEL=ollama/llama3            # or ollama/llava for vision
+   BDDFRAME_LLM_URL=http://localhost:11434  # Ollama default port
+   ```
+
+> Ollama must be running (`ollama serve`) whenever you run BDDFrame with the LLM enabled. If it's not running you'll see a connection error on the first LLM-triggered step.
+
+**Option B — OpenAI (cloud, requires API key)**
 
 ```bash
 uv pip install -e ".[llm]"
-# .env — pick one:
-BDDFRAME_MODEL=ollama/llama3            # local, free
-BDDFRAME_LLM_URL=http://localhost:11434
-# BDDFRAME_MODEL=openai/gpt-4o-mini ; BDDFRAME_LLM_URL=https://api.openai.com/v1 ; OPENAI_API_KEY=sk-...
 ```
+```bash
+# .env
+BDDFRAME_MODEL=openai/gpt-4o-mini        # or openai/gpt-4o for vision
+BDDFRAME_LLM_URL=https://api.openai.com/v1
+OPENAI_API_KEY=sk-...
+```
+
+**Option C — Foundry Local (on-prem / air-gapped networks)**
+
+See [Architecture → LLM layer](docs/architecture.md#5-the-llm-layer) and [Design History → Phase 10](docs/design-history.md#phase-10--foundry-local).
 
 **The four triggers** — each is a local layer missing *and* the env var being set:
 

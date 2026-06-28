@@ -55,6 +55,8 @@ def _validate(source: str) -> list[lsp.Diagnostic]:
         for kw in STEP_KEYWORDS:
             if stripped.startswith(kw):
                 step_text = stripped[len(kw):]
+                if "# llm-ok" in line:
+                    break
                 normalized = normalize_subject(step_text)
                 if pattern_match(normalized) is None and _UNKNOWN_STEP_SEVERITY is not None:
                     col = len(line) - len(line.lstrip())

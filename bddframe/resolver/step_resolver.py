@@ -13,7 +13,7 @@ VALID_TYPES = frozenset({
     'assert_state', 'assert_title', 'assert_url', 'assert_value',
     'assert_visible', 'block_route', 'check', 'clear', 'click',
     'click_in_row', 'click_in_section', 'close_popups', 'fill', 'hover',
-    'load_data', 'mock_route', 'navigate', 'pixel_baseline', 'press_key',
+    'load_data', 'load_resource', 'mock_route', 'navigate', 'pixel_baseline', 'press_key',
     'run_command', 'run_script', 'screenshot', 'scroll', 'scroll_to',
     'search', 'select', 'set_page', 'set_var', 'store_attribute',
     'store_text', 'switch_frame', 'uncheck', 'visual_baseline', 'wait_hidden',
@@ -25,6 +25,10 @@ VALID_TYPES = frozenset({
     # BFRAME_0025 — browser history, extra clicks, form submit, tab/window
     'go_back', 'go_forward', 'reload', 'double_click', 'right_click', 'submit',
     'assert_new_tab', 'switch_tab', 'close_tab',
+    # BFRAME_0029 — proper REST HTTP client
+    'rest_set_header', 'rest_call', 'rest_assert_status', 'rest_assert_body',
+    'rest_assert_body_table', 'rest_assert_header', 'rest_assert_header_table',
+    'rest_extract_json',
 })
 
 

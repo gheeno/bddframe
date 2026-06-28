@@ -32,6 +32,7 @@ def normalize_subject(text: str) -> str:
 
 _FIRST_TO_THIRD = {
     'am': 'is',
+    'use': 'uses',
     'enter': 'enters',
     'type': 'types',
     'fill': 'fills',
@@ -62,6 +63,8 @@ _FIRST_TO_THIRD = {
     'refresh': 'refreshes',
     'double-click': 'double-clicks',
     'right-click': 'right-clicks',
+    'perform': 'performs',
+    'set': 'sets',
 }
 
 
@@ -99,6 +102,14 @@ PATTERNS = [
     # API setup/teardown — call an endpoint directly (no browser nav).
     (r'^calls? (GET|POST|PUT|DELETE|PATCH) ["\'](.+?)["\'](?: with body ["\'](.+?)["\'])?$',
                                                    'api_call',       lambda m: {'method': m.group(1).upper(), 'url': _q(m.group(2)), 'body': m.group(3)}),
+    # Load a resource file (payload, fixture, …) from the feature's resources/ folder.
+    # Single file → stored in PAYLOAD (and PAYLOAD_<STEM> for consistency).
+    (r"^uses? (?:this )?(?:payload|resource|fixture) ['\"](.+?)['\"]$",
+                                                   'load_resource',  lambda m: {'path': _q(m.group(1))}),
+    # Table form — | payload | column, one file per row.
+    (r"^uses? (?:these )?(?:payloads?|resources?|fixtures?):?$",
+                                                   'load_resource',  lambda m: {'path': None}),
+
     # Load a YAML/JSON fixture file into the run-scoped variable store.
     (r'^loads? (?:test )?data from ["\'](.+?)["\']$',
                                                    'load_data',      lambda m: {'file': _q(m.group(1))}),
@@ -281,6 +292,37 @@ PATTERNS = [
                                                    'assert_value',    lambda m: {'locator': _q(m.group(1)), 'value': _q(m.group(2))}),
     (r'^the ["\']?(.+?)["\']?(?: (?:button|field|input|box|link|checkbox|element|icon|dropdown|menu))? should be (enabled|disabled|checked|unchecked|selected|editable|read-?only)$',
                                                    'assert_state',    lambda m: {'locator': _q(m.group(1)), 'state': m.group(2)}),
+
+    # --- REST testing (BFRAME_0029) — proper HTTP client assertions --------------
+    # Set a per-session request header (stored in _REST_HEADERS var).
+    (r"^sets? (?:a |an )?request header '([^']+)' to '([^']+)'$",
+                                                   'rest_set_header',        lambda m: {'name': m.group(1), 'value': m.group(2)}),
+    # HTTP call: method + path (required) + optional body + optional var store.
+    # Path can be absolute (http...) or relative (prepends REST_BASE_URL).
+    (r"^performs? (?:a |an )?(GET|POST|PUT|PATCH|DELETE) (?:call|request) "
+     r"(?:at|to|on) '([^']+)'"
+     r"(?: with (?:request )?body '([^']+)')?"
+     r"(?: (?:and )?stor(?:e|ing) (?:the )?(?:response )?(?:as|in) [\[`]([^\]`]+)[\]`])?$",
+                                                   'rest_call',              lambda m: {'method': m.group(1).upper(), 'path': m.group(2), 'body': m.group(3), 'var': m.group(4)}),
+    # Status code assertion.
+    (r'^the response status(?: code)? should (?:be|equal) (\d+)$',
+                                                   'rest_assert_status',     lambda m: {'expected': int(m.group(1))}),
+    # Extract a JSON key from the latest response body into a named variable.
+    (r"^extracts? (?:json )?(?:key )?'([^']+)' from (?:the )?(?:response|REST_BODY)(?: body)? "
+     r"(?:and )?stor(?:e|ing) (?:it )?(?:as|in) [\[`]([^\]`]+)[\]`]$",
+                                                   'rest_extract_json',  lambda m: {'key': m.group(1), 'var': m.group(2)}),
+    # Body contains a single string (key or value).
+    (r"^the response body should contain '([^']+)'$",
+                                                   'rest_assert_body',       lambda m: {'needle': m.group(1)}),
+    # Body contains — table driven (Key / Value rows; empty Value = key-exists check).
+    (r'^the response body should contain:?$',
+                                                   'rest_assert_body_table', lambda m: {}),
+    # Single header assertion.
+    (r"^the response header '([^']+)' should (?:be|equal|contain) '([^']+)'$",
+                                                   'rest_assert_header',     lambda m: {'name': m.group(1), 'value': m.group(2)}),
+    # Headers — table driven (Header / Value rows).
+    (r'^the response headers? should contain:?$',
+                                                   'rest_assert_header_table', lambda m: {}),
 
     # Value comparison assertions (12.2) — both operands are already [VAR]-
     # substituted to literals by the time we get here. Order: longest operator
