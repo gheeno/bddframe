@@ -26,10 +26,12 @@ That's the whole test — no Python, no `By.id`, no glue.
 1. [How it works](#how-it-works)
 2. [Install](#install)
 3. [Configure](#configure)
-4. [Write & run a test](#write--run-a-test)
-5. [Reports — what to expect](#reports--what-to-expect)
-6. [The LLM — when it triggers](#the-llm--when-it-triggers)
-7. [Docs](#docs)
+4. [Run the bundled test app (BusterBlock)](#run-the-bundled-test-app-busterblock)
+5. [Write & run a test](#write--run-a-test)
+6. [Preconditions & teardowns](#preconditions--teardowns)
+7. [Reports — what to expect](#reports--what-to-expect)
+8. [The LLM — when it triggers](#the-llm--when-it-triggers)
+9. [Docs](#docs)
 
 ---
 
@@ -146,6 +148,32 @@ Full setup — LLM vars, Key Vault, all toggles — is in the **[Guide](docs/gui
 
 ---
 
+## Run the bundled test app (BusterBlock)
+
+`test-app-vhs-vault/` is **BusterBlock.ca** — a self-contained VHS-rental site
+(Node/Express, in-memory data) that the `features/busterblock/` tests run
+against. Run it locally so those features have something to hit:
+
+```bash
+cd test-app-vhs-vault
+npm install            # first time only
+npm start              # serves http://localhost:3333
+```
+
+You should see `🎬  BusterBlock.ca  →  http://localhost:3333`. Leave it running
+in one terminal; run tests in another:
+
+```bash
+bddframe run features/busterblock/login.feature
+```
+
+`http://localhost:3333` is wired to the `[BUSTERBLOCK]` reference via
+`environments.yaml`; the demo login (`reel_ryan` / `Popcorn1!`) is in
+`secrets.env.example` as `BB_USER` / `BB_PASS`. Data is in-memory and reloads on
+restart — see the [test seam](#preconditions--teardowns) for seeding it per test.
+
+---
+
 ## Write & run a test
 
 Feature files live in `features/`, one subfolder per app. The bundled
@@ -191,6 +219,58 @@ the `.feature` file (sensitive values auto-redacted to `[VARIABLE]`).
 
 The full step reference, browser tags, `pom.yaml`, and shared-state syntax are in
 the **[Guide](docs/guide.md)**.
+
+---
+
+## Preconditions & teardowns
+
+Like a JDBC `@Before`/`@After` in Java: instead of clicking the UI into the state
+you need, **seed the data directly, run the test, then clean up**. Tag a scenario
+`@precondition:NAME` — its `setup:` calls run before the scenario, its `teardown:`
+calls run after (**even if the scenario fails**).
+
+Fixtures live in `preconditions.yaml` next to the feature. Each line is
+`METHOD URL [JSON-body]`; `[BUSTERBLOCK]` resolves from `environments.yaml`:
+
+```yaml
+# features/busterblock/preconditions.yaml
+jaws_out_of_stock:
+  setup:
+    - POST [BUSTERBLOCK]/api/test/reset
+    - 'PATCH [BUSTERBLOCK]/api/test/stock {"movieId": 1, "stock": 0}'
+  teardown:
+    - POST [BUSTERBLOCK]/api/test/reset
+```
+
+```gherkin
+# features/busterblock/preconditions.feature
+@web
+Feature: Preconditions — seed BusterBlock data before the UI test
+
+  @smoke @precondition:jaws_out_of_stock
+  Scenario: A movie seeded out of stock shows "Out" in the catalog
+    # Precondition forced Jaws to stock 0 before this ran — no UI did that.
+    ...
+    Then the cell in row "Jaws" column "Stock" should be "Out"
+```
+
+**The test seam.** BusterBlock has no SQL DB — its "database" is in-memory state
+in `server.js`. Test-only endpoints expose it for seeding (gated by `BB_TEST_API`,
+on by default; set `BB_TEST_API=0` to disable):
+
+| Endpoint | Body | Does |
+|----------|------|------|
+| `POST /api/test/reset` | — | empty carts + orders, restore all stock (the universal teardown) |
+| `PATCH /api/test/stock` | `{movieId, stock}` | force a movie's stock (e.g. 0) |
+| `POST /api/test/seed-cart` | `{username, items}` | pre-fill a user's cart |
+
+Run the worked example (BusterBlock must be running):
+
+```bash
+bddframe run features/busterblock/preconditions.feature
+```
+
+Design rationale and the phase plan: **[docs/preconditions-plan.md](docs/preconditions-plan.md)**.
 
 ---
 
@@ -295,10 +375,10 @@ Full detail (client module, prompts, diagrams): **[docs/architecture.md → The 
 ## Run BDDFrame's own tests
 
 ```bash
-make test            # == python -m pytest tests/ -v
+make test            # == python -m pytest unit_tests/ -v
 ```
 
-**Expected: 200 passed, 0 failed** — no browser, no LLM, no display required.
+**Expected: 205 passed, 0 failed** — no browser, no LLM, no display required.
 
 ---
 
@@ -310,5 +390,6 @@ make test            # == python -m pytest tests/ -v
 | **[Architecture](docs/architecture.md)** | The tech, end to end — mental model, component map, resolution hierarchy, the LLM layer, tech stack (Mermaid throughout). |
 | **[Design History](docs/design-history.md)** | The rationale trail behind every capability (the 12 build phases, condensed). |
 | **[Enterprise Plan](docs/enterprise-plan.md)** | Enterprise-grade gap analysis + what was built (parallelism, retries, traces, Key Vault, healing telemetry, Docker). |
+| **[Preconditions Plan](docs/preconditions-plan.md)** | The phase plan + rationale for tag-driven data preconditions & teardowns (the JDBC-fixture analog). |
 | **[docs/](docs/README.md)** | Documentation index. |
 </content>
