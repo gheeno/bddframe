@@ -2,7 +2,7 @@
 
 # Run all tests (no browser required)
 test:
-	python -m pytest tests/ -v
+	python -m pytest unit_tests/ -v
 
 # Build the VS Code extension .vsix package
 # Requires: cd vscode-extension && npm install  (already done)
