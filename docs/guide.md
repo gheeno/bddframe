@@ -13,7 +13,7 @@ Just want the elevator pitch and copy-paste commands? The
 ## Contents
 
 1. [Install](#1-install)
-2. [Configure — `.env`](#2-configure--env)
+2. [Configure](#2-configure)
 3. [Write your first test](#3-write-your-first-test)
 4. [Run it & read the output](#4-run-it--read-the-output)
 5. [`pom.yaml` — when natural naming fails](#5-pomyaml--when-natural-naming-fails)
@@ -54,10 +54,24 @@ Install only the extras you need:
 | `reporting` | Allure reports + JUnit XML | `uv pip install -e ".[reporting]"` |
 | `visual` | Desktop agent (OpenCV, Tesseract, PyAutoGUI) | `uv pip install -e ".[visual]"` |
 | `lsp` | VS Code language server | `uv pip install -e ".[lsp]"` |
+| `azure` | Azure Key Vault secret loader | `uv pip install -e ".[azure]"` |
 | `all` | Everything | `uv pip install -e ".[all]"` |
 
 For reports you also need the **Allure CLI** binary: `brew install allure`
 (macOS) / scoop / `npm i -g allure-commandline`.
+
+### Docker (reproducible runner)
+
+A `Dockerfile` based on the official Playwright image (browsers + system deps
+preinstalled) runs the whole suite with no local Python setup:
+
+```bash
+docker build -t bddframe .
+docker run --rm bddframe                       # default: bddframe run features/ --headless
+docker run --rm bddframe run features/saucedemo/ --headless
+```
+
+`.devcontainer/` opens the same image in VS Code ("Reopen in Container").
 
 ### Project layout
 
@@ -70,36 +84,59 @@ features/           ← your tests live here
   pom.yaml          ← global element aliases (optional)
   steps/            ← auto-wired catch-all — do not edit
   environment.py    ← hooks entry point — do not edit
-.env                ← credentials + config (gitignored)
-.env.example        ← copy this to .env
+environments.yaml   ← base URLs per environment ([SAUCEDEMO]) — committed
+.env                ← browser/run settings, NO secrets — committed
+secrets.env         ← credentials (gitignored); or use Azure Key Vault
 ```
 
 ---
 
-## 2. Configure — `.env`
+## 2. Configure
+
+Settings live in **three files by purpose** — base URLs, secrets, and run
+settings are kept apart so secrets never sit next to URLs and CI can swap each
+independently.
+
+| File | Holds | Committed? |
+|------|-------|------------|
+| `environments.yaml` | base URLs per environment | ✅ yes (no secrets) |
+| `secrets.env` | credentials / tokens — or [Azure Key Vault](#secrets--azure-key-vault) | ❌ gitignored |
+| `.env` | browser & run settings | ✅ yes (no secrets) |
 
 ```bash
-cp .env.example .env
+cp .env.example .env                 # run/browser settings
+cp secrets.env.example secrets.env   # credentials (then edit)
 ```
 
-Three tiers of settings:
+**Base URLs — `environments.yaml`.** Top-level keys become `[KEY]` references:
 
-**Global browser defaults** (rarely change):
+```yaml
+saucedemo: https://www.saucedemo.com
+staging:   https://staging.example.com
+```
+
+```gherkin
+Given User is on "[SAUCEDEMO]"      # → https://www.saucedemo.com
+```
+
+**Secrets — `secrets.env`** (gitignored; for CI, prefer
+[Key Vault](#secrets--azure-key-vault) or a pipeline variable group):
+
+```bash
+SAUCE_USERNAME=standard_user
+SAUCE_PASSWORD=secret_sauce
+```
+
+**Run settings — `.env`** (no secrets):
 
 ```bash
 BDDFRAME_BROWSER=chromium        # chromium | firefox | webkit
 BDDFRAME_HEADLESS=false          # true = no visible window
 BDDFRAME_TIMEOUT=10000           # ms to wait for elements
 BDDFRAME_STRICT_LOCATOR=false    # true = ambiguous locators FAIL (recommended in CI)
-```
-
-**Per-app credentials/URLs** — the bundled example uses the public
-[saucedemo.com](https://www.saucedemo.com) (safe to use):
-
-```bash
-SAUCE_USERNAME=standard_user
-SAUCE_PASSWORD=secret_sauce
-BASE_URL=https://www.saucedemo.com
+BDDFRAME_RETRIES=1               # re-run a failed scenario N extra times (flaky guard)
+BDDFRAME_PIXEL_THRESHOLD=0.01    # max fraction of changed pixels for "match the baseline"
+BDDFRAME_LOG_LEVEL=INFO          # DEBUG | INFO | WARNING | ERROR
 ```
 
 **LLM (optional)** — leave unset for a fully local run. See
@@ -111,10 +148,27 @@ BASE_URL=https://www.saucedemo.com
 # BDDFRAME_VISION_MODEL=ollama/llava
 ```
 
-Any `[variable]` in a `.feature` file maps to the matching env var, uppercased
-with spaces → underscores: `[sauce username]` → `SAUCE_USERNAME`. Values load
-from `.env` first, then the shell environment (so CI pipeline variables work
-unchanged).
+Any `[variable]` in a `.feature` maps to the matching key, uppercased with spaces
+→ underscores: `[sauce username]` → `SAUCE_USERNAME`. **Resolution order, highest
+wins:** Key Vault (if configured) → shell / CI variables → `.env` → `secrets.env`
+→ `environments.yaml`.
+
+### Secrets — Azure Key Vault
+
+For enterprise CI, pull secrets from a vault instead of `secrets.env`:
+
+```bash
+uv pip install -e ".[azure]"
+export BDDFRAME_KEYVAULT_URL=https://my-vault.vault.azure.net/
+```
+
+On set, `before_all` authenticates with `DefaultAzureCredential` (a managed
+identity on Azure agents; `az login` or env locally), loads **every** secret in
+the vault into the environment, and these override other sources. Vault names map
+to env keys by dash→underscore + uppercase (`sauce-password` → `SAUCE_PASSWORD`),
+since Key Vault names can't contain underscores. Unset the URL → `secrets.env` is
+used (the local-dev fallback). Grant the agent identity `get` + `list` on the
+vault's secrets.
 
 ---
 
@@ -165,6 +219,8 @@ bddframe run --tag smoke                        # only @smoke scenarios
 bddframe run --headless                         # no visible browser
 bddframe run --headed                           # force visible (overrides .env)
 bddframe run --browser firefox                  # firefox | webkit
+bddframe run --retries 2                        # re-run a failed scenario up to 2x
+bddframe run --log-level WARNING                 # quieter output
 bddframe list                                   # discovered scenarios, no browser
 bddframe validate                               # parse + check [variables], no browser
 ```
@@ -172,8 +228,22 @@ bddframe validate                               # parse + check [variables], no 
 **What to expect:**
 
 - Pass/fail printed per scenario.
-- On failure: `screenshots/FAILED_<step>.png` (annotated).
+- On failure: `screenshots/FAILED_<step>.png` (annotated) **+ `traces/<scenario>.zip`** (full Playwright trace — `playwright show-trace traces/<scenario>.zip`).
+- If a locator self-healed: `healing.jsonl` + `healing-report.txt` with `pom.yaml` suggestions.
 - With `[reporting]` installed: Allure JSON written to `allure-results/` automatically.
+
+### Flaky tests — retries & quarantine
+
+Failed scenarios are retried once by default (`BDDFRAME_RETRIES`, or `--retries`).
+Retries fire **only on failure**, so green scenarios cost nothing.
+
+| Tag | Effect |
+|-----|--------|
+| `@no_retry` | Never retry this scenario (e.g. a known-failing assertion you're asserting *does* fail) |
+| `@quarantine` | Still runs, but its failure is **non-blocking** — the build stays green. `bddframe run` exits 0 if every failure this run is quarantined. |
+
+Use `@quarantine` to keep a newly-flaky test visible in reports without blocking
+the pipeline while you fix it.
 
 **Log lines that tell you which resolution path fired:**
 
@@ -320,7 +390,7 @@ Full picture, including the LLM boundary: [Architecture → Resolution hierarchy
 
 ## 6. Built-in step reference
 
-40+ patterns work out of the box. Subject is stripped automatically.
+50+ patterns work out of the box. Subject is stripped automatically.
 
 ### Navigation
 ```gherkin
@@ -385,11 +455,45 @@ And the chart line should have attribute "stroke" equal to "green"
 And User should see 3 "result" items                 # count
 ```
 
-### Semantic / visual (requires `BDDFRAME_MODEL`)
+### Visual regression — deterministic (no LLM)
+Pixel diff against a stored baseline. First run captures `baselines/<name>.png`;
+later runs fail if more than `BDDFRAME_PIXEL_THRESHOLD` (default 1%) of pixels
+changed, saving `screenshots/DIFF_<name>.png` as evidence.
+```gherkin
+Then the screen should match the baseline
+Then the "checkout" screen should match the baseline
+```
+
+### Semantic / visual — LLM (requires `BDDFRAME_MODEL`)
 ```gherkin
 Then the checkout form should show a success state
 And the screen should look the same as before
 And the "header" screen should look the same as before ignoring the navigation
+```
+
+### Network mocking
+Intercept requests via Playwright routing — decouple a test from a flaky/slow/
+absent backend, or silence third-party noise.
+```gherkin
+When User mocks "**/api/cart" with status 200 and body '{"items":[]}'
+When User mocks "**/api/checkout" with status 500
+When User blocks requests to "**/analytics/**"
+```
+
+### API setup / teardown
+Hit an endpoint directly (Playwright's request context — shares browser cookies),
+e.g. to seed or clean data without driving the UI. Fails on a non-2xx response.
+```gherkin
+Given User calls POST "https://api.test/seed" with body '{"user":"bob"}'
+And   User calls GET "https://api.test/reset"
+```
+
+### Test-data fixtures
+Load a YAML/JSON mapping into the run-scoped variable store, then reference the
+keys as `` `backtick` `` captures.
+```gherkin
+Given User loads test data from "fixtures/users.yaml"
+When  User enters "`username`" in the username field
 ```
 
 ### Screenshots
@@ -465,6 +569,28 @@ bddframe report generate           # now shows trends
 step), each failed step with error + annotated screenshot, timeline. For *how*
 the report is built, see [Architecture → Where the report comes from](architecture.md#6-where-the-report-comes-from).
 
+### Failure traces (Playwright)
+
+Every **failed** scenario also captures `traces/<scenario>.zip` — a full
+Playwright trace with DOM snapshots, network log, console, and a frame-by-frame
+timeline. It's discarded on pass (green runs cost no disk). Open it:
+
+```bash
+playwright show-trace traces/<scenario>.zip
+```
+
+In CI it's published as a `Traces-*` pipeline artifact (on failure only). This is
+the headline debugging edge over Selenium/Selenide — time-travel through the run
+instead of guessing from a log.
+
+### Healing telemetry
+
+When the locator layer resolves something by a non-primary path (scroll/partial-
+text self-heal, POM disambiguation, vision-LLM locate), it's recorded. At end of
+run, if anything healed, BDDFrame writes `healing.jsonl` (one event per line) and
+`healing-report.txt` with a suggested `pom.yaml` entry per healed locator — turn a
+flaky-by-naming locator into a one-line deterministic fix.
+
 ---
 
 ## 9. Recording a test
@@ -523,11 +649,42 @@ What you get:
 |---------------|-------------|
 | `PublishTestResults@2` (JUnit `allure-results/junit.xml`) | **Run → Tests tab** — native pass/fail dashboard, trends, per-test history |
 | `PublishPipelineArtifact@1` (`allure-report`) | **Run → Artifacts → TestReport** — the Allure HTML as a downloadable zip |
+| `PublishPipelineArtifact@1` (`traces`, on failure) | **Run → Artifacts → Traces-*** — Playwright traces for failed scenarios |
 
 The Tests tab is a real dashboard for free. (A *hosted, browsable* Allure
 dashboard inside Azure DevOps is not built — the HTML is a downloadable artifact.
 The lightest path if you want it is the Allure Azure DevOps marketplace
 extension.)
+
+### Parallel execution (sharding)
+
+behave is single-process, so BDDFrame parallelizes by **sharding feature folders
+across agents**. The pipeline uses a matrix — one agent per folder — and each shard
+publishes its own `junit.xml`; the Tests tab aggregates them into one run:
+
+```yaml
+jobs:
+  - job: tests
+    strategy:
+      maxParallel: 4
+      matrix:
+        saucedemo:    { featurePath: 'features/saucedemo/' }
+        canadiantire: { featurePath: 'features/canadiantire/' }
+    steps:
+      - script: bddframe run $(featurePath) --headless
+      # ... PublishTestResults / artifacts per shard
+```
+
+Add a matrix row per feature folder to scale out. Because a run rewrites
+`allure-results/`, each shard must have its own workspace — which separate agents
+do automatically. (No in-process worker pool; add agents, not threads.)
+
+### Secrets via Key Vault
+
+Instead of putting credentials in the variable group, set `BDDFRAME_KEYVAULT_URL`
+and grant the pipeline's service connection / managed identity `get` + `list` on
+the vault. Install the extra (`pip install -e ".[azure]"`, included in `[all]`)
+and BDDFrame loads the vault at startup. See [Configure → Secrets](#secrets--azure-key-vault).
 
 ---
 
@@ -566,9 +723,11 @@ make test                          # == python -m pytest tests/ -v
 python -m pytest tests/test_lsp.py -v   # a single file
 ```
 
-**Expected: 172 passed, 0 failed.** Coverage spans CLI hardening, hooks
+**Expected: 200 passed, 0 failed.** Coverage spans CLI hardening, hooks
 lifecycle, step patterns (incl. tables and shared-state), visual patterns,
 OpenCV matcher (mocked), Allure writer, JUnit output, screenshot annotation,
-recorder + sensitive redaction, LSP validation, page-scoped POM lookup, and
-locator ambiguity detection.
+recorder + sensitive redaction, LSP validation, page-scoped POM lookup, locator
+ambiguity detection, and the enterprise additions — deterministic pixel diff,
+quarantine exit-code scan, healing telemetry, Key Vault merge, and the
+mock/API/test-data steps.
 </content>
