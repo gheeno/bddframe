@@ -11,4 +11,5 @@ traces/
 videos/
 output/
 healing-report.txt
+healing-report.jsonl
 healing.jsonl

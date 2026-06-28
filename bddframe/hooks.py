@@ -73,7 +73,7 @@ def before_all(context):
     load_dotenv("secrets.env")             # secrets (gitignored) — soon AKV
     _load_environments()
     _suite_results.clear()
-    if os.getenv("BDDFRAME_PARALLEL") == "1":
+    if os.getenv("BDDFRAME_PARALLEL_WORKER") == "1":
         # Each behavex worker is its own process — give it a private results
         # subdir so workers don't wipe/overwrite each other's files. The CLI
         # cleans the shared parent once, before spawning the workers.
@@ -292,7 +292,7 @@ def after_scenario(context, scenario):
 
 def after_all(context):
     _run_hooks("after_all", context)
-    parallel = os.getenv("BDDFRAME_PARALLEL") == "1"
+    parallel = os.getenv("BDDFRAME_PARALLEL_WORKER") == "1"
     rdir = _paths.results_dir()
     # In parallel mode keep every output inside the worker's own dir and skip
     # the report build — the CLI merges all worker dirs into one report once.

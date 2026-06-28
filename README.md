@@ -227,17 +227,32 @@ each its own checkout (what the CI matrix does automatically).
 **Locally**, get the same parallelism on one machine with `--parallel N`:
 
 ```bash
-pip install -e ".[parallel]"            # adds behavex
-bddframe run features/ --parallel 4 --headless
+pip install -e ".[parallel]"               # adds behavex
+bddframe run features/ --parallel 4 --headless    # 4 feature files at once
+bddframe run features/ --headless                 # single process (default)
 ```
 
 This runs up to 4 feature files at once (feature-level scheme — scenarios that
 share a `Background` stay on one process). Each worker writes to its own
 `allure-results/p<pid>/` subdir; BDDFrame cleans once up front, then flattens
-and merges everything into one Allure report at the end — no clobbering.
-**Use `--headless`**: N visible browsers at once is heavy. Without `--parallel`,
-runs stay single-process exactly as before. CI keeps its dynamic matrix — don't
-stack `--parallel` on top of the per-agent sharding (that double-parallelizes).
+and merges everything into **one** Allure report and **one** `junit.xml` at the
+end — same artifacts a single-process run produces, no clobbering, no leftover
+worker dirs. **Use `--headless`**: N visible browsers at once is heavy.
+
+**Toggleable, everywhere.** Parallelism is off by default. Flip it without
+changing the command via the `BDDFRAME_PARALLEL_PROCESSES` env var (the
+`--parallel` flag overrides it):
+
+```bash
+BDDFRAME_PARALLEL_PROCESSES=4 bddframe run features/ --headless
+```
+
+The same toggle is a pipeline variable (`parallelProcesses`) in both Azure
+files. Single-process and multi-process produce identical artifacts, so **the
+suite runs in either mode on macOS, Windows, Linux, and CI** — pure stdlib paths
+(`pathlib`/`shutil`), no OS-specific code. CI keeps its dynamic matrix as the
+default; don't stack per-job `--parallel` on top of the per-agent sharding
+unless a shard runs a whole folder (it double-parallelizes otherwise).
 
 > **Shared-backend data isolation.** Sharding gives each agent its own
 > *workspace*, not its own *backend*. If two shards seed the same test server

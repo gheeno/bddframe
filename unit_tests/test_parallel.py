@@ -28,7 +28,7 @@ def test_before_all_parallel_uses_pid_dir_and_skips_wipe(monkeypatch):
     monkeypatch.setattr(hooks.healing, "reset", lambda: None)
     wiped = []
     monkeypatch.setattr(hooks, "_clean_allure_results", lambda: wiped.append(True))
-    monkeypatch.setenv("BDDFRAME_PARALLEL", "1")
+    monkeypatch.setenv("BDDFRAME_PARALLEL_WORKER", "1")
     monkeypatch.delenv("BDDFRAME_RESULTS_DIR", raising=False)
 
     hooks.before_all(object())
@@ -46,26 +46,60 @@ def test_before_all_sequential_wipes_shared_dir(monkeypatch):
     monkeypatch.setattr(hooks.healing, "reset", lambda: None)
     wiped = []
     monkeypatch.setattr(hooks, "_clean_allure_results", lambda: wiped.append(True))
-    monkeypatch.delenv("BDDFRAME_PARALLEL", raising=False)
+    monkeypatch.delenv("BDDFRAME_PARALLEL_WORKER", raising=False)
 
     hooks.before_all(object())
     assert wiped == [True]
 
 
-def test_merge_flattens_worker_results(tmp_path):
+def test_merge_flattens_results_merges_junit_removes_worker_dirs(tmp_path):
     from bddframe.cli import _merge_worker_results
-    (tmp_path / "p1").mkdir()
-    (tmp_path / "p2").mkdir()
-    (tmp_path / "p1" / "a-result.json").write_text("{}")
-    (tmp_path / "p1" / "junit.xml").write_text("<x/>")
-    (tmp_path / "p2" / "b-result.json").write_text("{}")
+    for w, name in [("p1", "a"), ("p2", "b")]:
+        (tmp_path / w).mkdir()
+        (tmp_path / w / f"{name}-result.json").write_text("{}")
+        (tmp_path / w / "junit.xml").write_text(f'<testsuite name="{w}" tests="1"/>')
 
     _merge_worker_results(tmp_path)
 
-    flat = {f.name for f in tmp_path.glob("*-result.json")}
-    assert flat == {"a-result.json", "b-result.json"}
-    # per-worker junit stays put, not flattened
-    assert (tmp_path / "p1" / "junit.xml").exists()
+    assert {f.name for f in tmp_path.glob("*-result.json")} == {"a-result.json", "b-result.json"}
+    assert list(tmp_path.glob("p*")) == []                 # no leftover worker dirs
+    merged = (tmp_path / "junit.xml").read_text()
+    assert merged.count("<testsuite ") == 2                # both suites under <testsuites>
+
+
+def test_merge_junits_skips_missing_and_malformed(tmp_path):
+    from bddframe.reporting.junit import merge_junits
+    good = tmp_path / "good.xml"
+    good.write_text('<testsuite name="g" tests="1"/>')
+    bad = tmp_path / "bad.xml"
+    bad.write_text("not xml <<<")
+    out = merge_junits([good, bad, tmp_path / "missing.xml"], tmp_path / "out.xml")
+    text = out.read_text()
+    assert text.count("<testsuite ") == 1                  # only the good one
+
+
+def test_parallel_toggle_flag_env_and_default(monkeypatch):
+    from typer.testing import CliRunner
+    from bddframe import cli
+    seen = {}
+    monkeypatch.setattr(cli, "_run_parallel", lambda path, n, tag, env: seen.__setitem__("n", n) or 0)
+    # keep the single-process default path from actually launching behave
+    monkeypatch.setattr(cli.subprocess, "run", lambda *a, **k: type("R", (), {"returncode": 0})())
+    run = CliRunner()
+
+    seen.clear()
+    assert run.invoke(cli.app, ["run", "features/", "--parallel", "3", "--headless"]).exit_code == 0
+    assert seen["n"] == 3                                   # flag wins
+
+    seen.clear()
+    assert run.invoke(cli.app, ["run", "features/", "--headless"],
+                      env={"BDDFRAME_PARALLEL_PROCESSES": "2"}).exit_code == 0
+    assert seen["n"] == 2                                   # env drives when no flag
+
+    seen.clear()
+    assert run.invoke(cli.app, ["run", "features/", "--headless"],
+                      env={"BDDFRAME_PARALLEL_PROCESSES": "0"}).exit_code == 0
+    assert "n" not in seen                                  # default = single process
 
 
 def test_clean_removes_worker_dirs(tmp_path):
