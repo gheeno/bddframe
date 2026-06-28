@@ -41,9 +41,9 @@ this commit adds
 
 ## Squash rule
 
-After the **3rd commit** on a branch, squash all commits on that branch into one before doing any further work or pushing. The squashed commit message must still follow the format above, summarising all the work done.
+**Max 1 commit per branch.** Whenever a branch has more than one commit, squash them all into one before doing any further work or pushing. The squashed commit message must still follow the format above, summarising all the work done.
 
-To squash: `git rebase -i HEAD~N` where N is the number of commits on the branch since it diverged from main.
+To squash: `git reset --soft $(git merge-base HEAD main) && git commit` — or `git rebase -i HEAD~N` where N is the number of commits on the branch since it diverged from main.
 
 ---
 
