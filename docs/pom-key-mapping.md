@@ -260,3 +260,30 @@ ambiguity instead of silently clicking the first:
 In both modes, if a POM entry exists for the key it is used *before* falling
 back to the first match — so a scoped `xpath`/`css` entry is how you point the
 framework at the right one.
+
+## Shadow DOM, SVG & containers (Phase 11.3)
+
+**Shadow DOM** — Playwright's `css` / `role` / `text` / `id` / `testid` engines
+**automatically pierce *open* shadow DOM**, and the accessibility path
+(role/label/text) already uses them, so web-component pages mostly "just work."
+Two rules:
+
+- **Prefer `css` / `role` / `id` selectors in `pom.yaml`. Avoid `xpath` on
+  shadow-DOM pages — XPath does NOT cross shadow boundaries** and will silently
+  miss the element.
+- **Closed** shadow DOM is unreachable by *any* selector. The only fallback is
+  the vision LLM (it works from a screenshot) — set a vision model for those.
+
+**SVG** — an SVG is real DOM, so it's targetable (unlike `<canvas>`). If an SVG
+icon has a `<title>` or `role="img"` + `aria-label`, it resolves **by name** with
+no POM entry. Otherwise treat it like any icon-only button and add a `css` /
+`testid` POM entry. To assert on an SVG (a chart line's colour, a `<title>`), use
+`the <thing> should have attribute "stroke" equal to "green"` (Phase 11.1).
+
+**Containers / scoping** — to act on an element inside a region, prefer:
+
+- a **row-scoped** step — `When User clicks "Edit" in the row containing "Contoso"`;
+- a **section-scoped** step — `When User clicks "Save" in the "Payment" section`;
+- or, for repeated cases, a scoped `pom.yaml` page-block (above).
+
+Avoid baking container paths into the sentence — keep selectors in `pom.yaml`.

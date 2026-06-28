@@ -35,7 +35,9 @@ def _llm_resolve(step_text: str) -> dict:
 
 Step: "{step_text}"
 
-Valid action types: navigate, click, fill, assert_visible, assert_hidden, assert_url, screenshot, wait_load, scroll
+Valid action types: navigate, search, close_popups, click, fill, hover, press_key, clear, select, check, uncheck, assert_visible, assert_hidden, assert_url, assert_value, assert_state, assert_attribute, assert_count, store_text, scroll, screenshot, wait_load, wait_visible, wait_hidden
+
+Param keys by type: click/hover/clear -> locator; fill -> locator,value; press_key -> key; assert_visible/assert_hidden/wait_visible/wait_hidden -> text; assert_value -> locator,value; assert_state -> locator,state; assert_attribute -> locator,attribute,value; assert_count -> count,locator; store_text -> locator,var; set_var -> var,value; store_attribute -> attribute,locator,var; assert_compare -> left,op,right
 
 Reply with JSON only, example: {{"type": "click", "locator": "Login"}}
 """
