@@ -21,8 +21,11 @@ import re
 import sys
 from pathlib import Path
 
-# A feature file is excluded from web sharding if any of these tags appear.
-NON_WEB_TAGS = {"appium", "mobile", "desktop", "native", "ios", "android"}
+# A feature file is excluded from web sharding if any of these tags appear:
+# other platforms (need a device/host per shard) or network/manual demos that
+# shouldn't run unattended in CI (@live hits a real site; @manual is opt-in).
+NON_WEB_TAGS = {"appium", "mobile", "desktop", "native", "ios", "android",
+                "live", "manual"}
 
 _TAG = re.compile(r"@(\w+)")
 

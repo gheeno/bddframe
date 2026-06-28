@@ -156,5 +156,28 @@ def execute_step(step_text: str, context):
         out = script_runner.run_command(action['command'])
         _store_script_output(context, out, action.get('var'))
         logger.info(f"\n  🛠  Ran command {action['command']!r} → {out!r}")
+    # --- BFRAME_0024: web pixel/OCR bridge (canvas & terminal UIs) -----------
+    elif t in ('type_text', 'click_at', 'click_text', 'assert_screen_text',
+               'assert_screen_text_hidden', 'wait_screen_text', 'assert_buffer',
+               'focus_region'):
+        from bddframe.agents.web import screen
+        if t == 'type_text':
+            screen.type_text(page, action['text'])
+        elif t == 'click_at':
+            screen.click_at(page, action['x'], action['y'])
+        elif t == 'click_text':
+            screen.click_text(page, action['text'])
+        elif t == 'assert_screen_text':
+            screen.assert_text_visible(page, action['text'])
+        elif t == 'assert_screen_text_hidden':
+            screen.assert_text_hidden(page, action['text'])
+        elif t == 'wait_screen_text':
+            screen.wait_text_visible(page, action['text'])
+        elif t == 'assert_buffer':
+            screen.assert_buffer_contains(page, action['text'])
+        elif t == 'focus_region':
+            from bddframe.agents.visual import regions
+            vp = page.viewport_size or {"width": 1280, "height": 720}
+            screen.set_region(regions.parse_region(action['region'], (vp["width"], vp["height"])))
     else:
         raise AssertionError(f"Unknown action type: '{t}'")

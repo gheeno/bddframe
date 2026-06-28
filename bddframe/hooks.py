@@ -113,13 +113,43 @@ def before_feature(context, feature):
     _run_hooks("before_feature", context, feature)
 
 
+def _ocr_available():
+    """True when pytesseract + the tesseract binary are usable. Cached."""
+    global _OCR_OK
+    if _OCR_OK is None:
+        try:
+            import pytesseract
+            pytesseract.get_tesseract_version()
+            _OCR_OK = True
+        except Exception:
+            _OCR_OK = False
+    return _OCR_OK
+
+
+_OCR_OK = None
+
+
 def before_scenario(context, scenario):
     tags = set(scenario.effective_tags)
+
+    # @live scenarios hit a real external site — opt-in only, so CI and casual
+    # runs never make surprise network calls. Set BDDFRAME_RUN_LIVE=1 to run.
+    if 'live' in tags and os.getenv("BDDFRAME_RUN_LIVE", "").lower() not in ("1", "true", "yes"):
+        scenario.skip("@live is opt-in — set BDDFRAME_RUN_LIVE=1 to run real-site tests")
+        return
+
+    # @terminal scenarios need the OCR engine — skip (not fail) where tesseract
+    # isn't installed, so a suite stays green on a box without the [visual] extra.
+    if 'terminal' in tags and not _ocr_available():
+        scenario.skip("OCR engine (tesseract) not installed — pip install bddframe[visual]")
+        return
 
     # Per-scenario locator/POM state — reset so tags/pins don't leak between scenarios.
     locator_module.set_strict('strict' in tags or None)
     locator_module.set_frame(None)        # 11.2 — clear any iframe scope
     pom_module.set_active_page(None)
+    from bddframe.agents.web import screen as _screen
+    _screen.set_region(None)              # 0024 — clear any OCR focus region
     context._vars = {}                     # 11.1 — run-scoped stored values
     context._scenario_failed = False       # set by after_step; gates trace save
 

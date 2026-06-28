@@ -270,6 +270,45 @@ the **[Guide](docs/guide.md)**.
 
 ---
 
+## Terminal & canvas UIs (OCR bridge)
+
+Some web apps render to a `<canvas>` — terminal emulators (xterm.js), WebGL
+screens, "black and green, no defined UI." There's **no DOM text to locate**, so
+role/label/text strategies (and Selenium/Healenium, which are equally DOM-bound)
+come up empty. BDDFrame drives these in normal web mode — headless, parallel,
+traced — with a pixel/OCR bridge: raw keyboard, coordinate clicks, and
+deterministic OCR over the rendered screenshot.
+
+```gherkin
+@web @terminal
+Scenario: drive a canvas terminal
+  Given User is on "features/terminal/terminal_app.html"
+  When User clicks at 400, 200            # focus the canvas by coordinate
+  And User types "login admin"            # raw keyboard, no locator
+  And User presses Enter
+  Then the screen shows "ACCESS GRANTED"  # OCR over the pixels, no DOM
+  And the screen should not show "unknown command"
+```
+
+| Plain English | What it does |
+|---|---|
+| `types "<text>"` / `enters "<text>"` | `keyboard.type` into whatever's focused — no locator |
+| `clicks at <x>, <y>` | coordinate click (CSS px; DPR-corrected) |
+| `clicks on the text "<x>"` | OCR-locate the text, then click it |
+| `the screen shows "<x>"` / `should not show` | deterministic OCR assertion over the screenshot |
+| `waits until the screen shows "<x>"` | poll OCR for streaming output |
+| `the terminal buffer contains "<x>"` | DOM-renderer terminals (xterm DOM mode / `<pre>`) — reads `inner_text` |
+| `focuses on the "<region>" region` | narrow OCR to a viewport region (e.g. `top-left`) |
+
+OCR steps need the engine: `pip install -e ".[visual]"` plus the **tesseract**
+binary (macOS: `brew install tesseract`). `@terminal` scenarios **skip** (not
+fail) where tesseract is absent. OCR-first is deterministic and offline; a vision
+LLM is used as a coordinate fallback only when `BDDFRAME_MODEL` is set. A runnable
+example (local canvas fixture + a `@live` real-site template) is in
+[`features/terminal/`](features/terminal/).
+
+---
+
 ## Preconditions & teardowns
 
 Like a JDBC `@Before`/`@After` in Java: instead of clicking the UI into the state
