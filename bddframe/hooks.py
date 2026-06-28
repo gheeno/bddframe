@@ -145,6 +145,11 @@ def before_scenario(context, scenario):
     if _REPORTING:
         context._allure_result = _writer.ScenarioResult(scenario)
 
+    # Data preconditions — seed BusterBlock state via @precondition:NAME before the
+    # UI test runs (the JDBC-fixture analog). Setup failures abort the scenario.
+    from bddframe import preconditions
+    preconditions.run(scenario, "setup")
+
 
 def _allure_result(context):
     """Return context._allure_result only when it's a real ScenarioResult instance."""
@@ -184,6 +189,11 @@ def after_step(context, step):
 
 
 def after_scenario(context, scenario):
+    # Teardown first, so it always runs even if the scenario failed (the point of
+    # teardown). Failures here are logged, not raised — see preconditions.run.
+    from bddframe import preconditions
+    preconditions.run(scenario, "teardown")
+
     ar = _allure_result(context)
     if ar is not None:
         ar.finish(scenario)

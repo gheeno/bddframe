@@ -17,6 +17,9 @@ const movies = JSON.parse(fs.readFileSync(path.join(__dirname, 'data/movies.json
 const carts = new Map();
 const orders = new Map();
 
+// Startup snapshot of stock so the test-reset endpoint can restore it.
+const ORIGINAL_STOCK = new Map(movies.map(m => [m.id, m.stock]));
+
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -158,6 +161,40 @@ app.get('/api/orders', auth, (req, res) => {
   const userOrders = [...orders.values()].filter(o => o.userId === req.user.userId);
   res.json(userOrders);
 });
+
+// ─── Test seam ─────────────────────────────────────────────────────────────────
+// Test-only data-manipulation endpoints — the BDD precondition/teardown surface.
+// The in-memory Maps above ARE the "database"; these let a test seed/reset it
+// before asserting, the way JDBC fixtures do in Java. ponytail: gated by env, not
+// auth — it's a test app. Set BB_TEST_API=0 to disable.
+if (process.env.BB_TEST_API !== '0') {
+  // Universal teardown: empty carts + orders, restore stock to startup values.
+  app.post('/api/test/reset', (req, res) => {
+    carts.clear();
+    orders.clear();
+    movies.forEach(m => { m.stock = ORIGINAL_STOCK.get(m.id) ?? m.stock; });
+    res.json({ message: 'reset', movies: movies.length });
+  });
+
+  // Force a movie's stock (e.g. 0 to exercise the out-of-stock path).
+  app.patch('/api/test/stock', (req, res) => {
+    const { movieId, stock } = req.body || {};
+    const movie = movies.find(m => m.id === movieId);
+    if (!movie) return res.status(404).json({ error: 'Movie not found' });
+    if (typeof stock !== 'number' || stock < 0) return res.status(400).json({ error: 'stock must be a number >= 0' });
+    movie.stock = stock;
+    res.json({ movieId, stock: movie.stock });
+  });
+
+  // Pre-fill a user's cart without driving the UI.
+  app.post('/api/test/seed-cart', (req, res) => {
+    const { username, items } = req.body || {};
+    if (!users.find(u => u.username === username)) return res.status(404).json({ error: 'User not found' });
+    if (!Array.isArray(items)) return res.status(400).json({ error: 'items must be an array' });
+    carts.set(username, items.map(i => ({ movieId: i.movieId, qty: i.qty || 1 })));
+    res.json(cartResponse(username));
+  });
+}
 
 // ─── Health ───────────────────────────────────────────────────────────────────
 

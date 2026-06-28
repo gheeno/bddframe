@@ -1,5 +1,5 @@
 {
-  "name": "vhs-vault",
+  "name": "test-app-vhs-vault",
   "version": "1.0.0",
   "description": "BusterBlock.ca — VHS rental test site for BDDFrame",
   "main": "server.js",
