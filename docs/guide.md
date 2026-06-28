@@ -26,6 +26,7 @@ Just want the elevator pitch and copy-paste commands? The
 12. [VS Code extension](#12-vs-code-extension)
 13. [Testing the framework itself](#13-testing-the-framework-itself)
 14. [Custom hooks](#14-custom-hooks)
+15. [Writing a custom step](#15-writing-a-custom-step)
 
 ---
 
@@ -973,4 +974,96 @@ def maybe_seed(context, scenario):
     if "needs_admin" in scenario.effective_tags:
         context.admin_token = fetch_admin_token()
 ```
+
+---
+
+## 15. Writing a custom step
+
+### How BDDFrame resolves a step
+
+Every step goes through two tiers:
+
+1. **Pattern match** — `bddframe/resolver/patterns.py` is tried first. A regex
+   match returns an action dict immediately; no model is invoked.
+2. **LLM fallback** — if no pattern matches *and* `BDDFRAME_MODEL` is set, the
+   step text is sent to the configured model. Without `BDDFRAME_MODEL` the run
+   fails with a clear "add a pattern" message.
+
+The VS Code extension (LSP) shows an inline warning on any step that would fall
+through to tier 2:
+
+```
+No built-in pattern matched — LLM will resolve at runtime.  [llm-fallback]
+```
+
+### What to do when you see that warning
+
+**Option A — add a pattern (preferred)**
+
+Open `bddframe/resolver/patterns.py` and append an entry to `PATTERNS`:
+
+```python
+# My new verb
+(r'^verifies? (?:that )?(.+?) (?:is|are) displayed?$',
+                                               'assert_visible', lambda m: {'text': _q(m.group(1))}),
+```
+
+The tuple is `(regex, action_type, param_extractor)`. Patterns are matched
+top-to-bottom; first match wins. Regex is anchored (`^…$`) and
+case-insensitive.
+
+Pick the closest existing `action_type` — you rarely need a new one. The full
+list is in `bddframe/resolver/step_resolver.py::VALID_TYPES`.
+
+After adding the pattern, save the file. The LSP re-validates open `.feature`
+files immediately and the warning disappears. No restart needed.
+
+**Option B — accept LLM fallback**
+
+If the step is intentionally vague (e.g. exploratory tests, legacy steps you
+haven't cleaned up yet), you can silence the warning by adding `# llm-ok` at
+the end of the step line:
+
+```gherkin
+When User authenticates on the sample application  # llm-ok
+```
+
+The LSP skips validation for lines marked `# llm-ok`. The step still falls
+through to the LLM at runtime — the comment is only a suppression directive for
+the editor warning.
+
+> Only use `# llm-ok` for steps that you have consciously decided to leave
+> LLM-resolved. A pattern in `patterns.py` is always faster (no model round
+> trip) and more deterministic.
+
+### Pattern authoring tips
+
+| Goal | Technique |
+|------|-----------|
+| Optional words ("the", "a") | `(?:the\s+)?` |
+| Singular or plural verb | `verifies?` |
+| Capture a quoted string | `'([^']+)'` or `["\'](.+?)["\']` |
+| Strip surrounding quotes | wrap with `_q(m.group(n))` |
+| Accept a backtick variable | `[\[` + `` ` `` + `]([^\]` + `` ` `` + `]+)[\]` + `` ` `` + `]` (see `set_var` pattern) |
+| Action targets a variable already substituted | variables are expanded *before* `resolve()` is called, so the pattern sees the final value |
+
+### Testing your pattern
+
+```bash
+python3 -c "
+from bddframe.resolver.patterns import match, normalize_subject
+step = 'verifies that the cart is displayed'
+print(match(normalize_subject(step)))
+"
+```
+
+A `None` result means the pattern didn't match. Check anchoring and quoting.
+
+### Checklist before you push
+
+- [ ] Pattern added to `bddframe/resolver/patterns.py`
+- [ ] `VALID_TYPES` in `step_resolver.py` updated if you added a new `action_type`
+- [ ] Runner (`orchestrator/runner.py`) handles the new action type in `execute_step`
+- [ ] LSP warning gone in VS Code
+- [ ] Quick smoke: `python3 -c "from bddframe.resolver.patterns import match, normalize_subject; print(match(normalize_subject('your step text')))"` returns the expected action
 </content>

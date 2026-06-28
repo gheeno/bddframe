@@ -1,3 +1,4 @@
+import json
 import os
 import re
 from bddframe.log import logger
@@ -207,6 +208,17 @@ def execute_step(step_text: str, context):
     elif t == 'load_data':
         context._vars.update(actions.load_data(action['file']))
         logger.info(f"\n  📦 Loaded test data from {action['file']}")
+    elif t == 'load_resource':
+        feature_dir = os.path.dirname(os.path.abspath(context.feature.filename))
+        paths = [action['path']] if action['path'] else [row['payload'] for row in context.table]
+        for rel in paths:
+            full = os.path.join(feature_dir, 'resources', rel)
+            with open(full) as fh:
+                content = fh.read()
+            stem = os.path.splitext(os.path.basename(rel))[0].upper().replace('-', '_').replace(' ', '_')
+            context._vars[f'PAYLOAD_{stem}'] = content
+            context._vars['PAYLOAD'] = content  # ponytail: last-loaded wins; named vars cover multi-file use
+            logger.info(f"\n  📄 Loaded resource {rel}")
     # --- BFRAME_0016: run an external script / command -----------------------
     elif t == 'run_script':
         out = script_runner.run_script(action['path'], action.get('args'))
@@ -239,5 +251,64 @@ def execute_step(step_text: str, context):
             from bddframe.agents.visual import regions
             vp = page.viewport_size or {"width": 1280, "height": 720}
             screen.set_region(regions.parse_region(action['region'], (vp["width"], vp["height"])))
+    # --- BFRAME_0029: proper REST HTTP client ------------------------------------
+    elif t == 'rest_set_header':
+        hdrs = json.loads(context._vars.get('_REST_HEADERS', '{}'))
+        hdrs[action['name']] = action['value']
+        context._vars['_REST_HEADERS'] = json.dumps(hdrs)
+    elif t == 'rest_call':
+        from bddframe.agents.web import rest_client
+        base = context._vars.get('REST_BASE_URL', '')
+        hdrs = json.loads(context._vars.get('_REST_HEADERS', '{}'))
+        path = action['path']
+        url = path if path.startswith('http') else base.rstrip('/') + '/' + path.lstrip('/')
+        status, body, headers = rest_client.rest_call(action['method'], url, action.get('body'), hdrs)
+        context._vars['REST_STATUS'] = str(status)
+        context._vars['REST_BODY'] = body
+        context._vars['REST_HEADERS'] = json.dumps(dict(headers))
+        if action.get('var'):
+            context._vars[action['var'].upper().replace(' ', '_')] = body
+        logger.info(f"\n  🌐 {action['method']} {url} → {status}")
+    elif t == 'rest_assert_status':
+        actual = int(context._vars.get('REST_STATUS', 0))
+        assert actual == action['expected'], f"Expected status {action['expected']}, got {actual}"
+    elif t == 'rest_extract_json':
+        body = context._vars.get('REST_BODY', '{}')
+        try:
+            data = json.loads(body)
+        except ValueError as exc:
+            raise AssertionError(f"REST_BODY is not valid JSON: {body[:100]}") from exc
+        key = action['key']
+        item = data[0] if isinstance(data, list) else data
+        if key not in item:
+            raise AssertionError(f"Key '{key}' not found in response JSON")
+        target = action['var'].upper().replace(' ', '_')
+        context._vars[target] = str(item[key])
+        logger.info(f"\n  💾 Extracted '{key}' → `{target}` = {context._vars[target]!r}")
+    elif t == 'rest_assert_body':
+        body = context._vars.get('REST_BODY', '')
+        assert action['needle'] in body, f"Response body does not contain '{action['needle']}'"
+    elif t == 'rest_assert_body_table':
+        body = context._vars.get('REST_BODY', '')
+        for row in context.table:
+            key, value = row['Key'], row.get('Value', '').strip()
+            assert key in body, f"Response body does not contain key '{key}'"
+            if value:
+                assert value in body, f"Response body does not contain value '{value}' for key '{key}'"
+    elif t == 'rest_assert_header':
+        headers = json.loads(context._vars.get('REST_HEADERS', '{}'))
+        actual = next((v for k, v in headers.items() if k.lower() == action['name'].lower()), None)
+        assert actual is not None, f"Response header '{action['name']}' not found"
+        assert action['value'].lower() in actual.lower(), \
+            f"Header '{action['name']}': expected '{action['value']}', got '{actual}'"
+    elif t == 'rest_assert_header_table':
+        headers = json.loads(context._vars.get('REST_HEADERS', '{}'))
+        for row in context.table:
+            name, expected = row['Header'], row.get('Value', '').strip()
+            actual = next((v for k, v in headers.items() if k.lower() == name.lower()), None)
+            assert actual is not None, f"Response header '{name}' not found"
+            if expected:
+                assert expected.lower() in actual.lower(), \
+                    f"Header '{name}': expected '{expected}', got '{actual}'"
     else:
         raise AssertionError(f"Unknown action type: '{t}'")
