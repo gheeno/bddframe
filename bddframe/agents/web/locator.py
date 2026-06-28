@@ -218,6 +218,39 @@ def _describe_candidates(loc: Locator, limit: int = 5) -> list[str]:
     return out or ["(none)"]
 
 
+def _parse_vision_selector(raw: str) -> str | None:
+    """Extract a CSS selector from the vision model's reply, or None when it
+    reports it can't find the element. Tolerates a ```json fence, prose around
+    the object, the structured {"selector": ...} form, and a bare selector
+    string. Pure — unit-testable without a page or model.
+
+    The structured null path ({"selector": null}) is what stops a hallucinated
+    selector from being fed to page.locator: a model that can't see the element
+    says so instead of inventing one."""
+    import json
+    import re
+    if not isinstance(raw, str):
+        return None
+    text = raw.strip()
+    # Strip a markdown code fence — the old code only stripped single backticks,
+    # so a fenced reply broke page.locator(). This is the headline 0018-2 fix.
+    text = re.sub(r'^```[a-zA-Z]*\n?|\n?```$', '', text).strip()
+    # Structured form: {"selector": "<css>"} or {"selector": null}.
+    m = re.search(r'\{.*\}', text, re.DOTALL)
+    if m:
+        try:
+            obj = json.loads(m.group(0))
+        except json.JSONDecodeError:
+            obj = None
+        if isinstance(obj, dict) and 'selector' in obj:
+            sel = obj['selector']
+            return sel.strip() if isinstance(sel, str) and sel.strip() else None
+    # Bare-selector fallback (model ignored the JSON instruction). Still gated
+    # by loc.count() in the caller, so a hallucinated selector matches nothing.
+    text = text.strip('`').strip()
+    return text or None
+
+
 def _vision_locate(page: Page, text: str) -> Locator | None:
     if not os.getenv("BDDFRAME_MODEL"):
         return None
@@ -225,13 +258,18 @@ def _vision_locate(page: Page, text: str) -> Locator | None:
         import base64
         from bddframe.llm.client import ask_vision
         b64 = base64.b64encode(page.screenshot()).decode()
-        css = ask_vision(
+        raw = ask_vision(
             prompt=(
-                f'Return ONLY a CSS selector for the element labelled "{text}" '
-                f'visible in this screenshot. No explanation, just the selector.'
+                f'Find the element labelled "{text}" in this screenshot and return '
+                f'a CSS selector for it. Reply with JSON only: '
+                f'{{"selector": "<css>"}} if you can identify it, or '
+                f'{{"selector": null}} if you cannot. No other text.'
             ),
             image_b64=b64,
-        ).strip().strip('`')
+        )
+        css = _parse_vision_selector(raw)
+        if not css:
+            return None
         loc = page.locator(css)
         if loc.count() > 0:
             return loc.first
