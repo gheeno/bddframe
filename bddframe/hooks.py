@@ -52,6 +52,7 @@ def before_scenario(context, scenario):
     locator_module.set_frame(None)        # 11.2 — clear any iframe scope
     pom_module.set_active_page(None)
     context._vars = {}                     # 11.1 — run-scoped stored values
+    context._scenario_failed = False       # set by after_step; gates trace save
 
     # Bug 3: warn when @headed and @headless both appear — @headed wins but conflict
     # is almost always a forgotten debug tag that will break CI silently.
@@ -99,6 +100,18 @@ def before_scenario(context, scenario):
         ctx_opts['record_video_dir'] = "videos/"
 
     context._bctx = context._browser.new_context(**ctx_opts)
+
+    # Playwright tracing — DOM snapshots + network + sources. Started for every
+    # scenario, but only SAVED on failure (after_scenario); discarded on pass so
+    # green runs cost no disk. The trace viewer is the headline debugging edge
+    # over Selenium/Selenide. ponytail: always-on capture, save-on-fail; the only
+    # cheaper option (start-on-retry) needs a retry loop we don't have yet.
+    try:
+        context._bctx.tracing.start(screenshots=True, snapshots=True, sources=True)
+        context._tracing = True
+    except Exception:
+        context._tracing = False
+
     context.page = context._bctx.new_page()
     context.page.set_default_timeout(timeout)
 
@@ -121,6 +134,7 @@ def _allure_result(context):
 
 def after_step(context, step):
     if step.status == "failed":
+        context._scenario_failed = True
         os.makedirs("screenshots", exist_ok=True)
         safe_name = step.name.replace(" ", "_").replace("/", "_")[:80]
         raw_path = f"screenshots/FAILED_{safe_name}.png"
@@ -148,6 +162,23 @@ def after_scenario(context, scenario):
         ar.finish(scenario)
         _writer.write_result(ar)
         _suite_results.append(ar)
+
+    # Stop tracing BEFORE closing the context (tracing.stop needs it alive).
+    # Save the zip only when the scenario failed; otherwise discard.
+    if getattr(context, "_tracing", False):
+        bctx = getattr(context, "_bctx", None)
+        try:
+            if context._scenario_failed and bctx is not None:
+                os.makedirs("traces", exist_ok=True)
+                safe_name = scenario.name.replace(" ", "_").replace("/", "_")[:80]
+                trace_path = f"traces/{safe_name}.zip"
+                bctx.tracing.stop(path=trace_path)
+                print(f"\n  🧭 Trace saved: {trace_path}"
+                      f"\n     View it: playwright show-trace {trace_path}")
+            elif bctx is not None:
+                bctx.tracing.stop()       # passed — discard
+        except Exception:
+            pass
 
     # Bug 6: clean up each resource independently so a failure on one
     # (e.g. _bctx never created) does not skip stopping _pw and leak

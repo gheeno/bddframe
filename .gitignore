@@ -7,3 +7,5 @@ __pycache__/
 screenshots/
 allure-results/
 allure-report/
+traces/
+videos/

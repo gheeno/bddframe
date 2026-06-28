@@ -35,7 +35,6 @@ def run(
     headed: bool = typer.Option(False, "--headed", help="Force browser visible (overrides --headless and .env)"),
     tag: str = typer.Option(None, "--tag", "-t", help="Filter by tag e.g. smoke"),
     browser: str = typer.Option("chromium", "--browser", "-b", help="chromium | firefox | webkit"),
-    workers: int = typer.Option(1, "--workers", "-w", help="Parallel scenario workers (phase 6)"),
 ):
     """Run .feature files."""
     # Bug 2: reject mutually exclusive flags up front
