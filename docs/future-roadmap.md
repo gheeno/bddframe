@@ -120,10 +120,16 @@ same plain-English Gherkin steps as the web agent where possible.
 
 Three sub-phases in priority order.
 
-### G1 — Wire `focus_region` (highest priority, ~1 day)
+### G1 — Wire `focus_region` ✅ Done (BFRAME_0024)
 
-**Problem:** `focus_region` parses the region string but never narrows the
-OpenCV or OCR search area. Any step that follows it searches the full screen.
+Done for the **web** OCR bridge: `focuses on the "<region>" region` sets a
+per-scenario region (viewport-sized via `regions.parse_region(..., size)`) that
+crops the screenshot before OCR. The desktop/OpenCV path can adopt the same
+`set_region` pattern. Delivered alongside the web pixel/OCR bridge for
+canvas/terminal UIs (`agents/web/screen.py`).
+
+**Original problem:** `focus_region` parses the region string but never narrows
+the OpenCV or OCR search area. Any step that follows it searches the full screen.
 
 **Fix:**
 

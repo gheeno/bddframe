@@ -5,18 +5,21 @@ import os
 from .screenshot import capture
 
 
-def locate_by_description(description: str) -> tuple[int, int] | None:
-    """Return (x, y) from vision LLM, or None if model not configured or parse fails."""
-    if not os.getenv("BDDFRAME_VISION_MODEL"):
+def locate_by_description(description: str, image=None) -> tuple[int, int] | None:
+    """Return (x, y) from vision LLM, or None if no model is configured or the
+    parse fails. `image` (PIL) is the frame to search — the web agent passes a
+    browser screenshot; default captures the OS screen (desktop agent)."""
+    if not (os.getenv("BDDFRAME_VISION_MODEL") or os.getenv("BDDFRAME_MODEL")):
         return None
 
     import base64
     from bddframe.llm.client import ask_vision
 
-    screen_pil, _ = capture()
+    if image is None:
+        image, _ = capture()
     import io
     buf = io.BytesIO()
-    screen_pil.save(buf, format="PNG")
+    image.save(buf, format="PNG")
     b64 = base64.b64encode(buf.getvalue()).decode()
 
     prompt = (

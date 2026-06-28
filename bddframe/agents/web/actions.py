@@ -12,6 +12,13 @@ def set_page(name: str):
 
 
 def navigate(page: Page, url: str):
+    # Portable local fixtures: a bare relative .html path → a file:// URL, so a
+    # feature can say `is on "features/terminal/app.html"` on any machine.
+    if "://" not in url:
+        from pathlib import Path
+        p = Path(url)
+        if p.suffix.lower() in (".html", ".htm") and p.exists():
+            url = p.resolve().as_uri()
     page.goto(url, wait_until="domcontentloaded")
 
 

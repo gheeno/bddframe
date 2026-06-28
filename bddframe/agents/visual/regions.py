@@ -1,13 +1,16 @@
 """Screen region parsing — named regions and raw x,y,w,h coordinates."""
 
 
-def parse_region(region_str: str) -> dict:
+def parse_region(region_str: str, size: tuple | None = None) -> dict:
     """
-    Convert a region string to {x, y, width, height} in screen pixels.
+    Convert a region string to {x, y, width, height} in pixels.
     Named regions: top-left, top-right, bottom-left, bottom-right, center.
     Raw form: "x,y,width,height" (integers, comma-separated).
+
+    `size` (width, height) is the coordinate space — the web agent passes the
+    browser viewport; default is the OS screen (desktop agent).
     """
-    sw, sh = _screen_size()
+    sw, sh = size if size else _screen_size()
     half_w, half_h = sw // 2, sh // 2
 
     named = {

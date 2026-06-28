@@ -56,6 +56,7 @@ _FIRST_TO_THIRD = {
     'search': 'searches',
     'close': 'closes',
     'grab': 'grabs',
+    'focus': 'focuses',
 }
 
 
@@ -126,6 +127,14 @@ PATTERNS = [
     (r'^clears? (?:the )?(.+?) (?:field|box|input)$',
                                                    'clear',          lambda m: {'locator': _q(m.group(1))}),
 
+    # --- Screen/terminal bridge (BFRAME_0024) — OCR + page-coordinate, no DOM.
+    # Raw keyboard type (no locator): "types 'ls -la'" / "enters 'login admin'".
+    # MUST follow the fill patterns above so "types X into Y" still routes to fill.
+    (r'^(?:types?|enters?) ["\'](.+?)["\']$',      'type_text',      lambda m: {'text': _q(m.group(1))}),
+    # Focus OCR/screen reads to a region: "focuses on the 'top-left' region".
+    (r'^focus(?:es)? on (?:the )?["\'](.+?)["\'] (?:region|area)$',
+                                                   'focus_region',   lambda m: {'region': _q(m.group(1))}),
+
     # Scoped clicks (11.2) — MUST precede the generic click catch-alls below,
     # which would otherwise swallow the whole "X in the row/section ..." phrase.
     (r'^clicks? ["\']?(.+?)["\']? in (?:the )?row (?:containing|with) ["\'](.+?)["\']$',
@@ -137,6 +146,13 @@ PATTERNS = [
     # (a click). MUST precede the press-button + click catch-alls.
     (r'^presses? (?:the )?["\']?(Enter|Return|Tab|Escape|Esc|Space|Backspace|Delete|ArrowUp|ArrowDown|ArrowLeft|ArrowRight|Up|Down|Left|Right|Home|End|PageUp|PageDown)["\']?(?: key)?$',
                                                    'press_key',      lambda m: {'key': m.group(1)}),
+
+    # Coordinate / OCR clicks (BFRAME_0024) — MUST precede the generic click
+    # catch-alls, which would otherwise capture "at 10, 20" / "on the text ..."
+    # as a DOM locator.
+    (r'^clicks? at \(?(\d+)\s*,\s*(\d+)\)?$',       'click_at',       lambda m: {'x': int(m.group(1)), 'y': int(m.group(2))}),
+    (r'^clicks? on (?:the )?(?:screen )?text ["\'](.+?)["\']$',
+                                                   'click_text',     lambda m: {'text': _q(m.group(1))}),
 
     # Click / Press / Tap
     (r'^clicks? (?:the )?(.+?) button$',           'click',          lambda m: {'locator': _q(m.group(1))}),
@@ -182,6 +198,9 @@ PATTERNS = [
                                                    'wait_networkidle', lambda m: {}),
     (r'^waits? for (?:the )?network to be idle$',
                                                    'wait_networkidle', lambda m: {}),
+    # OCR wait (BFRAME_0024) — MUST precede the generic wait-until below.
+    (r'^waits? until (?:the )?(?:screen|terminal) (?:shows?|displays?) ["\'](.+?)["\']$',
+                                                   'wait_screen_text', lambda m: {'text': _q(m.group(1))}),
     (r'^waits? until ["\'](.+?)["\'] (?:is visible|appears?|loads?)$',
                                                    'wait_visible',     lambda m: {'text': _q(m.group(1))}),
     (r'^waits? until (.+?) (?:is visible|appears?|loads?)$',
@@ -249,6 +268,15 @@ PATTERNS = [
                                                    'assert_compare',  lambda m: {'left': _q(m.group(1)), 'op': '==', 'right': _q(m.group(2))}),
     (r'^["\']?(.+?)["\']? should contain ["\']?(.+?)["\']?$',
                                                    'assert_compare',  lambda m: {'left': _q(m.group(1)), 'op': 'contains', 'right': _q(m.group(2))}),
+
+    # OCR / terminal-buffer assertions (BFRAME_0024) — deterministic, no LLM.
+    # MUST precede the semantic catch-all, which would otherwise eat them.
+    (r'^the (?:screen|terminal) should not (?:show|display) ["\'](.+?)["\']$',
+                                                   'assert_screen_text_hidden', lambda m: {'text': _q(m.group(1))}),
+    (r'^the (?:screen|terminal) (?:shows?|displays?) ["\'](.+?)["\']$',
+                                                   'assert_screen_text', lambda m: {'text': _q(m.group(1))}),
+    (r'^the terminal buffer (?:contains?|shows?|includes?) ["\'](.+?)["\']$',
+                                                   'assert_buffer',   lambda m: {'text': _q(m.group(1))}),
 
     # Semantic (vision LLM) assertions
     (r'^the (.+?) should (?:show|display|have) (?:a )?(.+)$',

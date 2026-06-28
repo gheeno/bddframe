@@ -47,6 +47,7 @@ jobs:
           versionSpec: '3.11'
 
       - script: |
+          sudo apt-get update && sudo apt-get install -y tesseract-ocr
           pip install -e ".[all]"
           playwright install chromium --with-deps
         displayName: Install BDDFrame

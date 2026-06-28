@@ -18,6 +18,10 @@ VALID_TYPES = frozenset({
     'search', 'select', 'set_page', 'set_var', 'store_attribute',
     'store_text', 'switch_frame', 'uncheck', 'visual_baseline', 'wait_hidden',
     'wait_load', 'wait_networkidle', 'wait_seconds', 'wait_visible',
+    # BFRAME_0024 — web pixel/OCR bridge (canvas & terminal UIs)
+    'type_text', 'click_at', 'click_text', 'assert_screen_text',
+    'assert_screen_text_hidden', 'wait_screen_text', 'assert_buffer',
+    'focus_region',
 })
 
 
