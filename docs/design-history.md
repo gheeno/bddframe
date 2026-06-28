@@ -28,6 +28,7 @@ current; this page is the rationale trail behind them.
 | D | Network mocking · API setup/teardown · test-data fixtures | Done |
 | 13 | Bundled test app (BusterBlock) + data preconditions/teardowns | Done |
 | 14 | Run external scripts/commands as steps | Done |
+| 15 | Pattern coverage — tabs, history, clicks, submit | Done (BFRAME_0025) |
 
 ---
 
@@ -225,4 +226,20 @@ Python, run a Java jar, call a shell tool — as a plain Gherkin step.
 
 Trust boundary noted: feature files are trusted code (like step definitions), so
 `run the command` uses a shell — not for untrusted input.
+
+## Phase 15 — Pattern coverage expansion (BFRAME_0025)
+
+**Goal:** eliminate the LLM-dependency for steps that 117 existing test files already used, turning four LLM-only paths into deterministic local patterns.
+
+A coverage review found 113 of 117 unique steps in the repo matched patterns; four did not — all from `features/busterblock/new_tab.feature`. Two problems drove the whole phase: (1) no tab/window handling existed at all, (2) the `select` pattern only accepted `from the X`, not `in the X`.
+
+- **Tab / window management** — `a new tab should open` (asserts second page, focuses it), `switches to the new|previous|original|first tab`, `closes the tab`, and an `… in the new tab` suffix that routes any step to the newest page. Wired into `execute_step` which owns `context.pages`.
+- `submits the (…) form` → clicks the form's submit control via `form.requestSubmit()`.
+- `selects "X" in the Y (dropdown|filter|menu|list|select)` — widened the `select` pattern to accept both `from` and `in`.
+- Browser navigation verbs: `goes back`, `goes forward`, `reloads|refreshes the page`.
+- Click variants: `double-clicks X`, `right-clicks X`.
+
+The web pixel/OCR bridge (`agents/web/screen.py`, delivered in BFRAME_0024) was also incorporated: canvas and terminal UIs within `@web` scenarios now have a dedicated path (`type_text`, `click_at`, `click_text`, `assert screen text`, `focuses on region`) that converts OCR device-pixel coordinates to Playwright CSS-pixel mouse inputs.
+
+Result: 117/117 steps in the repo resolve to a local pattern without an LLM call.
 </content>
