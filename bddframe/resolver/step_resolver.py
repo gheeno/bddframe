@@ -22,6 +22,9 @@ VALID_TYPES = frozenset({
     'type_text', 'click_at', 'click_text', 'assert_screen_text',
     'assert_screen_text_hidden', 'wait_screen_text', 'assert_buffer',
     'focus_region',
+    # BFRAME_0025 — browser history, extra clicks, form submit, tab/window
+    'go_back', 'go_forward', 'reload', 'double_click', 'right_click', 'submit',
+    'assert_new_tab', 'switch_tab', 'close_tab',
 })
 
 

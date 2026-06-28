@@ -40,10 +40,51 @@ def substitute(text: str, extra: dict | None = None) -> str:
     return re.sub(r'\[([^\]]+)\]', bracket, text)
 
 
+def _pages(context):
+    """Every open page in the scenario's browser context (newest last)."""
+    bctx = getattr(context, "_bctx", None)
+    return list(bctx.pages) if bctx is not None else [context.page]
+
+
+def _focus(context, page):
+    """Make `page` the active page. Popup tabs don't inherit the scenario's
+    default timeout, so re-apply it here or assertions on a new tab wait 30s."""
+    context.page = page
+    to = getattr(page, "set_default_timeout", None)
+    if to is not None:
+        to(int(os.getenv("BDDFRAME_TIMEOUT", "10000")))
+    front = getattr(page, "bring_to_front", None)
+    if front is not None:
+        front()
+
+
+def _switch_tab(context, target, assert_opened=False):
+    """Point context.page at another open tab. ponytail: previous/first/main all
+    mean pages[0] — a real back-stack only matters past 2 tabs, add then."""
+    pages = _pages(context)
+    if assert_opened and len(pages) < 2:
+        raise AssertionError("Expected a new tab to open, but only one tab is open")
+    _focus(context, pages[-1] if target in ('new', 'last') else pages[0])
+
+
+def _close_tab(context):
+    if len(_pages(context)) > 1:
+        context.page.close()
+        _focus(context, _pages(context)[0])
+
+
 def execute_step(step_text: str, context):
     if getattr(context, "_vars", None) is None:
         context._vars = {}
     step_text = substitute(step_text, context._vars)
+    # "... in the new tab" (BFRAME_0025) — run the rest of the step against the
+    # newest page, then drop the suffix so the inner verb resolves normally.
+    m = re.search(r'\s+in the (?:new|last) (?:tab|window)$', step_text, re.IGNORECASE)
+    if m:
+        pages = _pages(context)
+        if len(pages) > 1:
+            _focus(context, pages[-1])
+        step_text = step_text[:m.start()]
     action = resolve(step_text)
     page = context.page
 
@@ -55,6 +96,25 @@ def execute_step(step_text: str, context):
         actions.navigate(page, action['url'])
     elif t == 'click':
         actions.click(page, action['locator'])
+    # --- BFRAME_0025: history, extra clicks, form submit, tab/window ----------
+    elif t == 'go_back':
+        actions.go_back(page)
+    elif t == 'go_forward':
+        actions.go_forward(page)
+    elif t == 'reload':
+        actions.reload(page)
+    elif t == 'double_click':
+        actions.double_click(page, action['locator'])
+    elif t == 'right_click':
+        actions.right_click(page, action['locator'])
+    elif t == 'submit':
+        actions.submit(page, action['locator'])
+    elif t == 'assert_new_tab':
+        _switch_tab(context, 'new', assert_opened=True)
+    elif t == 'switch_tab':
+        _switch_tab(context, action['target'])
+    elif t == 'close_tab':
+        _close_tab(context)
     elif t == 'fill':
         actions.fill(page, action['locator'], action['value'])
     elif t == 'clear':
