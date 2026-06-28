@@ -1,4 +1,5 @@
-.env
+# .env is committed (config only, no secrets). Secrets live in secrets.env.
+secrets.env
 __pycache__/
 *.pyc
 *.egg-info/

@@ -33,7 +33,8 @@ def _load_environments():
 
 
 def before_all(context):
-    load_dotenv()
+    load_dotenv()                          # config (committed)
+    load_dotenv("secrets.env")             # secrets (gitignored) — soon AKV
     _load_environments()
     _suite_results.clear()
 
