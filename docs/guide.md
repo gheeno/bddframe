@@ -71,7 +71,7 @@ preinstalled) runs the whole suite with no local Python setup:
 ```bash
 docker build -t bddframe .
 docker run --rm bddframe                       # default: bddframe run features/ --headless
-docker run --rm bddframe run features/saucedemo/ --headless
+docker run --rm bddframe run features/web/busterblock/ --headless
 ```
 
 `.devcontainer/` opens the same image in VS Code ("Reopen in Container").
@@ -218,17 +218,17 @@ Why each step resolves with zero config:
 The subject (`User`, `I`, `The user`, `As a user`) is stripped automatically, so
 `User clicks…`, `I click…`, and `clicks…` are equivalent.
 
-The bundled `features/saucedemo/checkout.feature` is a full end-to-end purchase
-flow if you want a longer example.
+The bundled `features/web/busterblock/` suite is a full worked example organised
+by capability — see the README for how to start BusterBlock and run it.
 
 ---
 
 ## 4. Run it & read the output
 
 ```bash
-bddframe run                                   # all features
-bddframe run features/login/login.feature      # one file
-bddframe run features/saucedemo/               # one folder
+bddframe run                                              # all features
+bddframe run features/web/busterblock/login.feature       # one file
+bddframe run features/web/busterblock/                    # one folder
 bddframe run --tag smoke                        # only @smoke scenarios
 bddframe run --headless                         # no visible browser
 bddframe run --headed                           # force visible (overrides .env)
@@ -247,23 +247,27 @@ them all:
 
 | Suite | Hits | Needs |
 |-------|------|-------|
-| `features/saucedemo/` | the public `saucedemo.com` demo | internet |
-| `features/canadiantire/` | a public site | internet |
-| `features/busterblock/` | the bundled **BusterBlock** app | the local app running (below) |
-| `features/fallback-demo/` | LLM step-fallback demo | `BDDFRAME_MODEL` set, else fails by design |
+| `features/web/busterblock/` | the bundled **BusterBlock** app (primary example) | the local app running (below) |
+| `features/api/` | `api.restful-api.dev` public REST sandbox | internet |
+| `features/terminal/` | canvas terminal (OCR bridge) | `pip install -e ".[visual]"` + tesseract |
 
-**BusterBlock** (`test-app-vhs-vault/`) is a self-contained Node/Express site the
-`features/busterblock/` suite — login, catalog, checkout, **preconditions**, and
-**run-a-script** examples — runs against. Start it first, in its own terminal:
+**BusterBlock** (`test-app-vhs-vault/`) is a self-contained Node/Express VHS-rental
+site. The `features/web/busterblock/` suite is organised by framework capability
+(one file per capability, tagged for `--tag` filtering). Start it first:
 
 ```bash
 cd test-app-vhs-vault && npm install && npm start   # serves http://localhost:3333
 ```
 
-Then, from another terminal: `bddframe run features/busterblock/`. The
-`[BUSTERBLOCK]` reference and the `BB_USER` / `BB_PASS` demo login are already in
-`environments.yaml` / `secrets.env.example`. Full walkthrough: **[README → Run the
-bundled test app](../README.md#run-the-bundled-test-app-busterblock)**.
+Then run all BusterBlock tests or a single capability file:
+
+```bash
+bddframe run features/web/busterblock/ --headless
+bddframe run features/web/busterblock/login.feature --headless
+bddframe run features/web/busterblock/ --tag @smoke --headless
+```
+
+Full capability map and credential setup: **[README → Run the bundled test app](../README.md#run-the-bundled-test-app-busterblock)**.
 
 **What to expect:**
 
@@ -781,8 +785,8 @@ jobs:
     strategy:
       maxParallel: 4
       matrix:
-        saucedemo:    { featurePath: 'features/saucedemo/' }
-        canadiantire: { featurePath: 'features/canadiantire/' }
+        busterblock:  { featurePath: 'features/web/busterblock/' }
+        api:          { featurePath: 'features/api/' }
     steps:
       - script: bddframe run $(featurePath) --headless
       # ... PublishTestResults / artifacts per shard
@@ -806,8 +810,8 @@ independent:
 
    ```yaml
    matrix:
-     saucedemo:    { featurePath: 'features/saucedemo/',  BUSTERBLOCK: 'http://bb-1:3333' }
-     canadiantire: { featurePath: 'features/canadiantire/', BUSTERBLOCK: 'http://bb-2:3333' }
+     busterblock_1: { featurePath: 'features/web/busterblock/', BUSTERBLOCK: 'http://bb-1:3333' }
+     busterblock_2: { featurePath: 'features/web/busterblock/', BUSTERBLOCK: 'http://bb-2:3333' }
    ```
 
 2. **Namespaced fixtures** — if the backend supports it, seed into a per-shard
@@ -953,7 +957,7 @@ All other events are safe to register from step files.
 
 ### Demo
 
-`features/busterblock/hooks_demo.feature` shows hooks in action against
+`features/web/busterblock/hooks.feature` shows hooks in action against
 BusterBlock. The `@audit` tag triggers an extra log line from the
 `after_scenario` hook — no change to the feature file required:
 

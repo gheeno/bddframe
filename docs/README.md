@@ -10,9 +10,11 @@ off by default.
 
 | Doc | For | What's in it |
 |-----|-----|--------------|
-| **[../README.md](../README.md)** | everyone | Elevator pitch, install, run, report, the LLM in brief. The front door. |
-| **[Guide](guide.md)** | new & veteran testers | The complete how-to: install → write → run → `pom.yaml` → shared state → reports → CI → editor. |
-| **[Architecture](architecture.md)** | learning the tech | One-stop deep dive: mental model, component map, request lifecycle, resolution hierarchy, the LLM layer, tech stack — with Mermaid diagrams throughout. |
+| **[../README.md](../README.md)** | everyone | Overview, tech stack, quick setup, BusterBlock. The front door. |
+| **[Glossary](glossary.md)** | everyone | Where to find everything — env vars, YAML files, outputs, resources. |
+| **[Guide](guide.md)** | new & veteran testers | The complete how-to: install → write → run → `pom.yaml` → shared state → reports → CI → LLM setup. |
+| **[Steps Dictionary](steps_dictionary.md)** | testers | All built-in step patterns with phrasings and examples. |
+| **[Architecture](architecture.md)** | learning the tech | Deep dive: components, resolution hierarchy, the LLM layer, tech stack. |
 | **[Design History](design-history.md)** | maintainers | The rationale trail behind every capability, condensed from the build phases. |
 
 ## Quick links
