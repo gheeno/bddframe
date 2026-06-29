@@ -1,0 +1,23 @@
+# Page objects for BusterBlock (http://localhost:3333).
+# Most elements resolve via the accessibility tree without any POM entry.
+# These entries exist only for elements the a11y layer can't find by name.
+#
+# POM key rule: the key IS the locator you write in the step.
+#   User clicks the "genre dropdown"  →  key = "genre dropdown"
+#
+# See docs/pom-key-mapping.md for the full lookup algorithm.
+
+# The catalog's genre <select> has aria-label="Filter by genre".
+# "genre dropdown" is a shorter, more readable alias you can use in step text.
+genre dropdown:
+  id: genre-filter
+
+# The movie count badge (e.g. "15 movies") is a <span id="movie-count">
+# with no aria-label — JS fills it after load. No a11y name → POM required.
+movie count:
+  id: movie-count
+
+# The catalog heading is an <h1> that wraps the movie count badge.
+# Useful when you need to grab or assert the full heading text precisely.
+catalog heading:
+  css: 'main h1'
