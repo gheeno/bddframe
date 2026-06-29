@@ -328,13 +328,15 @@ pick the model in `.env`.
 
 | Setting | Env var | Notes |
 |---------|---------|-------|
-| Model id (LiteLLM format) | `BDDFRAME_MODEL` | e.g. `ollama/llama3`, `openai/gpt-4o`, `openai/gpt-4o-mini`. **Unset by default → no LLM.** |
-| API base URL | `BDDFRAME_LLM_URL` | e.g. `http://localhost:11434` (Ollama) or `https://api.openai.com/v1` |
+| Model id (LiteLLM format) | `BDDFRAME_MODEL` | e.g. `ollama/llama3`, `openai/gpt-4o`, `anthropic/claude-sonnet-4-6`. **Unset by default → no LLM.** |
+| API base URL | `BDDFRAME_LLM_URL` | e.g. `http://localhost:11434` (Ollama) or `https://api.openai.com/v1`. Not required for Anthropic/Gemini/Groq. |
 | Desktop/visual model | `BDDFRAME_VISION_MODEL` | gates only the `@visual` image fallback |
+| Resolution mode | `BDDFRAME_LLM_MODE` | `auto` (default) — patterns first, LLM on no-match; `full` — LLM resolves every step, patterns skipped. Requires `BDDFRAME_MODEL`. |
 
 Features that send a screenshot (vision-locate, semantic assertions) need a
-**vision-capable** model (`openai/gpt-4o`, `ollama/llava`, …). Because LiteLLM
-speaks OpenAI-compatible endpoints, the same config drives Ollama, hosted OpenAI,
+**vision-capable** model (`openai/gpt-4o`, `ollama/llava`, `anthropic/claude-sonnet-4-6`,
+`gemini/gemini-1.5-flash`, …). Because LiteLLM speaks OpenAI-compatible endpoints,
+the same config drives Ollama, hosted OpenAI, Anthropic Claude, Google Gemini, Groq,
 **or [Foundry Local](https://learn.microsoft.com/azure/foundry-local/)** (a local
 model runtime that works on networks where Ollama/Hugging Face are blocked) with
 **zero code changes** — see [Design History → Phase 10](design-history.md#phase-10--foundry-local).
@@ -359,7 +361,7 @@ extra installed** — you only hit the import error if you actually trigger an L
 path without `".[llm]"`. Everything else *calls* this module; nothing else talks
 to a model directly.
 
-### The four triggers
+### The four triggers (`auto` mode)
 
 Each is a local layer failing **plus** the matching env var being set. If the var
 is unset, the step fails locally instead — the LLM is never called.
@@ -373,6 +375,47 @@ is unset, the step fails locally instead — the LLM is never called.
 
 Note the split: triggers 1–3 (web path) gate on `BDDFRAME_MODEL`; trigger 4
 (desktop path) gates on `BDDFRAME_VISION_MODEL`.
+
+### Full LLM mode (`BDDFRAME_LLM_MODE=full`)
+
+Setting `BDDFRAME_LLM_MODE=full` promotes the LLM from fallback to **primary**
+resolver for both step interpretation and element location. Patterns are not
+consulted. `BDDFRAME_MODEL` must be set and vision-capable for the locator path.
+
+```mermaid
+flowchart TD
+    STEP["Gherkin step"] --> MODE{"BDDFRAME_LLM_MODE"}
+
+    MODE -->|auto default| RES["Resolver: 50+ regex patterns<br/>LOCAL"]
+    RES -->|matched| ROUTE{"route by tag"}
+    RES -->|no match| T1F["ask() fallback<br/>BDDFRAME_MODEL"]
+    T1F --> ROUTE
+
+    MODE -->|full| T1["ask() — primary resolver<br/>patterns skipped<br/>BDDFRAME_MODEL required"]
+    T1 --> ROUTE
+
+    ROUTE -->|web · auto| PW["Playwright accessibility<br/>LOCAL → POM → ask_vision()"]
+    ROUTE -->|web · full| VL["ask_vision() — primary locator<br/>accessibility as safety net"]
+    ROUTE -->|@visual| CV["OpenCV + OCR<br/>LOCAL"]
+
+    T1 -.calls.-> CLIENT["llm/client.py → LiteLLM"]
+    T1F -.calls.-> CLIENT
+    PW -.fallback.-> CLIENT
+    VL -.calls.-> CLIENT
+
+    style RES fill:#1e3a5f,color:#b8d8f5,stroke:#4a80aa
+    style PW fill:#1e3a5f,color:#b8d8f5,stroke:#4a80aa
+    style CV fill:#1e3a5f,color:#b8d8f5,stroke:#4a80aa
+    style T1 fill:#4a3a2a,color:#f5d8b8,stroke:#aa804a
+    style T1F fill:#4a3a2a,color:#f5d8b8,stroke:#aa804a,stroke-dasharray:4 4
+    style VL fill:#4a3a2a,color:#f5d8b8,stroke:#aa804a
+    style CLIENT fill:#3a2a4a,color:#e8d8f5,stroke:#8a6aaa
+```
+
+**Trade-off:** `full` mode is slower (one LLM call per step) and costs money with
+hosted models. Use `auto` for CI and regression suites. Use `full` for exploratory
+testing, legacy app automation, or any scenario where the step vocabulary is too
+rich or too inconsistent to pattern-match upfront.
 
 ```mermaid
 flowchart TD
@@ -456,15 +499,42 @@ uv run --with litellm --with pytest python -m pytest unit_tests/test_llm_openai_
 ### Config recap
 
 ```bash
+# ── auto mode (default) ───────────────────────────────────────────────────────
+
 # Local, free (Ollama) — text fallback only
 BDDFRAME_MODEL=ollama/llama3
 BDDFRAME_LLM_URL=http://localhost:11434
 
-# Vision features (web locate + semantic assertions) need a vision model
-BDDFRAME_MODEL=ollama/llava            # or openai/gpt-4o
+# Local vision (Ollama llava) — web locate + semantic assertions
+BDDFRAME_MODEL=ollama/llava
+BDDFRAME_LLM_URL=http://localhost:11434
+
+# Anthropic Claude — vision-capable, no BDDFRAME_LLM_URL needed
+BDDFRAME_MODEL=anthropic/claude-sonnet-4-6
+ANTHROPIC_API_KEY=sk-ant-...
+
+# Google Gemini — free tier, vision-capable
+BDDFRAME_MODEL=gemini/gemini-1.5-flash
+GEMINI_API_KEY=...
+
+# Groq — free tier, text only (no vision)
+BDDFRAME_MODEL=groq/llama-3.1-8b-instant
+GROQ_API_KEY=...
+
+# OpenAI
+BDDFRAME_MODEL=openai/gpt-4o-mini
+BDDFRAME_LLM_URL=https://api.openai.com/v1
+OPENAI_API_KEY=sk-...
 
 # Desktop @visual image fallback
-BDDFRAME_VISION_MODEL=ollama/llava
+BDDFRAME_VISION_MODEL=ollama/llava     # or anthropic/claude-sonnet-4-6 / gpt-4o
+
+# ── full LLM mode ─────────────────────────────────────────────────────────────
+# Every step resolved by the model. Patterns skipped. Requires a vision-capable
+# model for element location. Slower and costs more — not recommended for CI.
+BDDFRAME_LLM_MODE=full
+BDDFRAME_MODEL=anthropic/claude-sonnet-4-6
+ANTHROPIC_API_KEY=sk-ant-...
 ```
 
 Leave them all unset for a deterministic, zero-cost, fully-local run — the

@@ -469,50 +469,75 @@ the LLM is only ever a *fallback* — it never runs if a local layer already
 resolved the step.
 
 BDDFrame is **model-agnostic** via [LiteLLM](https://github.com/BerriAI/litellm) —
-point it at Ollama, hosted OpenAI, or [Foundry Local](https://learn.microsoft.com/azure/foundry-local/)
-with one env var.
+works with Gemini, Claude, Groq, OpenAI, Ollama, or Foundry Local, all with the
+same two-line config.
 
-### Setup
+### How to turn it on
 
-**Option A — Ollama (local, free, no API key)**
-
-1. Install Ollama: `brew install ollama` (macOS) — or download from [ollama.com](https://ollama.com/download)
-2. Open a terminal and start the server — leave it running:
-   ```bash
-   ollama serve
-   ```
-3. Pull a model (in a second terminal):
-   ```bash
-   ollama pull llama3          # text steps (step resolver fallback)
-   ollama pull llava           # vision-capable (element finding + semantic assertions)
-   ```
-4. Install the BDDFrame LLM extra and configure `.env`:
-   ```bash
-   uv pip install -e ".[llm]"
-   ```
-   ```bash
-   # .env
-   BDDFRAME_MODEL=ollama/llama3            # or ollama/llava for vision
-   BDDFRAME_LLM_URL=http://localhost:11434  # Ollama default port
-   ```
-
-> Ollama must be running (`ollama serve`) whenever you run BDDFrame with the LLM enabled. If it's not running you'll see a connection error on the first LLM-triggered step.
-
-**Option B — OpenAI (cloud, requires API key)**
+**Step 1 — install the LLM extra (once):**
 
 ```bash
 uv pip install -e ".[llm]"
 ```
+
+**Step 2 — set the model in `.env`:**
+
 ```bash
-# .env
-BDDFRAME_MODEL=openai/gpt-4o-mini        # or openai/gpt-4o for vision
-BDDFRAME_LLM_URL=https://api.openai.com/v1
-OPENAI_API_KEY=sk-...
+# .env  ← browser/run settings, committed to git — NO secrets here
+BDDFRAME_MODEL=gemini/gemini-1.5-flash   # see provider table below
 ```
 
-**Option C — Foundry Local (on-prem / air-gapped networks)**
+**Step 3 — add your API key in `secrets.env`:**
 
-See [Architecture → LLM layer](docs/architecture.md#5-the-llm-layer) and [Design History → Phase 10](docs/design-history.md#phase-10--foundry-local).
+```bash
+# secrets.env  ← gitignored, never committed — secrets go here
+GEMINI_API_KEY=your-key-here
+```
+
+That's it. Run your tests as normal.
+
+> **Why two files?** `.env` is committed to git — safe for settings, not secrets.
+> `secrets.env` is gitignored. Always put API keys in `secrets.env`.
+
+### Provider options
+
+| Provider | Free? | Vision? | `.env` setting | `secrets.env` key |
+|----------|-------|---------|---------------|------------------|
+| **Google Gemini** | ✅ free tier | ✅ | `BDDFRAME_MODEL=gemini/gemini-1.5-flash` | `GEMINI_API_KEY=...` |
+| **Groq** | ✅ free tier | ❌ text only | `BDDFRAME_MODEL=groq/llama-3.1-8b-instant` | `GROQ_API_KEY=...` |
+| **Anthropic Claude** | 💲 | ✅ | `BDDFRAME_MODEL=anthropic/claude-sonnet-4-6` | `ANTHROPIC_API_KEY=...` |
+| **OpenAI** | 💲 | ✅ gpt-4o | `BDDFRAME_MODEL=openai/gpt-4o-mini` | `OPENAI_API_KEY=...` |
+| **Ollama (local)** | ✅ free | ✅ with llava | `BDDFRAME_MODEL=ollama/llava` + `BDDFRAME_LLM_URL=http://localhost:11434` | *(no key needed)* |
+| **Foundry Local** | ✅ free | model-dependent | `BDDFRAME_MODEL=openai/<id>` + `BDDFRAME_LLM_URL=http://localhost:<port>/v1` | `OPENAI_API_KEY=not-needed` |
+
+**"Vision-capable"** = the model can look at a screenshot to find elements on the
+page. Text-only models (Groq) can interpret step phrases but can't locate elements
+visually — they fall back to the accessibility tree for element location.
+
+Get API keys: [Gemini](https://aistudio.google.com/app/apikey) · [Groq](https://console.groq.com) · [Anthropic](https://console.anthropic.com) · [OpenAI](https://platform.openai.com/api-keys)
+
+**Ollama (local, no account needed):**
+```bash
+brew install ollama            # or download from ollama.com
+ollama serve                   # keep this running in a separate terminal
+ollama pull llava              # vision-capable model
+```
+
+### Mode toggle — `auto` vs `full`
+
+```bash
+# .env
+BDDFRAME_LLM_MODE=auto    # DEFAULT: LLM only as a last resort (recommended for CI)
+BDDFRAME_LLM_MODE=full    # every step goes to the LLM; patterns skipped
+```
+
+| Mode | What it does | When to use |
+|------|-------------|------------|
+| `auto` | Patterns + accessibility first; LLM only when both fail | CI, regression suites, most cases |
+| `full` | Skips all patterns; LLM resolves every step | Exploratory testing, legacy apps, free-form steps |
+
+`full` mode requires `BDDFRAME_MODEL` to be set and a vision-capable model for
+element location. Full guide: **[Guide §16](docs/guide.md#16-using-an-llm--setup-providers-and-modes)**.
 
 **The four triggers** — each is a local layer missing *and* the env var being set:
 
@@ -524,9 +549,8 @@ See [Architecture → LLM layer](docs/architecture.md#5-the-llm-layer) and [Desi
 | 4 | `@visual` image not found by OpenCV/OCR | `BDDFRAME_VISION_MODEL` |
 | 5 | A step **failed** and RCA is on — classify the root cause | `BDDFRAME_MODEL` + `BDDFRAME_RCA` |
 
-Vision features (triggers 2–5) need a vision-capable model (`openai/gpt-4o`,
-`ollama/llava`). Trigger 5 is the only one that fires *after* a failure rather
-than to resolve a step — see [Agentic RCA](#agentic-rca--failure-root-cause).
+Vision features (triggers 2–5) need a vision-capable model. Trigger 5 fires
+*after* a failure rather than to resolve a step — see [Agentic RCA](#agentic-rca--failure-root-cause).
 
 **The sample test that invokes the LLM:** `features/fallback-demo/llm_fallback.feature`.
 Every step resolves locally except one —
