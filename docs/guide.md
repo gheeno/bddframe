@@ -27,6 +27,7 @@ Just want the elevator pitch and copy-paste commands? The
 13. [Testing the framework itself](#13-testing-the-framework-itself)
 14. [Custom hooks](#14-custom-hooks)
 15. [Writing a custom step](#15-writing-a-custom-step)
+16. [Using an LLM — setup, providers, and modes](#16-using-an-llm--setup-providers-and-modes)
 
 ---
 
@@ -145,14 +146,21 @@ BDDFRAME_PIXEL_THRESHOLD=0.01    # max fraction of changed pixels for "match the
 BDDFRAME_LOG_LEVEL=INFO          # DEBUG | INFO | WARNING | ERROR
 ```
 
-**LLM (optional)** — leave unset for a fully local run. See
-[Architecture → The LLM layer](architecture.md#5-the-llm-layer):
+**LLM (optional)** — BDDFrame works fully without one. By default no LLM is
+called and no AI costs are incurred. To enable, see
+**[§16 Using an LLM](#16-using-an-llm--setup-providers-and-modes)** — it covers
+every provider, step-by-step setup, and which file each setting goes in.
+
+The short version of what goes in `.env`:
 
 ```bash
-# BDDFRAME_MODEL=ollama/llama3
-# BDDFRAME_LLM_URL=http://localhost:11434
-# BDDFRAME_VISION_MODEL=ollama/llava
+BDDFRAME_MODEL=gemini/gemini-1.5-flash   # which LLM to use (free Gemini shown)
+BDDFRAME_LLM_MODE=auto                   # auto (default) or full — see §16
+# BDDFRAME_LLM_URL=...                   # only for Ollama / self-hosted endpoints
+# BDDFRAME_VISION_MODEL=...              # separate model for the @visual agent
 ```
+
+API keys (never in `.env`) → `secrets.env`.
 
 Any `[variable]` in a `.feature` maps to the matching key, uppercased with spaces
 → underscores: `[sauce username]` → `SAUCE_USERNAME`. **Resolution order, highest
@@ -1066,4 +1074,253 @@ A `None` result means the pattern didn't match. Check anchoring and quoting.
 - [ ] Runner (`orchestrator/runner.py`) handles the new action type in `execute_step`
 - [ ] LSP warning gone in VS Code
 - [ ] Quick smoke: `python3 -c "from bddframe.resolver.patterns import match, normalize_subject; print(match(normalize_subject('your step text')))"` returns the expected action
+
+---
+
+## 16. Using an LLM — setup, providers, and modes
+
+This section is written for someone who has never used an AI model or agent before.
+No prior knowledge assumed.
+
+### What is an LLM and why would I use one here?
+
+An **LLM** (Large Language Model) is the same technology behind ChatGPT and Claude.
+It can read plain English and interpret it.
+
+BDDFrame uses an LLM in two specific situations:
+
+1. **A step phrase has no matching pattern.** BDDFrame has 50+ built-in step
+   patterns (`clicks the X button`, `enters Y in the Z field`, etc.). If you write
+   a step that doesn't match any of them, the LLM can read your sentence and figure
+   out what action to run. Without an LLM, the test would simply fail with a "no
+   pattern matched" error.
+
+2. **An element can't be found on the page.** If BDDFrame can't locate a button or
+   field by its label, the LLM can look at a screenshot and find it visually.
+   Without an LLM, the test would fail with a "could not find element" error.
+
+**You do not need an LLM to use BDDFrame.** The default setup is fully local and
+deterministic — no AI calls, no cost, no internet. Most test suites work perfectly
+without it.
+
+---
+
+### Default behaviour — no LLM
+
+Out of the box, with no configuration, BDDFrame:
+
+- Uses regex patterns to understand steps (fast, free, deterministic)
+- Uses Playwright's accessibility tree to find elements on the page
+- **Never makes any AI or LLM calls**
+- Fails loudly (with a screenshot) if a step or element can't be resolved locally
+
+This is the recommended default for CI pipelines and regression suites.
+
+---
+
+### How to enable an LLM — the two things you set
+
+You need to set exactly two things:
+
+| What | Which file | Variable |
+|------|-----------|---------|
+| Which LLM to use | `.env` | `BDDFRAME_MODEL` |
+| Your API key (for cloud providers) | `secrets.env` | Provider-specific (e.g. `ANTHROPIC_API_KEY`) |
+
+That's it. No code changes. No restarts.
+
+> **Why two different files?**
+> `.env` is committed to git — it's safe for settings but not secrets.
+> `secrets.env` is gitignored — it's where passwords and API keys go.
+> Putting your API key in `.env` would commit it to version control, which is a
+> security risk. Always put keys in `secrets.env`.
+
+---
+
+### Step-by-step: pick a provider and turn it on
+
+#### Option A — Free: Google Gemini (recommended for getting started)
+
+Gemini has a free tier that requires no credit card. It is vision-capable, meaning
+it can both interpret steps AND find elements on screen by looking at screenshots.
+
+1. Go to [https://aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey) and create a free API key.
+
+2. Open `secrets.env` and add:
+   ```bash
+   GEMINI_API_KEY=your-key-here
+   ```
+
+3. Open `.env` and add:
+   ```bash
+   BDDFRAME_MODEL=gemini/gemini-1.5-flash
+   ```
+
+4. Install the LLM extra (once):
+   ```bash
+   uv pip install -e ".[llm]"
+   ```
+
+5. Run your tests as normal. BDDFrame will now use Gemini as a fallback for
+   steps and elements it can't resolve locally.
+
+---
+
+#### Option B — Free and fast: Groq (text only — no screenshots)
+
+Groq is a free hosted service that runs open-source models at high speed.
+It is **text-only** — it can interpret step phrases but cannot look at screenshots
+to find elements. Good for step fallback, not for visual location.
+
+1. Create a free account at [https://console.groq.com](https://console.groq.com) and generate an API key.
+
+2. Open `secrets.env` and add:
+   ```bash
+   GROQ_API_KEY=your-key-here
+   ```
+
+3. Open `.env` and add:
+   ```bash
+   BDDFRAME_MODEL=groq/llama-3.1-8b-instant
+   ```
+
+4. Install the LLM extra (once):
+   ```bash
+   uv pip install -e ".[llm]"
+   ```
+
+---
+
+#### Option C — Paid: Anthropic Claude (best quality, vision-capable)
+
+Claude is a paid service but has low per-call cost and is vision-capable.
+
+1. Create an account at [https://console.anthropic.com](https://console.anthropic.com), add a payment method, and create an API key.
+
+2. Open `secrets.env` and add:
+   ```bash
+   ANTHROPIC_API_KEY=sk-ant-your-key-here
+   ```
+
+3. Open `.env` and add:
+   ```bash
+   BDDFRAME_MODEL=anthropic/claude-sonnet-4-6
+   ```
+
+4. Install the LLM extra (once):
+   ```bash
+   uv pip install -e ".[llm]"
+   ```
+
+---
+
+#### Option D — Local: Ollama (no internet, no account, no cost)
+
+Ollama runs a model on your own machine. Nothing leaves your computer.
+Requires a machine with a reasonable amount of RAM (8 GB+ recommended).
+
+1. Install Ollama from [https://ollama.com](https://ollama.com).
+
+2. Download a model (run this once in a terminal):
+   ```bash
+   ollama pull llama3          # text only
+   ollama pull llava           # vision-capable (also installs llama3)
+   ```
+
+3. Open `.env` and add (no API key needed, no `secrets.env` change):
+   ```bash
+   BDDFRAME_MODEL=ollama/llava        # vision-capable
+   BDDFRAME_LLM_URL=http://localhost:11434
+   ```
+
+4. Make sure Ollama is running before you run tests (`ollama serve` or the desktop app).
+
+---
+
+### Provider comparison
+
+| Provider | Cost | Vision? | Internet needed? | Best for |
+|----------|------|---------|-----------------|---------|
+| **Google Gemini** | Free tier | ✅ | Yes | Getting started, no cost |
+| **Groq** | Free tier | ❌ | Yes | Fast step fallback only |
+| **Anthropic Claude** | Pay per use | ✅ | Yes | Best quality |
+| **OpenAI GPT** | Pay per use | ✅ gpt-4o | Yes | Familiar option |
+| **Ollama (local)** | Free | ✅ with llava | No | Air-gapped, private data |
+| **Foundry Local** | Free | model-dependent | No | Locked-down corporate networks |
+
+**"Vision-capable"** means the model can look at a screenshot. BDDFrame uses this
+when an element can't be found by its label — it takes a screenshot, sends it to
+the model, and asks "where is the Login button?". Without vision capability, only
+step-text fallback works (the model reads words but not images).
+
+---
+
+### The mode toggle — `auto` vs `full`
+
+`BDDFRAME_LLM_MODE` controls when the LLM is called. Edit this in `.env`.
+
+#### `auto` (default — LLM as backup only)
+
+```bash
+# .env
+BDDFRAME_LLM_MODE=auto     # this is the default; you can leave this line out entirely
+```
+
+BDDFrame tries to resolve everything locally first:
+- Step text → matched against 50+ built-in patterns (fast, free)
+- If no pattern matches → asks the LLM
+- Element location → scanned by Playwright's accessibility tree (fast, free)
+- If element not found → asks the LLM (vision)
+
+Most steps never touch the LLM at all. The LLM is only the last resort.
+**Recommended for CI and regression suites.**
+
+#### `full` (LLM resolves every single step)
+
+```bash
+# .env
+BDDFRAME_LLM_MODE=full
+```
+
+BDDFrame skips all pattern matching and accessibility scanning. Every step and
+every element location goes directly to the LLM. This is slower and costs more
+per test run, but it lets you write completely free-form test steps without
+worrying about whether they match a pattern.
+
+**Requires `BDDFRAME_MODEL` to be set.** `full` mode with no model is an error.
+
+**Requires a vision-capable model** for element location (Google Gemini, Claude,
+OpenAI gpt-4o, Ollama llava). With a text-only model (Groq, llama3) in `full`
+mode, BDDFrame will warn you and fall back to the accessibility tree for elements.
+
+**Recommended for:** exploratory testing, legacy app automation, writing tests
+without learning the step vocabulary first.
+
+---
+
+### Quick reference — what goes where
+
+```
+.env                          ← edit this for model and mode settings (committed to git)
+  BDDFRAME_MODEL=...
+  BDDFRAME_LLM_MODE=...
+  BDDFRAME_LLM_URL=...        ← only for Ollama / Foundry Local / self-hosted
+
+secrets.env                   ← edit this for API keys (gitignored — never committed)
+  ANTHROPIC_API_KEY=...
+  GEMINI_API_KEY=...
+  GROQ_API_KEY=...
+  OPENAI_API_KEY=...
+```
+
+### Troubleshooting
+
+| Symptom | Likely cause | Fix |
+|---------|-------------|-----|
+| `No pattern matched` error with no model set | LLM not enabled | Add `BDDFRAME_MODEL` to `.env` |
+| `BDDFRAME_LLM_MODE=full but BDDFRAME_MODEL is not set` | Full mode needs a model | Add `BDDFRAME_MODEL` to `.env` |
+| `LLM support requires: pip install bddframe[llm]` | Extra not installed | Run `uv pip install -e ".[llm]"` |
+| `AuthenticationError` or `401` | Wrong or missing API key | Check `secrets.env` for the right key name |
+| Vision-locate warning: `is BDDFRAME_MODEL vision-capable?` | Text-only model used with full mode | Switch to a vision-capable model (see table above) or use `auto` mode |
+| Ollama: `ConnectionRefused` | Ollama not running | Run `ollama serve` in a terminal first |
 </content>

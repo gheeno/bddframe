@@ -34,18 +34,32 @@ VALID_TYPES = frozenset({
 
 def resolve(step_text: str) -> dict:
     """
-    Tier 1: normalize subject → pattern match.
-    Tier 2: LLM fallback (only if BDDFRAME_MODEL is set).
-    Raises AssertionError if neither resolves the step.
+    auto mode (default): pattern match first, LLM fallback on no match.
+    full mode (BDDFRAME_LLM_MODE=full): skip patterns, every step goes to the LLM.
+
+    Either way the LLM is only reachable with BDDFRAME_MODEL set.
+    Raises AssertionError if the step can't be resolved.
     """
-    normalized = normalize_subject(step_text)
-    result = pattern_match(normalized)
-    if result:
-        action_type, params = result
-        return {'type': action_type, **params}
+    full = os.getenv('BDDFRAME_LLM_MODE', 'auto').lower() == 'full'
+
+    if not full:
+        normalized = normalize_subject(step_text)
+        result = pattern_match(normalized)
+        if result:
+            action_type, params = result
+            return {'type': action_type, **params}
+    else:
+        normalized = normalize_subject(step_text)
 
     if os.getenv('BDDFRAME_MODEL'):
         return _llm_resolve(step_text)
+
+    if full:
+        raise AssertionError(
+            f"\nBDDFRAME_LLM_MODE=full but BDDFRAME_MODEL is not set: \"{step_text}\"\n"
+            "  → Set BDDFRAME_MODEL in .env (e.g. anthropic/claude-sonnet-4-6, "
+            "gemini/gemini-1.5-flash, ollama/llama3)"
+        )
 
     raise AssertionError(
         f"\nNo pattern matched: \"{step_text}\"\n"
@@ -65,11 +79,25 @@ def _llm_resolve(step_text: str) -> dict:
 
 Step: "{step_text}"
 
-Valid action types: navigate, search, close_popups, click, fill, hover, press_key, clear, select, check, uncheck, assert_visible, assert_hidden, assert_url, assert_value, assert_state, assert_attribute, assert_count, store_text, scroll, screenshot, wait_load, wait_visible, wait_hidden
+WEB action types: navigate, search, close_popups, click, fill, hover, press_key, clear, select, check, uncheck, assert_visible, assert_hidden, assert_url, assert_title, assert_value, assert_state, assert_attribute, assert_count, store_text, set_var, store_attribute, assert_compare, scroll, screenshot, wait_load, wait_visible, wait_hidden
 
-Param keys by type: click/hover/clear -> locator; fill -> locator,value; press_key -> key; assert_visible/assert_hidden/wait_visible/wait_hidden -> text; assert_value -> locator,value; assert_state -> locator,state; assert_attribute -> locator,attribute,value; assert_count -> count,locator; store_text -> locator,var; set_var -> var,value; store_attribute -> attribute,locator,var; assert_compare -> left,op,right
+WEB param keys by type: navigate -> url; search -> query; click/hover/clear -> locator; fill -> locator,value; press_key -> key; select -> locator,value; check/uncheck -> locator; assert_visible/assert_hidden/wait_visible/wait_hidden -> text; assert_url/assert_title -> fragment; assert_value -> locator,value; assert_state -> locator,state; assert_attribute -> locator,attribute,value; assert_count -> count,locator; store_text -> locator,var; set_var -> var,value; store_attribute -> attribute,locator,var; assert_compare -> left,op,right; scroll -> direction; screenshot -> name
 
-Reply with JSON only, example: {{"type": "click", "locator": "Login"}}
+REST (HTTP API) action types and params:
+  rest_set_header -> name,value
+  rest_call -> method (GET/POST/PUT/PATCH/DELETE), path; optional body (JSON string), var (store response)
+  rest_assert_status -> expected (integer)
+  rest_assert_body -> needle (substring expected in body)
+  rest_assert_header -> name,value
+  rest_extract_json -> key,var (store a JSON field into a variable)
+
+Rules:
+- Use "path" (not "url") for rest_call. "expected" for rest_assert_status must be an integer.
+- For REST steps with a Gherkin data table (step ends with ":"), do NOT use the LLM — those are pattern-only. Never emit a type ending in "_table".
+
+Reply with JSON only.
+Web example:  {{"type": "click", "locator": "Login"}}
+REST example: {{"type": "rest_call", "method": "POST", "path": "/users", "body": "{{\\"name\\":\\"Alice\\"}}", "var": null}}
 """
     import json
     # One retry: models occasionally prefix the JSON with a stray sentence.

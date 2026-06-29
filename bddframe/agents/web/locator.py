@@ -33,16 +33,33 @@ def _is_strict() -> bool:
     return os.getenv("BDDFRAME_STRICT_LOCATOR", "false").lower() == "true"
 
 
+def _is_full_llm() -> bool:
+    """full mode: let the vision model locate elements before the accessibility
+    tree, instead of only as a last resort. Requires a vision-capable model."""
+    return os.getenv("BDDFRAME_LLM_MODE", "auto").lower() == "full"
+
+
 def find(page: Page, text: str, scope=None) -> Locator | None:
     """
     Resolve a human label to a Playwright Locator.
-    Order: accessibility (unique) → POM (if ambiguous or not found)
+    Order (auto): accessibility (unique) → POM (if ambiguous or not found)
            → self-heal scroll → self-heal partial → vision LLM.
+    Order (full LLM mode): vision LLM first → accessibility chain as a safety net.
 
     `scope` (11.2) constrains the accessibility search to a sub-region — a row
     Locator, a named section, or a frame. Defaults to the active iframe scope
     (set_frame) or the whole page. POM/vision self-heal still use `page`.
     """
+    # full mode: ask the vision model first. If it's unsure (returns None) we
+    # fall through to the normal accessibility chain — full mode never fails a
+    # locator harder than auto mode would.
+    if _is_full_llm() and os.getenv("BDDFRAME_MODEL"):
+        loc = _vision_locate(page, text)
+        if loc:
+            logger.info(f"\n  🤖 LLM-located '{text}' via vision model (full mode)")
+            healing.record(text, "vision-llm-primary")
+            return loc
+
     search = scope if scope is not None else (_frame if _frame is not None else page)
     loc, ambiguous = _try_strategies(search, text)
 
@@ -264,6 +281,12 @@ def _vision_locate(page: Page, text: str) -> Locator | None:
         loc = page.locator(css)
         if loc.count() > 0:
             return loc.first
-    except Exception:
-        pass
+    except Exception as e:
+        # Most common cause: a text-only model (e.g. groq/llama) can't accept an
+        # image, so ask_vision raises. Surface it so full mode silently degrading
+        # to the accessibility tree is visible, not mysterious.
+        logger.warning(
+            f"\n  ⚠️  vision-locate failed for '{text}': {e}"
+            f"\n  (is BDDFRAME_MODEL vision-capable? falling back to accessibility)"
+        )
     return None
