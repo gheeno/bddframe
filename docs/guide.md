@@ -90,7 +90,7 @@ features/             ← your tests live here
   pom.yaml            ← global element aliases (optional)
   steps/              ← auto-wired catch-all — do not edit
   environment.py      ← hooks entry point — do not edit
-test-app-vhs-vault/   ← bundled local test app (BusterBlock.ca) — see §4
+test-app/   ← bundled local test app (BusterBlock.ca) — see §4
 environments.yaml     ← base URLs per environment ([SAUCEDEMO], [BUSTERBLOCK]) — committed
 .env                  ← browser/run settings, NO secrets — committed
 secrets.env           ← credentials (gitignored); or use Azure Key Vault
@@ -251,12 +251,12 @@ them all:
 | `features/api/` | `api.restful-api.dev` public REST sandbox | internet |
 | `features/terminal/` | canvas terminal (OCR bridge) | `pip install -e ".[visual]"` + tesseract |
 
-**BusterBlock** (`test-app-vhs-vault/`) is a self-contained Node/Express VHS-rental
+**BusterBlock** (`test-app/`) is a self-contained Node/Express VHS-rental
 site. The `features/web/busterblock/` suite is organised by framework capability
 (one file per capability, tagged for `--tag` filtering). Start it first:
 
 ```bash
-cd test-app-vhs-vault && npm install && npm start   # serves http://localhost:3333
+cd test-app && npm install && npm start   # serves http://localhost:3333
 ```
 
 Then run all BusterBlock tests or a single capability file:

@@ -12,7 +12,7 @@
 #   OPENAI_API_KEY=not-needed
 #   (with BDDFRAME_MODEL unset, the [LLM] steps FAIL locally — by design.)
 #
-# Run it:   behave features/fallback-demo/llm_fallback.feature --no-capture
+# Run it:   behave features/web/fallback-demo/llm_fallback.feature --no-capture
 #
 # The [LLM] steps below use verbs the regex layer doesn't know ("submits",
 # "authenticates"), so normalize_subject can't map them and pattern_match

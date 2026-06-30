@@ -201,7 +201,7 @@ Three edits each (regex + action + LLM action-list), same as Phase 11.
 **Goal:** a self-contained app the examples run against, and a way to seed its
 data before a scenario — the JDBC-fixture pattern, in Gherkin.
 
-- **BusterBlock** (`test-app-vhs-vault/`) — a Node/Express VHS-rental site with
+- **BusterBlock** (`test-app/`) — a Node/Express VHS-rental site with
   in-memory data and test-only `/api/test/*` endpoints (reset / set-stock /
   seed-cart) gated behind `BB_TEST_API`. The in-memory store *is* the "database".
 - **Tag-driven preconditions** (`bddframe/preconditions.py`) — `@precondition:NAME`

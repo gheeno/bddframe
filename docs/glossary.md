@@ -73,7 +73,7 @@ Variable resolution order (highest wins): **Key Vault → shell/CI → `.env` �
 | Precondition fixtures | `preconditions.yaml` next to the feature file |
 | Utility scripts (CI discovery, seeding) | `scripts/` |
 | Unit tests | `unit_tests/` |
-| BusterBlock test app source | `test-app-vhs-vault/` |
+| BusterBlock test app source | `test-app/` |
 | CI pipeline (Azure DevOps) | `azure-pipelines.yml`, `azure-pipelines-windows.yml` |
 | Docker image | `Dockerfile` |
 

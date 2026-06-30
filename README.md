@@ -198,12 +198,12 @@ bddframe report open
 
 ## BusterBlock — the bundled test app
 
-`test-app-vhs-vault/` is **BusterBlock.ca**, a self-contained VHS-rental site (Node/Express, in-memory). All `features/web/busterblock/` tests run against it.
+`test-app/` is **BusterBlock.ca**, a self-contained VHS-rental site (Node/Express, in-memory). All `features/web/busterblock/` tests run against it.
 
 **Terminal 1 — start the app:**
 
 ```bash
-cd test-app-vhs-vault
+cd test-app
 npm install          # first time only
 npm start            # → http://localhost:3333
 ```
