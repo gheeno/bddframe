@@ -58,14 +58,24 @@ _suite_results = []
 
 def _load_environments():
     """Load base URLs from environments.yaml into os.environ (uppercased).
-    Real env vars / .env win, so CI can override without editing the file."""
-    path = Path.cwd() / "environments.yaml"
-    if not path.exists():
-        return
+    Real env vars / .env win, so CI can override without editing the file.
+
+    Load order (first-write wins via setdefault):
+      1. <cwd>/environments.yaml          — project-wide defaults
+      2. features/**/resources/environments.yaml — suite-specific URLs
+    Suite files add keys; they cannot override root or real env vars."""
     import yaml
-    data = yaml.safe_load(path.read_text()) or {}
-    for key, value in data.items():
-        os.environ.setdefault(key.upper(), str(value))
+
+    def _apply(path: Path):
+        if not path.exists():
+            return
+        data = yaml.safe_load(path.read_text()) or {}
+        for key, value in data.items():
+            os.environ.setdefault(key.upper(), str(value))
+
+    _apply(Path.cwd() / "environments.yaml")
+    for suite_env in sorted(Path.cwd().glob("features/**/resources/environments.yaml")):
+        _apply(suite_env)
 
 
 def before_all(context):

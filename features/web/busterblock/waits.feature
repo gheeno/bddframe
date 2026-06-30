@@ -59,4 +59,5 @@ Feature: Waits — event-driven and time-based wait patterns
     # @no_retry prevents behave autoretry from doubling the wait on this scenario.
     Given User is on "[BUSTERBLOCK]"
     When User waits 2 seconds
+    # Also valid: "waits 1 minute", "waits 2 hours" (converts to seconds internally)
     Then User should see "BusterBlock"

@@ -154,7 +154,7 @@ class TestFindBehaveBase:
         from bddframe.cli import app
         captured_env = {}
 
-        def fake_run(args, env=None):
+        def fake_run(args, env=None, cwd=None):
             captured_env.update(env or {})
             return MagicMock(returncode=0)
 

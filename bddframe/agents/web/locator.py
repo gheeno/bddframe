@@ -85,6 +85,13 @@ def find(page: Page, text: str, scope=None) -> Locator | None:
         healing.record(text, "scroll")
         return loc.first
 
+    # Fallback 1: POM YAML — checked before partial-text so explicit aliases win
+    # over accidental first-word matches (e.g. "catalog heading" → nav "Catalog").
+    loc = pom.locate(page, text)
+    if loc:
+        logger.info(f"\n  📋 POM: resolved '{text}' via pom.yaml")
+        return loc
+
     # Self-heal 2: partial text (first word)
     first_word = text.split()[0] if text.split() else text
     if first_word != text:
@@ -93,12 +100,6 @@ def find(page: Page, text: str, scope=None) -> Locator | None:
             logger.info(f"\n  🔧 Healed: matched '{text}' via partial text '{first_word}'")
             healing.record(text, "partial-text", f"matched on '{first_word}'")
             return loc2.first
-
-    # Fallback 1: POM YAML
-    loc = pom.locate(page, text)
-    if loc:
-        logger.info(f"\n  📋 POM: resolved '{text}' via pom.yaml")
-        return loc
 
     # Fallback 2: vision LLM
     loc = _vision_locate(page, text)

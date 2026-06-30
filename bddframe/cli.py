@@ -4,6 +4,8 @@ import subprocess
 from pathlib import Path
 import typer
 
+from bddframe import config
+
 app = typer.Typer(help="BDDFrame — AI-powered BDD test runner", add_completion=False)
 
 _VALID_BROWSERS = {"chromium", "firefox", "webkit"}
@@ -31,16 +33,24 @@ def _find_behave_base(feature_path: Path) -> Path:
 
 @app.command()
 def run(
-    path: str = typer.Argument("features/", help="Path to .feature files or directory"),
+    path: str = typer.Argument(None, help="Path to .feature files or directory (default: workspace features_dir)"),
+    workspace: str = typer.Option(".", "--workspace", "-w", help="Workspace dir holding bddframe.yaml, features/, .env"),
     headless: bool = typer.Option(False, "--headless", help="Run browser without UI"),
     headed: bool = typer.Option(False, "--headed", help="Force browser visible (overrides --headless and .env)"),
     tag: str = typer.Option(None, "--tag", "-t", help="Filter by tag e.g. smoke"),
-    browser: str = typer.Option("chromium", "--browser", "-b", help="chromium | firefox | webkit"),
+    browser: str = typer.Option(None, "--browser", "-b", help="chromium | firefox | webkit (default: workspace config)"),
     retries: int = typer.Option(None, "--retries", help="Re-run a failed scenario N extra times (default 1; 0 disables)"),
     log_level: str = typer.Option(None, "--log-level", help="DEBUG | INFO | WARNING | ERROR"),
     parallel: int = typer.Option(None, "--parallel", help="Run N feature files at once via behavex (web only; use --headless). 0/omitted = single process. Defaults to $BDDFRAME_PARALLEL_PROCESSES."),
 ):
     """Run .feature files."""
+    cfg = config.load(workspace)
+    # No path given → run the workspace's features dir. browser/headless fall
+    # back to the workspace config when the flags aren't set.
+    if path is None:
+        path = cfg["features_dir"]
+    if browser is None:
+        browser = cfg["browser"]
     # Toggle: flag wins; otherwise fall back to the env var (lets CI/local flip
     # parallelism without changing the command). 0 or unset = single process.
     if parallel is None:
@@ -67,7 +77,8 @@ def run(
     elif headless:
         env["BDDFRAME_HEADLESS"] = "true"
     else:
-        env["BDDFRAME_HEADLESS"] = _normalize_headless(env.get("BDDFRAME_HEADLESS", "false"))
+        default = "true" if cfg["headless"] else "false"
+        env["BDDFRAME_HEADLESS"] = _normalize_headless(env.get("BDDFRAME_HEADLESS", default))
 
     env["BDDFRAME_BROWSER"] = browser
     if retries is not None:
@@ -75,14 +86,18 @@ def run(
     if log_level is not None:
         env["BDDFRAME_LOG_LEVEL"] = log_level
 
+    # Run inside the workspace so behave finds its .env, environments.yaml and
+    # writes allure-results there. workspace="." keeps the in-repo behaviour.
+    cwd = workspace
+
     # Parallel: behavex runs N behave workers, each writing to its own results
     # subdir (set in hooks.before_all). We clean once, run, flatten, report.
     if parallel > 0:
-        raise typer.Exit(_run_parallel(path, parallel, tag, env))
+        raise typer.Exit(_run_parallel(path, parallel, tag, env, cwd))
 
     # Bug 5: derive behave base from the passed path, not a hardcoded 'features/'
     if path.endswith(".feature"):
-        feature_path = Path(path).resolve()
+        feature_path = (Path(cwd) / path).resolve()
         base = _find_behave_base(feature_path)
         args = ["behave", str(base), "--include", feature_path.stem, "--no-capture"]
     else:
@@ -91,12 +106,13 @@ def run(
     if tag:
         args += ["--tags", tag]
 
-    result = subprocess.run(args, env=env)
+    result = subprocess.run(args, env=env, cwd=cwd)
     rc = result.returncode
 
+    results_root = str(Path(cwd) / "allure-results")
     # @quarantine is non-blocking: if every failed scenario this run is tagged
     # @quarantine, don't fail the build — they still ran and report as failed.
-    if rc != 0 and _all_failures_quarantined("allure-results") is True:
+    if rc != 0 and _all_failures_quarantined(results_root) is True:
         typer.echo("\n  🔶 Only @quarantine scenarios failed — not failing the build.")
         rc = 0
 
@@ -127,7 +143,7 @@ def _all_failures_quarantined(results_dir: str):
     return all(failed)
 
 
-def _run_parallel(path: str, processes: int, tag: str, env: dict) -> int:
+def _run_parallel(path: str, processes: int, tag: str, env: dict, cwd: str = ".") -> int:
     """Run feature files concurrently via behavex, then merge into one report."""
     try:
         import behavex  # noqa: F401
@@ -136,21 +152,21 @@ def _run_parallel(path: str, processes: int, tag: str, env: dict) -> int:
             'Parallel runs need behavex. Install: pip install -e ".[parallel]"',
             param_hint="'--parallel'",
         )
-    results = Path("allure-results")
+    results = Path(cwd) / "allure-results"
     _clean_results_root(results)            # workers skip the wipe in parallel mode
     env = {**env, "BDDFRAME_PARALLEL_WORKER": "1"}
     args = ["behavex", path, "--parallel-processes", str(processes),
             "--parallel-scheme", "feature"]
     if tag:
         args += ["--tags", tag]
-    rc = subprocess.run(args, env=env).returncode
+    rc = subprocess.run(args, env=env, cwd=cwd).returncode
     _merge_worker_results(results)          # flatten p*/ so report + scan read one dir
 
-    if rc != 0 and _all_failures_quarantined("allure-results") is True:
+    if rc != 0 and _all_failures_quarantined(str(results)) is True:
         typer.echo("\n  🔶 Only @quarantine scenarios failed — not failing the build.")
         rc = 0
     from bddframe.reporting.builder import generate
-    generate("allure-results", "allure-report")
+    generate(str(results), str(Path(cwd) / "allure-report"))
     return rc
 
 
@@ -188,24 +204,112 @@ def _merge_worker_results(results: Path):
         shutil.rmtree(d, ignore_errors=True)
 
 
+_BDDFRAME_YAML = """\
+# BDDFrame workspace config. Paths are relative to this file.
+features_dir: features
+pageobjects_dir: features/pageobjects
+env_file: .env
+reports_dir: reports
+browser: chromium
+headless: false
+"""
+
+_ENV_STUB = """\
+# Workspace config (committed). NO SECRETS — put credentials in secrets.env.
+BDDFRAME_BROWSER=chromium
+BDDFRAME_HEADLESS=false
+BDDFRAME_TIMEOUT=10000
+"""
+
+# behave glue — re-exports from the installed engine so behave discovers the
+# lifecycle hooks and the single catch-all step matcher. Same files the BFRAME
+# repo's own features/ uses; without them behave has no steps dir and won't run.
+_ENVIRONMENT_PY = """\
+from bddframe.hooks import (
+    before_all,
+    before_feature,
+    before_scenario,
+    after_step,
+    after_scenario,
+    after_all,
+)
+"""
+
+_CATCH_ALL_PY = """\
+# behave auto-imports features/steps/*.py at startup. The engine registers one
+# regex catch-all that routes each Gherkin line to the right agent. The z_ prefix
+# keeps it last in load order so any project-local steps register first.
+from bddframe.steps.catch_all import *  # noqa: F401,F403
+"""
+
+
+@app.command()
+def init(
+    path: str = typer.Argument(".", help="Directory to scaffold the workspace in"),
+):
+    """Scaffold a test workspace (bddframe.yaml, .env, features/, pageobjects/)."""
+    root = Path(path)
+    root.mkdir(parents=True, exist_ok=True)
+    created = []
+    files = {
+        root / "bddframe.yaml": _BDDFRAME_YAML,
+        root / ".env": _ENV_STUB,
+        root / "features" / "environment.py": _ENVIRONMENT_PY,
+        root / "features" / "steps" / "z_catch_all.py": _CATCH_ALL_PY,
+        root / "features" / "pageobjects" / ".gitkeep": "",
+    }
+    for f, text in files.items():
+        if f.exists():
+            continue
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(text)
+        created.append(str(f))
+    if created:
+        typer.echo("Created:\n  " + "\n  ".join(created))
+    else:
+        typer.echo(f"Workspace already initialised at {root.resolve()}")
+    typer.echo(f"\nNext: cd {path} && bddframe-agent")
+
+
+@app.command()
+def summary(
+    workspace: str = typer.Option(".", "--workspace", "-w", help="Workspace dir"),
+    llm: str = typer.Option("none", "--llm", help="none | ollama | claude — richer narrative via litellm"),
+):
+    """Plain-English summary of the last run from allure-results/."""
+    from bddframe.reporting import summary as _summary
+    results = str(Path(workspace) / "allure-results")
+    if llm and llm != "none":
+        typer.echo(_summary.summarize_llm(results))
+    else:
+        report = str(Path(workspace) / "reports" / "allure-report")
+        typer.echo(_summary.render(results, report))
+
+
 @app.command()
 def validate(
-    path: str = typer.Argument("features/", help="Path to validate"),
+    path: str = typer.Argument(None, help="Path to validate (default: workspace features_dir)"),
+    workspace: str = typer.Option(".", "--workspace", "-w", help="Workspace dir"),
 ):
     """Parse .feature files and check variable references — no browser launched."""
-    result = subprocess.run(["behave", path, "--dry-run", "--no-capture"])
+    if path is None:
+        path = config.load(workspace)["features_dir"]
+    result = subprocess.run(["behave", path, "--dry-run", "--no-capture"], cwd=workspace)
     raise typer.Exit(result.returncode)
 
 
 @app.command("list")
 def list_scenarios(
-    path: str = typer.Argument("features/", help="Path to scan"),
+    path: str = typer.Argument(None, help="Path to scan (default: workspace features_dir)"),
+    workspace: str = typer.Option(".", "--workspace", "-w", help="Workspace dir"),
 ):
     """List all discovered scenarios without running them."""
+    if path is None:
+        path = config.load(workspace)["features_dir"]
     subprocess.run([
         "behave", path, "--dry-run", "--no-capture",
         "--format", "pretty", "--no-skipped",
-    ])
+    ], cwd=workspace)
 
 
 @app.command()

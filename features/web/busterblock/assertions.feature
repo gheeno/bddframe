@@ -44,10 +44,10 @@ Feature: Assertions — every assertion pattern BDDFrame supports
   @smoke @count
   Scenario: Assert a count of visible elements
     # "should see N 'X' items" counts all visible elements matching 'X'.
-    # The catalog loads 15 movies; each has an "Add to Cart" button.
-    Then User should see 15 "Add to Cart" items
+    # The catalog loads 50 movies; each has an "Add to Cart" button.
+    Then User should see 50 "Add to Cart" items
 
-  @state @enabled
+  @state @enabled @precondition:reset_state
   Scenario: Assert element is enabled / disabled
     # Genre filter is a <select> — enabled by default.
     Then the "genre filter" should be enabled

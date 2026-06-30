@@ -181,7 +181,7 @@ function renderGenreOptions(genres) {
 function renderMovieTable(movies, total) {
   const tbody  = document.getElementById('movies-tbody');
   const countEl = document.getElementById('movie-count');
-  if (countEl) countEl.textContent = total;
+  if (countEl) countEl.textContent = `${total} movies`;
 
   tbody.innerHTML = movies.map(m => `
     <tr>
@@ -198,7 +198,7 @@ function renderMovieTable(movies, total) {
       <td>
         <div class="action-btns">
           <button class="btn btn-sm btn-primary" onclick="addToCart(${m.id})"${m.stock === 0 ? ' disabled' : ''}>Add to Cart</button>
-          <a class="btn btn-sm btn-ghost" href="/trailer.html?id=${m.id}" target="_blank" rel="noopener">&#9654; Preview</a>
+          <a class="btn btn-sm btn-ghost" href="/trailer.html?id=${m.id}" target="_blank">&#9654; Preview</a>
         </div>
       </td>
     </tr>
@@ -245,13 +245,16 @@ function renderCart(cart) {
   const taxEl      = document.getElementById('cart-tax');
   const totalEl    = document.getElementById('cart-total');
 
+  const checkoutBtn = document.getElementById('checkout-btn');
   if (cart.items.length === 0) {
     emptyMsg?.classList.remove('hidden');
     cartWrap?.classList.add('hidden');
+    if (checkoutBtn) checkoutBtn.disabled = true;
     return;
   }
   emptyMsg?.classList.add('hidden');
   cartWrap?.classList.remove('hidden');
+  if (checkoutBtn) checkoutBtn.disabled = false;
 
   tbody.innerHTML = cart.items.map(item => `
     <tr>
