@@ -121,10 +121,17 @@ def assert_visible(page: Page, text: str):
 
 
 def assert_hidden(page: Page, text: str):
+    import os as _os
     loc = page.get_by_text(text, exact=False)
     if loc.count() == 0 or not loc.first.is_visible():
         return
-    raise AssertionError(f"Expected '{text}' to NOT be visible — but it is.\nURL: {page.url}")
+    # Visible now but may be about to disappear (e.g. search filter debounce).
+    # Wait up to BDDFRAME_TIMEOUT for it to go hidden/detached before failing.
+    timeout_ms = int(_os.getenv("BDDFRAME_TIMEOUT", "10000"))
+    try:
+        loc.first.wait_for(state="hidden", timeout=timeout_ms)
+    except Exception:
+        raise AssertionError(f"Expected '{text}' to NOT be visible — but it is.\nURL: {page.url}")
 
 
 def assert_url(page: Page, fragment: str):
@@ -347,14 +354,14 @@ def assert_state(page: Page, locator_text: str, state: str):
     state = state.lower().replace("-", "").replace("read only", "readonly")
     try:
         ok = {
-            "enabled":   loc.is_enabled(),
-            "disabled":  not loc.is_enabled(),
-            "checked":   loc.is_checked(),
-            "unchecked": not loc.is_checked(),
-            "selected":  loc.is_checked(),
-            "editable":  loc.is_editable(),
-            "readonly":  not loc.is_editable(),
-        }[state]
+            "enabled":   lambda: loc.is_enabled(),
+            "disabled":  lambda: not loc.is_enabled(),
+            "checked":   lambda: loc.is_checked(),
+            "unchecked": lambda: not loc.is_checked(),
+            "selected":  lambda: loc.is_checked(),
+            "editable":  lambda: loc.is_editable(),
+            "readonly":  lambda: not loc.is_editable(),
+        }[state]()
     except KeyError:
         raise AssertionError(f"Unknown state '{state}' for '{locator_text}'")
     if not ok:

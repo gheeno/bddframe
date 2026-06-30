@@ -218,6 +218,10 @@ PATTERNS = [
                                                    'store_attribute', lambda m: {'attribute': _q(m.group(1)), 'locator': _q(m.group(2)), 'var': m.group(3)}),
 
     # Store/grab element text into a variable (11.1) — usable by later steps.
+    # "X" <role> form: strip the role word so the locator is just the name.
+    # Must precede the generic pattern below.
+    (r'^(?:stores?|grabs?) (?:the )?["\'](.+?)["\'] (?:heading|text|cell|label|element) (?:as|into|in) [\[`]([^\]`]+)[\]`]$',
+                                                   'store_text',     lambda m: {'locator': m.group(1), 'var': m.group(2)}),
     (r'^(?:stores?|grabs?) (?:the )?(.+?) (?:as|into|in) [\[`]([^\]`]+)[\]`]$',
                                                    'store_text',     lambda m: {'locator': _q(m.group(1)), 'var': m.group(2)}),
 
@@ -251,7 +255,7 @@ PATTERNS = [
                                                    'wait_hidden',      lambda m: {'text': _q(m.group(1))}),
     (r'^waits? until (.+?) (?:disappears?|is hidden|is gone|vanishes)$',
                                                    'wait_hidden',      lambda m: {'text': m.group(1)}),
-    (r'^waits? (\d+) seconds?$',                   'wait_seconds',     lambda m: {'seconds': int(m.group(1))}),
+    (r'^waits? (\d+) (seconds?|minutes?|hours?)$',  'wait_seconds',     lambda m: {'seconds': int(m.group(1)) * {'second': 1, 'seconds': 1, 'minute': 60, 'minutes': 60, 'hour': 3600, 'hours': 3600}[m.group(2)]}),
 
     # Scroll
     (r'^scrolls? down$',                           'scroll',         lambda m: {'direction': 'down'}),

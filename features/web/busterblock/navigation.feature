@@ -38,7 +38,7 @@ Feature: Navigation — move between pages, history, tabs
     When User navigates to "[BUSTERBLOCK]/catalog.html"
     Then the page title should contain "BusterBlock"
 
-  @smoke @back_forward
+  @smoke @back_forward @precondition:reset_state
   Scenario: Browser history — back and forward
     When User clicks "Add to Cart"
     And User clicks "View cart"
@@ -61,12 +61,12 @@ Feature: Navigation — move between pages, history, tabs
     When User switches to the previous tab
     Then User should see "VHS Catalog"
 
-  @new_tab @close_tab
-  Scenario: Checkout receipt opens in a new tab, close it, return to catalog
+  @new_tab @close_tab @precondition:reset_state
+  Scenario: Checkout receipt opens in a new tab, close it, return to cart
     When User clicks "Add to Cart"
     And User clicks "View cart"
     And User clicks "Checkout"
     Then a new tab should open
     And User should see "Thank you for renting"
     When User switches to the previous tab
-    Then User should see "VHS Catalog"
+    Then User should see "Your Cart"

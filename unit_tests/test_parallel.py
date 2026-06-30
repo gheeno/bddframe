@@ -82,7 +82,7 @@ def test_parallel_toggle_flag_env_and_default(monkeypatch):
     from typer.testing import CliRunner
     from bddframe import cli
     seen = {}
-    monkeypatch.setattr(cli, "_run_parallel", lambda path, n, tag, env: seen.__setitem__("n", n) or 0)
+    monkeypatch.setattr(cli, "_run_parallel", lambda path, n, tag, env, cwd=".": seen.__setitem__("n", n) or 0)
     # keep the single-process default path from actually launching behave
     monkeypatch.setattr(cli.subprocess, "run", lambda *a, **k: type("R", (), {"returncode": 0})())
     run = CliRunner()

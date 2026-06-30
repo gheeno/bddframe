@@ -62,9 +62,19 @@ def _focus(context, page):
 def _switch_tab(context, target, assert_opened=False):
     """Point context.page at another open tab. ponytail: previous/first/main all
     mean pages[0] — a real back-stack only matters past 2 tabs, add then."""
+    if assert_opened:
+        page = context.page
+        timeout_ms = int(os.getenv("BDDFRAME_TIMEOUT", "10000"))
+        from playwright._impl._errors import TimeoutError as _PWTimeout
+        try:
+            # wait_for_event("popup") retrieves the queued popup event even if
+            # the click already fired — no need to wrap the click.
+            new_page = page.wait_for_event("popup", timeout=timeout_ms)
+            _focus(context, new_page)
+            return
+        except _PWTimeout:
+            raise AssertionError("Expected a new tab to open, but only one tab is open")
     pages = _pages(context)
-    if assert_opened and len(pages) < 2:
-        raise AssertionError("Expected a new tab to open, but only one tab is open")
     _focus(context, pages[-1] if target in ('new', 'last') else pages[0])
 
 
@@ -215,6 +225,11 @@ def execute_step(step_text: str, context):
             full = os.path.join(feature_dir, 'resources', rel)
             with open(full) as fh:
                 content = fh.read()
+            # Compact JSON so substituted values stay single-line for regex patterns.
+            try:
+                content = json.dumps(json.loads(content))
+            except (json.JSONDecodeError, ValueError):
+                content = content.strip()
             stem = os.path.splitext(os.path.basename(rel))[0].upper().replace('-', '_').replace(' ', '_')
             context._vars[f'PAYLOAD_{stem}'] = content
             context._vars['PAYLOAD'] = content  # ponytail: last-loaded wins; named vars cover multi-file use

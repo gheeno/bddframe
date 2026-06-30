@@ -61,6 +61,9 @@ class _FakePage:
     def __init__(self, ctx): self._ctx = ctx; self.fronted = False
     def bring_to_front(self): self.fronted = True
     def close(self): self._ctx.pages.remove(self)
+    def wait_for_event(self, event, **kwargs):
+        from playwright._impl._errors import TimeoutError as _PWTimeout
+        raise _PWTimeout("no popup in fake context")
 
 
 class _FakeBctx:

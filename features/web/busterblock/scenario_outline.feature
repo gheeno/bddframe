@@ -23,9 +23,9 @@ Feature: Scenario Outline and Data Tables — parameterised and table-driven tes
 
     Examples:
       | genre  | expected_movie     |
-      | Action | Die Hard           |
-      | Horror | Jaws               |
-      | Sci-Fi | Back to the Future |
+      | Action  | Die Hard           |
+      | Thriller| Jaws               |
+      | Sci-Fi  | Back to the Future |
 
   @outline_multi_examples
   Scenario Outline: Login — happy and sad paths grouped in separate Examples blocks

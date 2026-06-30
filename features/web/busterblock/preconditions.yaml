@@ -12,6 +12,13 @@ jaws_out_of_stock:
   teardown:
     - POST [BUSTERBLOCK]/api/test/reset
 
+# Reset server state (stock + carts + orders) before scenarios that write data.
+reset_state:
+  setup:
+    - POST [BUSTERBLOCK]/api/test/reset
+  teardown:
+    - POST [BUSTERBLOCK]/api/test/reset
+
 # Pre-fill reel_ryan's cart with "Star Wars: A New Hope" (id 2) — no UI clicks.
 cart_preseeded:
   setup:
