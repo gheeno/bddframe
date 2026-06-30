@@ -8,7 +8,7 @@
 #                         Accessibility returns 0 matches, so the framework
 #                         falls back to pom.yaml in this folder. (step marked [POM])
 #
-# Run it:   behave features/fallback-demo --no-capture
+# Run it:   behave features/web/fallback-demo --no-capture
 #
 # Watch for this line in the output, which proves the fallback fired:
 #   📋 POM: resolved 'burger menu' via pom.yaml

@@ -32,7 +32,7 @@ HTTP surface.
 ## Phases
 
 ### Phase 1 — Rename test app
-`git mv vhs-vault test-app-vhs-vault`; update `package.json` name. URL
+`git mv vhs-vault test-app`; update `package.json` name. URL
 (`http://localhost:3333`) and the `[BUSTERBLOCK]` env key are unchanged.
 
 ### Phase 2 — Test seam in `server.js`

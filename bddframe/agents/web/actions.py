@@ -103,10 +103,17 @@ def uncheck(page: Page, locator_text: str):
 
 
 def assert_visible(page: Page, text: str):
+    import os as _os
+    timeout_ms = int(_os.getenv("BDDFRAME_TIMEOUT", "10000"))
     loc = page.get_by_text(text, exact=False)
-    # Scan for the first VISIBLE match — the first DOM match is often an
-    # sr-only (screen-reader, visually hidden) duplicate. ponytail: cap at 30,
-    # raise the cap if a page hides the real match past the 30th occurrence.
+    # Phase 1: wait for the text to appear in DOM at all — handles async JS
+    # navigations (fetch → window.location.href) where the page hasn't loaded yet.
+    try:
+        loc.first.wait_for(state="attached", timeout=timeout_ms)
+    except Exception:
+        raise AssertionError(f"Expected to see '{text}' on page — not found.\nURL: {page.url}")
+    # Phase 2: scan for the first VISIBLE match — the first DOM match is often
+    # an sr-only (screen-reader, visually hidden) duplicate. ponytail: cap at 30.
     for i in range(min(loc.count(), 30)):
         if loc.nth(i).is_visible():
             return

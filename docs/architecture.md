@@ -464,7 +464,7 @@ the env var is set.
 
 ### The sample test that triggers the LLM
 
-`features/fallback-demo/llm_fallback.feature` exists to demonstrate **Trigger 1**.
+`features/web/fallback-demo/llm_fallback.feature` exists to demonstrate **Trigger 1**.
 Every step resolves locally except one:
 
 ```gherkin
@@ -487,7 +487,7 @@ Run it (needs a model — with `BDDFRAME_MODEL` unset, the `[LLM]` step fails by
 
 ```bash
 # .env: BDDFRAME_MODEL=ollama/llama3  (or a Foundry Local / OpenAI id) + BDDFRAME_LLM_URL
-bddframe run features/fallback-demo/llm_fallback.feature --headed
+bddframe run features/web/fallback-demo/llm_fallback.feature --headed
 ```
 
 To watch the raw prompt/response exchange:
