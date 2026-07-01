@@ -15,7 +15,7 @@ VALID_TYPES = frozenset({
     'click_in_row', 'click_in_section', 'close_popups', 'fill', 'hover',
     'load_data', 'load_resource', 'mock_route', 'navigate', 'pixel_baseline', 'press_key',
     'run_command', 'run_script', 'screenshot', 'scroll', 'scroll_to',
-    'search', 'select', 'set_page', 'set_var', 'store_attribute',
+    'search', 'select', 'set_page', 'set_var', 'set_viewport', 'store_attribute',
     'store_text', 'switch_frame', 'uncheck', 'visual_baseline', 'wait_hidden',
     'wait_load', 'wait_networkidle', 'wait_seconds', 'wait_visible',
     # BFRAME_0024 — web pixel/OCR bridge (canvas & terminal UIs)
@@ -29,6 +29,8 @@ VALID_TYPES = frozenset({
     'rest_set_header', 'rest_call', 'rest_assert_status', 'rest_assert_body',
     'rest_assert_body_table', 'rest_assert_header', 'rest_assert_header_table',
     'rest_extract_json',
+    # NOOD_0007 — REST auth sugar + OAuth2 client-credentials
+    'rest_set_auth', 'rest_oauth2',
 })
 
 
@@ -69,7 +71,27 @@ def resolve(step_text: str) -> dict:
     )
 
 
+# Per-run memo of LLM-resolved steps (NOOD_0007). The same sentence repeated
+# across scenarios ("User submits the login form" in every login test) costs
+# one model call per run instead of one per occurrence. Pattern matches are
+# never cached — they're already free. Cleared in hooks.before_all.
+_llm_cache: dict[str, dict] = {}
+
+
+def clear_cache():
+    _llm_cache.clear()
+
+
 def _llm_resolve(step_text: str) -> dict:
+    cached = _llm_cache.get(step_text)
+    if cached is not None:
+        return dict(cached)                 # copy — callers may mutate the action
+    action = _llm_resolve_uncached(step_text)
+    _llm_cache[step_text] = dict(action)
+    return action
+
+
+def _llm_resolve_uncached(step_text: str) -> dict:
     try:
         from noodle.llm.client import ask
     except ImportError:
@@ -79,17 +101,19 @@ def _llm_resolve(step_text: str) -> dict:
 
 Step: "{step_text}"
 
-WEB action types: navigate, search, close_popups, click, fill, hover, press_key, clear, select, check, uncheck, assert_visible, assert_hidden, assert_url, assert_title, assert_value, assert_state, assert_attribute, assert_count, store_text, set_var, store_attribute, assert_compare, scroll, screenshot, wait_load, wait_visible, wait_hidden
+WEB action types: navigate, search, close_popups, click, fill, hover, press_key, clear, select, check, uncheck, assert_visible, assert_hidden, assert_url, assert_title, assert_value, assert_state, assert_attribute, assert_count, store_text, set_var, store_attribute, assert_compare, scroll, screenshot, wait_load, wait_visible, wait_hidden, set_viewport
 
-WEB param keys by type: navigate -> url; search -> query; click/hover/clear -> locator; fill -> locator,value; press_key -> key; select -> locator,value; check/uncheck -> locator; assert_visible/assert_hidden/wait_visible/wait_hidden -> text; assert_url/assert_title -> fragment; assert_value -> locator,value; assert_state -> locator,state; assert_attribute -> locator,attribute,value; assert_count -> count,locator; store_text -> locator,var; set_var -> var,value; store_attribute -> attribute,locator,var; assert_compare -> left,op,right; scroll -> direction; screenshot -> name
+WEB param keys by type: navigate -> url; search -> query; click/hover/clear -> locator; fill -> locator,value; press_key -> key; select -> locator,value; check/uncheck -> locator; assert_visible/assert_hidden/wait_visible/wait_hidden -> text; assert_url/assert_title -> fragment; assert_value -> locator,value; assert_state -> locator,state; assert_attribute -> locator,attribute,value; assert_count -> count,locator; store_text -> locator,var; set_var -> var,value; store_attribute -> attribute,locator,var; assert_compare -> left,op,right; scroll -> direction; screenshot -> name; set_viewport -> width,height (integers)
 
 REST (HTTP API) action types and params:
   rest_set_header -> name,value
+  rest_set_auth -> scheme ("bearer" with token, or "basic" with user,password)
+  rest_oauth2 -> url,client_id,client_secret (OAuth2 client-credentials token fetch)
   rest_call -> method (GET/POST/PUT/PATCH/DELETE), path; optional body (JSON string), var (store response)
   rest_assert_status -> expected (integer)
   rest_assert_body -> needle (substring expected in body)
   rest_assert_header -> name,value
-  rest_extract_json -> key,var (store a JSON field into a variable)
+  rest_extract_json -> key,var (store a JSON field into a variable; key may be a dotted path like data.items[0].id)
 
 Rules:
 - Use "path" (not "url") for rest_call. "expected" for rest_assert_status must be an integer.

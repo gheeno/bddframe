@@ -24,6 +24,16 @@ Given User opens '[BASE_URL]/path'
 Given User goes to '[BASE_URL]/path'
 ```
 
+### Viewport / screen size (NOOD_0007)
+
+```gherkin
+When User sets the viewport to "1920x1080"
+```
+
+Or per scenario with a tag (`@viewport:1366x768`), or run-wide with
+`NOODLE_VIEWPORT=1920x1080`. An explicit viewport wins over `@mobile`
+device presets.
+
 ---
 
 ## Clicking
@@ -224,6 +234,10 @@ When User switches to the 'payment-frame' iframe
 
 ## REST API Testing
 
+Tag a scenario `@api` to run it **without a browser** — REST steps talk
+straight to the HTTP client, no Playwright launch, no browser binaries needed
+in CI. Web steps inside an `@api` scenario fail with a clear error.
+
 ### Setup
 
 ```gherkin
@@ -231,6 +245,22 @@ Given sets `REST_BASE_URL` to '[API_BASE_URL]'
 Given sets request header 'Authorization' to 'Bearer token123'
 Given sets request header 'X-Api-Key' to '[API_KEY]'
 ```
+
+### Authentication (NOOD_0007)
+
+Credentials belong in `[VARS]` (secrets.env) — never literal in the feature.
+`Authorization` headers are never written to logs or reports.
+
+```gherkin
+Given sets the bearer token to '[API_TOKEN]'
+Given uses basic auth with '[API_USER]' and '[API_PASS]'
+Given sets the api key header 'X-Api-Key' to '[API_KEY]'
+Given fetches an oauth2 token from '[AUTH_URL]' with client '[CLIENT_ID]' and secret '[CLIENT_SECRET]'
+```
+
+The OAuth2 step performs a client-credentials grant and sets the bearer token.
+If a later call returns 401, the token is refreshed once and the call retried
+once — never a loop.
 
 ### Requests
 
@@ -282,7 +312,11 @@ Then the response headers should contain:
 ```gherkin
 Then extracts 'id' from response storing in `OBJ_ID`
 Then extracts json key 'token' from response body storing in `AUTH_TOKEN`
+Then extracts 'data.items[0].id' from the response and stores it as `FIRST_ID`
 ```
+
+Keys may be a dotted path with `[n]` indexes for nested JSON; a plain key
+keeps the original behaviour (first item when the response is a list).
 
 After extraction, the value is available as a runtime variable for later steps:
 ```gherkin

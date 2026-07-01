@@ -1,5 +1,26 @@
 import os
 
+# Runaway-spend guard (NOOD_0007, roadmap Phase I). NOODLE_LLM_MAX_CALLS caps
+# model calls per run (0 = unlimited). A badly broken build in full-LLM mode
+# otherwise burns one call per step, every step.
+_call_count = 0
+
+
+def reset_calls():
+    global _call_count
+    _call_count = 0
+
+
+def _check_cap():
+    global _call_count
+    cap = int(os.getenv("NOODLE_LLM_MAX_CALLS", "0") or "0")
+    if cap > 0 and _call_count >= cap:
+        raise AssertionError(
+            f"LLM call cap reached ({cap}) — the build may be badly broken.\n"
+            "  → Raise NOODLE_LLM_MAX_CALLS, or set it to 0 to disable the cap"
+        )
+    _call_count += 1
+
 
 def _litellm():
     try:
@@ -22,6 +43,7 @@ def _api_base():
 
 
 def ask(prompt: str) -> str:
+    _check_cap()
     ll = _litellm()
     response = ll.completion(
         model=os.getenv("NOODLE_MODEL", "ollama/llama3"),
@@ -33,6 +55,7 @@ def ask(prompt: str) -> str:
 
 def ask_vision(prompt: str, image_b64: str) -> str:
     """Send a text prompt + base64 screenshot to a vision-capable model."""
+    _check_cap()
     ll = _litellm()
     response = ll.completion(
         model=os.getenv("NOODLE_MODEL"),

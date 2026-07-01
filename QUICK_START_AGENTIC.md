@@ -142,6 +142,28 @@ It's keyword matching, not a model — no API key, no cost, works offline.
 URL, and leaves `<placeholders>` plus a POM with `<css selector>` stubs. Open the
 files, replace the placeholders with real values and selectors, then run.
 
+### Generated tests are validated (NOOD_0007)
+
+With `--llm`, the model is prompted with the framework's own step vocabulary,
+and its output is dry-run against the pattern table before it's written. Steps
+the deterministic resolver can't handle get one automatic repair pass, then a
+per-step report:
+
+```
+  [pattern] Given User is on "https://www.saucedemo.com"
+  [pattern] When User clicks the login button
+  [LLM]     When User performs a mystic incantation
+
+  ⚠️  1 step(s) need the LLM fallback at run time (NOODLE_MODEL) — or rephrase
+  to a pattern (see docs/steps_dictionary.md).
+```
+
+The same check works on hand-written features — no agent needed:
+
+```bash
+noodle validate features/ --resolve
+```
+
 ---
 
 ## Part 4 — The engine (direct / CI-CD)
