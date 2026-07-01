@@ -84,6 +84,56 @@ def _close_tab(context):
         _focus(context, _pages(context)[0])
 
 
+# Action types that never touch the page — legal in browser-less @api scenarios.
+_BROWSERLESS_TYPES = frozenset({
+    'assert_compare', 'load_data', 'run_command', 'run_script',
+    'set_var', 'wait_seconds',
+})
+
+
+def _json_path(data, path: str):
+    """Walk a dotted path with optional [n] indexes ('data.items[0].id')
+    through parsed JSON. Raises AssertionError naming the part that missed."""
+    cur = data
+    for name, idx in re.findall(r'([^.\[\]]+)|\[(\d+)\]', path):
+        if name:
+            if not isinstance(cur, dict) or name not in cur:
+                raise AssertionError(f"Key '{name}' not found walking '{path}' in response JSON")
+            cur = cur[name]
+        else:
+            i = int(idx)
+            if not isinstance(cur, list) or i >= len(cur):
+                raise AssertionError(f"Index [{i}] out of range walking '{path}' in response JSON")
+            cur = cur[i]
+    return cur
+
+
+def _oauth2_fetch(context, url: str, client_id: str, client_secret: str):
+    """Client-credentials grant → Authorization: Bearer <token> in _REST_HEADERS.
+    Grant params are kept in _vars so a later 401 can refresh once (rest_call).
+    The token/secret are never logged."""
+    import urllib.parse
+    from noodle.agents.web import rest_client
+    form = urllib.parse.urlencode({
+        'grant_type': 'client_credentials',
+        'client_id': client_id,
+        'client_secret': client_secret,
+    })
+    status, resp, _ = rest_client.rest_call(
+        'POST', url, form, {'Content-Type': 'application/x-www-form-urlencoded'})
+    assert status == 200, f"OAuth2 token fetch failed: {status} {resp[:200]}"
+    try:
+        token = json.loads(resp).get('access_token')
+    except ValueError:
+        token = None
+    assert token, f"OAuth2 response has no access_token: {resp[:200]}"
+    hdrs = json.loads(context._vars.get('_REST_HEADERS', '{}'))
+    hdrs['Authorization'] = f"Bearer {token}"
+    context._vars['_REST_HEADERS'] = json.dumps(hdrs)
+    context._vars['_REST_OAUTH'] = json.dumps(
+        {'url': url, 'client_id': client_id, 'client_secret': client_secret})
+
+
 def execute_step(step_text: str, context):
     if getattr(context, "_vars", None) is None:
         context._vars = {}
@@ -100,6 +150,15 @@ def execute_step(step_text: str, context):
     page = context.page
 
     t = action['type']
+
+    # @api scenarios run without a browser (hooks skips Playwright). REST and
+    # non-UI steps work; a web step gets a clear error instead of a deep
+    # AttributeError on a None page.
+    if page is None and not (t.startswith('rest_') or t in _BROWSERLESS_TYPES):
+        raise AssertionError(
+            f"@api scenario has no browser, but this step needs one: \"{step_text}\"\n"
+            "  → Remove the @api tag, or replace the step with a REST step"
+        )
 
     if t == 'set_page':
         actions.set_page(action['name'])
@@ -266,11 +325,25 @@ def execute_step(step_text: str, context):
             from noodle.agents.visual import regions
             vp = page.viewport_size or {"width": 1280, "height": 720}
             screen.set_region(regions.parse_region(action['region'], (vp["width"], vp["height"])))
+    elif t == 'set_viewport':
+        page.set_viewport_size({'width': action['width'], 'height': action['height']})
     # --- BFRAME_0029: proper REST HTTP client ------------------------------------
     elif t == 'rest_set_header':
         hdrs = json.loads(context._vars.get('_REST_HEADERS', '{}'))
         hdrs[action['name']] = action['value']
         context._vars['_REST_HEADERS'] = json.dumps(hdrs)
+    elif t == 'rest_set_auth':
+        hdrs = json.loads(context._vars.get('_REST_HEADERS', '{}'))
+        if action['scheme'] == 'bearer':
+            hdrs['Authorization'] = f"Bearer {action['token']}"
+        else:                               # basic
+            import base64
+            cred = base64.b64encode(
+                f"{action['user']}:{action['password']}".encode()).decode()
+            hdrs['Authorization'] = f"Basic {cred}"
+        context._vars['_REST_HEADERS'] = json.dumps(hdrs)
+    elif t == 'rest_oauth2':
+        _oauth2_fetch(context, action['url'], action['client_id'], action['client_secret'])
     elif t == 'rest_call':
         from noodle.agents.web import rest_client
         base = context._vars.get('REST_BASE_URL', '')
@@ -278,6 +351,12 @@ def execute_step(step_text: str, context):
         path = action['path']
         url = path if path.startswith('http') else base.rstrip('/') + '/' + path.lstrip('/')
         status, body, headers = rest_client.rest_call(action['method'], url, action.get('body'), hdrs)
+        if status == 401 and '_REST_OAUTH' in context._vars:
+            # Token likely expired — refresh once and retry once, never loop.
+            o = json.loads(context._vars['_REST_OAUTH'])
+            _oauth2_fetch(context, o['url'], o['client_id'], o['client_secret'])
+            hdrs = json.loads(context._vars.get('_REST_HEADERS', '{}'))
+            status, body, headers = rest_client.rest_call(action['method'], url, action.get('body'), hdrs)
         context._vars['REST_STATUS'] = str(status)
         context._vars['REST_BODY'] = body
         context._vars['REST_HEADERS'] = json.dumps(dict(headers))
@@ -294,11 +373,15 @@ def execute_step(step_text: str, context):
         except ValueError as exc:
             raise AssertionError(f"REST_BODY is not valid JSON: {body[:100]}") from exc
         key = action['key']
-        item = data[0] if isinstance(data, list) else data
-        if key not in item:
-            raise AssertionError(f"Key '{key}' not found in response JSON")
+        if '.' in key or '[' in key:        # NOOD_0007 — dotted/indexed path
+            value = _json_path(data, key)
+        else:                               # legacy flat key (first item of a list)
+            item = data[0] if isinstance(data, list) else data
+            if key not in item:
+                raise AssertionError(f"Key '{key}' not found in response JSON")
+            value = item[key]
         target = action['var'].upper().replace(' ', '_')
-        context._vars[target] = str(item[key])
+        context._vars[target] = str(value)
         logger.info(f"\n  💾 Extracted '{key}' → `{target}` = {context._vars[target]!r}")
     elif t == 'rest_assert_body':
         body = context._vars.get('REST_BODY', '')

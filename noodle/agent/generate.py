@@ -118,21 +118,39 @@ def generate(description: str, url: str, workspace_cfg: dict, workspace: str = "
     return feat_path, pom_path
 
 
+def _strip_fence(text: str) -> str:
+    text = text.strip()
+    if text.startswith("```"):
+        text = re.sub(r"^```[a-z]*\n|\n```$", "", text)
+    return text
+
+
 def generate_llm(description: str, url: str, workspace_cfg: dict, workspace: str = "."):
     """Opt-in: a local Ollama / paid model writes the Gherkin instead of a template.
-    Routes through litellm (noodle.llm.client), so --llm ollama|claude all work."""
+    Routes through litellm (noodle.llm.client), so --llm ollama|claude all work.
+
+    NOOD_0007: the output is validated against the pattern table before it's
+    written. Steps the deterministic resolver can't handle get ONE repair pass
+    (the model is shown the misses + the canonical vocabulary), then the file
+    is written either way with a per-step report — never a silent skeleton
+    that only works with a runtime LLM.
+    """
     from noodle.llm.client import ask
+    from noodle.agent import prompts, validate
+
     name = _name_from(description, url)
-    prompt = (
-        "Write a Behave .feature file in Gherkin for this test. Use steps phrased "
-        "like 'Given User is on \"<url>\"', 'When User enters \"x\" in the y field', "
-        "'And User clicks the z button', 'Then User should see \"text\"'. "
-        f"URL: {url}\nDescription: {description}\n"
-        "Output only the .feature content, no commentary."
-    )
-    feature = ask(prompt).strip()
-    if feature.startswith("```"):
-        feature = re.sub(r"^```[a-z]*\n|\n```$", "", feature)
+    feature = _strip_fence(ask(prompts.generation_prompt(description, url)))
+    result = validate.check_feature(feature)
+    if result["error"] or validate.unmatched(result):
+        repaired = _strip_fence(ask(prompts.repair_prompt(
+            feature, validate.unmatched(result) or ["<file did not parse as Gherkin>"])))
+        re_result = validate.check_feature(repaired)
+        # Keep the repair only if it's an improvement — a model that mangles
+        # the file on retry shouldn't overwrite a mostly-good first draft.
+        if not re_result["error"] and \
+                len(validate.unmatched(re_result)) < len(validate.unmatched(result)):
+            feature, result = repaired, re_result
+
     app_dir = Path(workspace) / workspace_cfg["features_dir"] / _app_from_url(url)
     feat_path = app_dir / f"{name}.feature"
     feat_path.parent.mkdir(parents=True, exist_ok=True)
@@ -142,4 +160,5 @@ def generate_llm(description: str, url: str, workspace_cfg: dict, workspace: str
     pom_path = app_dir / "pageobjects" / f"{name}_pom.yaml"
     pom_path.parent.mkdir(parents=True, exist_ok=True)
     pom_path.write_text(pom_tpl.format(url=url, name=name, Title=name.title()))
+    print(validate.render(result))
     return feat_path, pom_path

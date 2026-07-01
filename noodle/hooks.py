@@ -1,4 +1,5 @@
 import os
+import re
 from collections import defaultdict
 from pathlib import Path
 from dotenv import load_dotenv
@@ -112,6 +113,11 @@ def before_all(context):
     else:
         _clean_allure_results()
     healing.reset()
+    # NOOD_0007 — fresh LLM budget + step-resolution memo per run.
+    from noodle.llm import client as _llm_client
+    from noodle.resolver import step_resolver as _step_resolver
+    _llm_client.reset_calls()
+    _step_resolver.clear_cache()
     _load_keyvault()
     _run_hooks("before_all", context)
 
@@ -162,6 +168,20 @@ def _ocr_available():
 _OCR_OK = None
 
 
+def _viewport_from(tags) -> dict | None:
+    """Viewport for the scenario: @viewport:1920x1080 tag wins, then the
+    NOODLE_VIEWPORT env var; None = Playwright's default (and @mobile device
+    presets keep their own)."""
+    raw = next((t.split(':', 1)[1] for t in tags if t.startswith('viewport:')), None) \
+        or os.getenv("NOODLE_VIEWPORT")
+    if not raw:
+        return None
+    m = re.match(r'^\s*(\d+)\s*[xX]\s*(\d+)\s*$', raw)
+    if not m:
+        raise ValueError(f"Bad viewport {raw!r} — expected WIDTHxHEIGHT, e.g. 1920x1080")
+    return {"width": int(m.group(1)), "height": int(m.group(2))}
+
+
 def before_scenario(context, scenario):
     tags = set(scenario.effective_tags)
 
@@ -185,6 +205,18 @@ def before_scenario(context, scenario):
     _screen.set_region(None)              # 0024 — clear any OCR focus region
     context._vars = {}                     # 11.1 — run-scoped stored values
     context._scenario_failed = False       # set by after_step; gates trace save
+
+    # @api scenarios are pure REST — no browser, no tracing (NOOD_0007). REST
+    # steps go through rest_client; a web step fails with a clear error in the
+    # runner. Keeps API-only suites fast and CI images browser-free.
+    if 'api' in tags:
+        context.page = None
+        if _REPORTING:
+            context._allure_result = _writer.ScenarioResult(scenario)
+        from noodle import preconditions
+        preconditions.run(scenario, "setup")
+        _run_hooks("before_scenario", context, scenario)
+        return
 
     # Bug 3: warn when @headed and @headless both appear — @headed wins but conflict
     # is almost always a forgotten debug tag that will break CI silently.
@@ -227,6 +259,9 @@ def before_scenario(context, scenario):
     if 'mobile' in tags:
         device_name = "iPhone 13" if 'iphone' in tags else "Pixel 5"
         ctx_opts.update(context._pw.devices[device_name])
+    viewport = _viewport_from(tags)
+    if viewport:                            # explicit size wins over device preset
+        ctx_opts['viewport'] = viewport
     if 'record_video' in tags:
         os.makedirs("videos", exist_ok=True)
         ctx_opts['record_video_dir'] = "videos/"
@@ -278,17 +313,21 @@ def after_step(context, step):
         safe_name = step.name.replace(" ", "_").replace("/", "_")[:80]
         raw_path = f"screenshots/FAILED_{safe_name}.png"
         annotated_path = None
+        shot_taken = False
         try:
-            context.page.screenshot(path=raw_path, full_page=True)
-            logger.info(f"\n  📸 Screenshot saved: {raw_path}")
-            ar = _allure_result(context)
-            if ar is not None:
-                annotated_path = _annotate.draw_not_found(raw_path, step.name[:60])
+            # @api scenarios have no page — report the failure without a shot.
+            if getattr(context, "page", None) is not None:
+                context.page.screenshot(path=raw_path, full_page=True)
+                shot_taken = True
+                logger.info(f"\n  📸 Screenshot saved: {raw_path}")
+                ar = _allure_result(context)
+                if ar is not None:
+                    annotated_path = _annotate.draw_not_found(raw_path, step.name[:60])
         except Exception:
             pass
         ar = _allure_result(context)
         if ar is not None:
-            ar.add_step(step, "failed", annotated_path or raw_path)
+            ar.add_step(step, "failed", annotated_path or (raw_path if shot_taken else None))
 
         # Agentic RCA (opt-in: NOODLE_RCA + NOODLE_MODEL). Classify the
         # failure's root cause from the screenshot and tag the Allure result so

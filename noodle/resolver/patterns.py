@@ -133,6 +133,10 @@ PATTERNS = [
     (r'^opens? ["\'](.+)["\']$',                   'navigate',       lambda m: {'url': _q(m.group(1))}),
     (r'^goes? to ["\'](.+)["\']$',                 'navigate',       lambda m: {'url': _q(m.group(1))}),
 
+    # Viewport (NOOD_0007) — responsive testing at any size, mid-scenario.
+    (r'^sets? the viewport(?: size)? to ["\']?(\d+)\s*[xX]\s*(\d+)["\']?$',
+                                                   'set_viewport',   lambda m: {'width': int(m.group(1)), 'height': int(m.group(2))}),
+
     # Browser history (BFRAME_0025) — back / forward / reload.
     (r'^goes? back$',                              'go_back',        lambda m: {}),
     (r'^goes? forward$',                           'go_forward',     lambda m: {}),
@@ -301,19 +305,30 @@ PATTERNS = [
     # Set a per-session request header (stored in _REST_HEADERS var).
     (r"^sets? (?:a |an )?request header '([^']+)' to '([^']+)'$",
                                                    'rest_set_header',        lambda m: {'name': m.group(1), 'value': m.group(2)}),
+    # Auth sugar (NOOD_0007) — best-practice auth without hand-building headers.
+    # Values come through '[VAR]' substitution so secrets stay out of features;
+    # Authorization is never logged (runner logs only method/url/status).
+    (r"^sets? the bearer token to '([^']+)'$",
+                                                   'rest_set_auth',          lambda m: {'scheme': 'bearer', 'token': m.group(1)}),
+    (r"^uses? basic auth with '([^']+)' and '([^']+)'$",
+                                                   'rest_set_auth',          lambda m: {'scheme': 'basic', 'user': m.group(1), 'password': m.group(2)}),
+    (r"^sets? the api key header '([^']+)' to '([^']+)'$",
+                                                   'rest_set_header',        lambda m: {'name': m.group(1), 'value': m.group(2)}),
+    (r"^fetch(?:es)? an oauth2 token from '([^']+)' with client '([^']+)' and secret '([^']+)'$",
+                                                   'rest_oauth2',            lambda m: {'url': m.group(1), 'client_id': m.group(2), 'client_secret': m.group(3)}),
     # HTTP call: method + path (required) + optional body + optional var store.
     # Path can be absolute (http...) or relative (prepends REST_BASE_URL).
     (r"^performs? (?:a |an )?(GET|POST|PUT|PATCH|DELETE) (?:call|request) "
      r"(?:at|to|on) '([^']+)'"
      r"(?: with (?:request )?body '([^']+)')?"
-     r"(?: (?:and )?stor(?:e|ing) (?:the )?(?:response )?(?:as|in) [\[`]([^\]`]+)[\]`])?$",
+     r"(?: (?:and )?stor(?:e|es|ing) (?:the )?(?:response )?(?:as|in) [\[`]([^\]`]+)[\]`])?$",
                                                    'rest_call',              lambda m: {'method': m.group(1).upper(), 'path': m.group(2), 'body': m.group(3), 'var': m.group(4)}),
     # Status code assertion.
     (r'^the response status(?: code)? should (?:be|equal) (\d+)$',
                                                    'rest_assert_status',     lambda m: {'expected': int(m.group(1))}),
     # Extract a JSON key from the latest response body into a named variable.
     (r"^extracts? (?:json )?(?:key )?'([^']+)' from (?:the )?(?:response|REST_BODY)(?: body)? "
-     r"(?:and )?stor(?:e|ing) (?:it )?(?:as|in) [\[`]([^\]`]+)[\]`]$",
+     r"(?:and )?stor(?:e|es|ing) (?:it )?(?:as|in) [\[`]([^\]`]+)[\]`]$",
                                                    'rest_extract_json',  lambda m: {'key': m.group(1), 'var': m.group(2)}),
     # Body contains a single string (key or value).
     (r"^the response body should contain '([^']+)'$",

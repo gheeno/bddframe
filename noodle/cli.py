@@ -290,12 +290,33 @@ def summary(
 def validate(
     path: str = typer.Argument(None, help="Path to validate (default: workspace features_dir)"),
     workspace: str = typer.Option(".", "--workspace", "-w", help="Workspace dir"),
+    resolve: bool = typer.Option(False, "--resolve", help="Also dry-run every step against the pattern table — shows which steps need the LLM fallback"),
 ):
     """Parse .feature files and check variable references — no browser launched."""
     if path is None:
         path = config.load(workspace)["features_dir"]
+    if resolve:
+        raise typer.Exit(_validate_resolve(Path(workspace) / path))
     result = subprocess.run(["behave", path, "--dry-run", "--no-capture"], cwd=workspace)
     raise typer.Exit(result.returncode)
+
+
+def _validate_resolve(target: Path) -> int:
+    """Classify every step in every .feature under target as [pattern] or [LLM].
+    Exit 1 only on parse errors — LLM-fallback steps are legal, just flagged."""
+    from noodle.agent import validate as _validate
+    files = [target] if target.suffix == ".feature" else sorted(target.rglob("*.feature"))
+    if not files:
+        typer.echo(f"No .feature files under {target}")
+        return 1
+    rc = 0
+    for f in files:
+        typer.echo(f"\n{f}")
+        result = _validate.check_feature(f.read_text(), filename=str(f))
+        if result["error"]:
+            rc = 1
+        typer.echo(_validate.render(result))
+    return rc
 
 
 @app.command("list")
