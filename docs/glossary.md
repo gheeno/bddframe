@@ -1,4 +1,4 @@
-# BDDFrame — Where to Find What
+# Noodle Test Framework — Where to Find What
 
 Quick navigation for settings, files, and resources. If you're looking for a specific config value, output file, or doc section, start here.
 
@@ -83,8 +83,8 @@ Variable resolution order (highest wins): **Key Vault → shell/CI → `.env` �
 
 | Output | Where | How to open |
 |--------|-------|------------|
-| Allure raw results | `allure-results/` | Input for `bddframe report generate` |
-| Allure HTML report | `allure-report/` | `bddframe report open` (needs HTTP, not `file://`) |
+| Allure raw results | `allure-results/` | Input for `noodle report generate` |
+| Allure HTML report | `allure-report/` | `noodle report open` (needs HTTP, not `file://`) |
 | JUnit XML (CI) | `allure-results/junit.xml` | Azure DevOps Tests tab |
 | Failure screenshots | `screenshots/` | Open directly |
 | Playwright traces | `traces/` | `playwright show-trace traces/<name>.zip` |

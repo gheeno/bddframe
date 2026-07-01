@@ -1,4 +1,4 @@
-# BDDFrame Steps Dictionary
+# Noodle Test Framework Steps Dictionary
 
 Steps are written in plain English and prefixed with `Given`, `When`, `Then`, or `And`.
 The subject (`User`, `I`, `The user`) is stripped before matching, so all three forms are equivalent:
@@ -361,13 +361,13 @@ stdout is always stored in `SCRIPT_OUTPUT`. Named `storing output in` stores it 
 
 ### What actually validates a step
 
-The check happens at **runtime**. `bddframe/steps/catch_all.py` intercepts every step and hands it to `bddframe/resolver/patterns.py`. If no regex there matches, the scenario fails (see *What happens when a step is not found* below).
+The check happens at **runtime**. `noodle/steps/catch_all.py` intercepts every step and hands it to `noodle/resolver/patterns.py`. If no regex there matches, the scenario fails (see *What happens when a step is not found* below).
 
 ### How to add a new pattern
 
 **1. Write the step** in your `.feature` file — the editor accepts it immediately.
 
-**2. Add a regex** to `bddframe/resolver/patterns.py` → `PATTERNS` list:
+**2. Add a regex** to `noodle/resolver/patterns.py` → `PATTERNS` list:
 
 ```python
 (r'^your pattern here (.+)$',  'your_action',  lambda m: {'param': m.group(1)}),
@@ -375,14 +375,14 @@ The check happens at **runtime**. `bddframe/steps/catch_all.py` intercepts every
 
 Patterns are tried top-to-bottom; first match wins — insert at the right priority position.
 
-**3. Add an action handler** in `bddframe/agents/web/actions.py`:
+**3. Add an action handler** in `noodle/agents/web/actions.py`:
 
 ```python
 def your_action(page: Page, param: str):
     ...
 ```
 
-**4. Wire the dispatch** in `bddframe/orchestrator/runner.py` → `execute_step()`:
+**4. Wire the dispatch** in `noodle/orchestrator/runner.py` → `execute_step()`:
 
 ```python
 elif t == 'your_action':
@@ -404,7 +404,7 @@ The step text is normalised (subject stripped, verb normalised to 3rd person) an
 ```
 AssertionError: No pattern matched: "User frobnicates the widget"
   Normalized to: "frobnicates the widget"
-  → Add a pattern to bddframe/resolver/patterns.py
+  → Add a pattern to noodle/resolver/patterns.py
   → OR set BDDFRAME_MODEL in .env to enable LLM fallback
 ```
 
@@ -421,7 +421,7 @@ BDDFRAME_MODEL=claude-sonnet-4-6   # or any litellm-compatible model id
 
 Requires the llm extra:
 ```
-pip install bddframe[llm]
+pip install noodle[llm]
 ```
 
 If the LLM returns something unparseable or an unknown action type, the step still fails with a clear error.

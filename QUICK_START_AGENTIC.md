@@ -1,20 +1,20 @@
-# BDDFrame — Agentic Quick Start
+# Noodle Test Framework — Agentic Quick Start
 
-**Who this is for:** Someone who wants to install BDDFrame as a tool and keep their
+**Who this is for:** Someone who wants to install Noodle Test Framework as a tool and keep their
 tests in their own folder — not inside the framework repo. Plus an interactive
 terminal agent that turns plain English into test runs and new tests.
 
 **The mental model:**
 
-- **The engine** (`bddframe`) is a package you `pip install`. It never holds your tests.
+- **The engine** (`noodle`) is a package you `pip install`. It never holds your tests.
 - **Your workspace** is any folder you own. It holds your `.feature` files, page
-  objects, `.env`, and a `bddframe.yaml` config.
-- **The agent** (`bddframe-agent`) is a terminal chat on top of the engine. It's a
+  objects, `.env`, and a `noodle.yaml` config.
+- **The agent** (`noodle-agent`) is a terminal chat on top of the engine. It's a
   convenience — CI/CD uses the engine directly and never needs the agent.
 
 ```
 ~/my-tests/                 ← your workspace (lives anywhere)
-├── bddframe.yaml           ← config
+├── noodle.yaml           ← config
 ├── .env                    ← settings (no secrets)
 ├── secrets.env             ← credentials (gitignored)   [you add this]
 ├── environments.yaml       ← base URLs                  [optional]
@@ -32,11 +32,11 @@ terminal agent that turns plain English into test runs and new tests.
 
 ```bash
 # From PyPI / a checkout — install the package itself, not the repo's tests
-pip install -e ".[all]"        # or: pip install bddframe[all]
+pip install -e ".[all]"        # or: pip install noodle[all]
 playwright install chromium
 ```
 
-That's the only place framework code lives. Upgrades are `pip install --upgrade bddframe`
+That's the only place framework code lives. Upgrades are `pip install --upgrade noodle`
 — you never touch the framework to get new features.
 
 ---
@@ -46,7 +46,7 @@ That's the only place framework code lives. Upgrades are `pip install --upgrade 
 Pick any empty folder and scaffold it:
 
 ```bash
-bddframe init ~/my-tests
+noodle init ~/my-tests
 cd ~/my-tests
 ```
 
@@ -54,7 +54,7 @@ This writes a **runnable** workspace:
 
 ```
 Created:
-  ~/my-tests/bddframe.yaml
+  ~/my-tests/noodle.yaml
   ~/my-tests/.env
   ~/my-tests/features/environment.py
   ~/my-tests/features/steps/z_catch_all.py
@@ -62,10 +62,10 @@ Created:
 ```
 
 `environment.py` and `steps/z_catch_all.py` are tiny files that re-export the
-installed engine — they're what lets `behave` discover BDDFrame's hooks and steps.
+installed engine — they're what lets `behave` discover Noodle Test Framework's hooks and steps.
 You don't edit them.
 
-### `bddframe.yaml`
+### `noodle.yaml`
 
 ```yaml
 features_dir: features
@@ -94,24 +94,24 @@ use literal URLs and values.
 ## Part 3 — The agent (interactive)
 
 ```bash
-bddframe-agent --workspace ~/my-tests
-# or just `bddframe-agent` if you're already in the workspace
+noodle-agent --workspace ~/my-tests
+# or just `noodle-agent` if you're already in the workspace
 ```
 
 ```
-bddframe-agent — workspace: /Users/you/my-tests  (rule-based, no LLM)
+noodle-agent — workspace: /Users/you/my-tests  (rule-based, no LLM)
 Type 'help' for commands, 'quit' to exit.
 
-bddframe> create test for login at https://www.saucedemo.com
+noodle> create test for login at https://www.saucedemo.com
 → Wrote features/login.feature
 → Wrote features/pageobjects/login_pom.yaml
-→ Run: bddframe run features/login.feature
+→ Run: noodle run features/login.feature
 
-bddframe> run login
-bddframe> run smoke
-bddframe> list
-bddframe> summary
-bddframe> quit
+noodle> run login
+noodle> run smoke
+noodle> list
+noodle> summary
+noodle> quit
 ```
 
 ### What it understands
@@ -142,24 +142,24 @@ files, replace the placeholders with real values and selectors, then run.
 Everything the agent does maps to a plain command. CI uses these directly:
 
 ```bash
-bddframe run      --workspace ~/my-tests --headless        # all features
-bddframe run      --workspace ~/my-tests --tag smoke
-bddframe run      ~/my-tests/features/login.feature
-bddframe list     --workspace ~/my-tests
-bddframe validate --workspace ~/my-tests                   # parse-only, no browser
-bddframe summary  --workspace ~/my-tests                   # after a run
+noodle run      --workspace ~/my-tests --headless        # all features
+noodle run      --workspace ~/my-tests --tag smoke
+noodle run      ~/my-tests/features/login.feature
+noodle list     --workspace ~/my-tests
+noodle validate --workspace ~/my-tests                   # parse-only, no browser
+noodle summary  --workspace ~/my-tests                   # after a run
 ```
 
 `--workspace` (or `-w`) makes the engine run inside that folder, so it finds the
 workspace's `.env` / `environments.yaml` and writes `allure-results` there. With no
 `--workspace`, it uses the current directory. CLI flags (`--headless`, `--browser`,
-`--tag`) override `bddframe.yaml`.
+`--tag`) override `noodle.yaml`.
 
 ### Example CI step
 
 ```yaml
-- run: pip install bddframe
-- run: bddframe run --workspace ./tests --headless --tag smoke
+- run: pip install noodle
+- run: noodle run --workspace ./tests --headless --tag smoke
 ```
 
 No agent involved. The engine is the CI artifact; the agent is a developer convenience.
@@ -175,7 +175,7 @@ flag for both. Nothing else changes.
 
 ```bash
 ollama pull llama3.2
-bddframe-agent --workspace ~/my-tests --llm ollama --model llama3.2
+noodle-agent --workspace ~/my-tests --llm ollama --model llama3.2
 ```
 
 Now `create test ...` writes full Gherkin from your description, and `summary` gives
@@ -185,12 +185,12 @@ a root-cause narrative. Runs on your machine — no internet, no API cost.
 
 ```bash
 export ANTHROPIC_API_KEY=sk-ant-...
-bddframe-agent --workspace ~/my-tests --llm claude --model anthropic/claude-sonnet-4-6
+noodle-agent --workspace ~/my-tests --llm claude --model anthropic/claude-sonnet-4-6
 ```
 
 ```bash
 export GEMINI_API_KEY=...
-bddframe-agent --workspace ~/my-tests --llm gemini
+noodle-agent --workspace ~/my-tests --llm gemini
 ```
 
 The engine routes everything through `litellm`, so any provider it supports works
@@ -199,7 +199,7 @@ via `--model`. You bring your own key.
 The summary command takes the same flag directly:
 
 ```bash
-bddframe summary --workspace ~/my-tests --llm ollama
+noodle summary --workspace ~/my-tests --llm ollama
 ```
 
 ---
@@ -217,10 +217,10 @@ bddframe summary --workspace ~/my-tests --llm ollama
 ## Troubleshooting
 
 - **`No steps directory in '.../features'`** — the workspace is missing the engine
-  glue. Re-run `bddframe init <path>`; it creates `environment.py` + `steps/` without
+  glue. Re-run `noodle init <path>`; it creates `environment.py` + `steps/` without
   overwriting your existing files.
 - **A generated test fails immediately** — it's a skeleton. Replace the
   `<placeholders>` in the `.feature` and the `<css selector>` stubs in
   `features/pageobjects/<name>_pom.yaml`.
-- **`bddframe summary` shows 0 passed / 0 failed** — no results yet. Run something
+- **`noodle summary` shows 0 passed / 0 failed** — no results yet. Run something
   first; the summary reads `<workspace>/allure-results`.

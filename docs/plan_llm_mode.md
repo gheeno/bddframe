@@ -9,7 +9,7 @@
 
 ## Current state
 
-BDDFrame resolves a step through four sequential local layers before touching a model:
+Noodle Test Framework resolves a step through four sequential local layers before touching a model:
 
 | Layer | Module | LLM condition |
 |-------|--------|---------------|
@@ -60,7 +60,7 @@ BDDFRAME_LLM_MODE=full
 
 **What changes:**
 
-`bddframe/resolver/step_resolver.py` — `resolve()` checks the flag:
+`noodle/resolver/step_resolver.py` — `resolve()` checks the flag:
 
 ```python
 def resolve(step_text: str) -> dict:
@@ -349,7 +349,7 @@ is unchanged. These are mockable without a live model.
 
 ### Recommended changes before implementation
 
-1. **`bddframe/resolver/step_resolver.py` — expand `_llm_resolve` prompt.**
+1. **`noodle/resolver/step_resolver.py` — expand `_llm_resolve` prompt.**
    For each REST type added to the prompt, include the expected parameter keys and
    types inline. Use the same terse format already used for web types:
    `rest_call -> method,path[,body,var]; rest_assert_status -> expected(int);
@@ -357,12 +357,12 @@ is unchanged. These are mockable without a live model.
    rest_assert_header -> name,value`. Exclude `rest_assert_body_table` and
    `rest_assert_header_table` from the prompt entirely.
 
-2. **`bddframe/llm/client.py` — fix `api_base` default.**
+2. **`noodle/llm/client.py` — fix `api_base` default.**
    Change `api_base=os.getenv("BDDFRAME_LLM_URL", "http://localhost:11434")` to
    `api_base=os.getenv("BDDFRAME_LLM_URL") or None` in both `ask()` and
    `ask_vision()`. This is a pre-existing bug that Phase 4 would actively expose.
 
-3. **`bddframe/agents/web/locator.py` — add warning log in `_vision_locate`.**
+3. **`noodle/agents/web/locator.py` — add warning log in `_vision_locate`.**
    Inside the `except Exception` block, add:
    `logger.warning(f"\n  ⚠️  vision-locate failed for '{text}': {e}")`.
    This surfaces degradation without changing behaviour.
@@ -417,9 +417,9 @@ blocking them.
 
 ### Files changed
 
-- `bddframe/llm/client.py` — `_api_base()` helper; both `ask`/`ask_vision` use it.
-- `bddframe/resolver/step_resolver.py` — `BDDFRAME_LLM_MODE` branch in `resolve()`; REST-aware prompt.
-- `bddframe/agents/web/locator.py` — `_is_full_llm()`; vision-first in full mode; warning log.
+- `noodle/llm/client.py` — `_api_base()` helper; both `ask`/`ask_vision` use it.
+- `noodle/resolver/step_resolver.py` — `BDDFRAME_LLM_MODE` branch in `resolve()`; REST-aware prompt.
+- `noodle/agents/web/locator.py` — `_is_full_llm()`; vision-first in full mode; warning log.
 - `unit_tests/test_llm_mode.py` — new test file (6 tests).
 - `.env.example`, `docs/guide.md`, `docs/architecture.md` — provider docs + mode toggle.
 

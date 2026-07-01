@@ -1,10 +1,10 @@
-# BDDFrame — AI Solution Brief
+# Noodle Test Framework — AI Solution Brief
 
 ---
 
 ## 1. Summary of the AI Solution
 
-BDDFrame is an AI-augmented BDD test automation framework. QA engineers write one artifact — a plain-English `.feature` file — and the framework handles the rest: step resolution, element location, browser control, and reporting.
+Noodle Test Framework is an AI-augmented BDD test automation framework. QA engineers write one artifact — a plain-English `.feature` file — and the framework handles the rest: step resolution, element location, browser control, and reporting.
 
 ```gherkin
 Scenario: Valid user can log in
@@ -40,7 +40,7 @@ This creates three compounding problems:
 
 ## 3. How We Built the Solution
 
-BDDFrame replaces the glue-and-locator stack with a local resolution pipeline and an optional LLM fallback.
+Noodle Test Framework replaces the glue-and-locator stack with a local resolution pipeline and an optional LLM fallback.
 
 ```
 Feature file
@@ -77,8 +77,8 @@ Step Resolver — 50+ regex patterns (free, deterministic)
 **AI is a separate installable layer:**
 
 ```bash
-pip install bddframe          # deterministic, zero cost
-pip install bddframe[llm]     # adds LiteLLM; LLM still off until BDDFRAME_MODEL is set
+pip install noodle          # deterministic, zero cost
+pip install noodle[llm]     # adds LiteLLM; LLM still off until BDDFRAME_MODEL is set
 ```
 
 ---
@@ -124,15 +124,15 @@ The numbers below are estimates based on typical automation team ratios. Replace
 | Approach | Time per scenario |
 |----------|-------------------|
 | Traditional (Selenium + POM) | 4–8 hrs (feature + glue + selectors) |
-| BDDFrame (pattern-based) | 1–2 hrs (feature file only) |
-| BDDFrame + AI generation | 0.5–1 hr (generated scaffold + review) |
+| Noodle Test Framework (pattern-based) | 1–2 hrs (feature file only) |
+| Noodle Test Framework + AI generation | 0.5–1 hr (generated scaffold + review) |
 
 **Saving per scenario: ~3–7 hours**
 
 At 20 new scenarios per sprint, a 5-engineer QA team recaptures **60–140 engineer-hours per sprint** — enough to automate coverage that would otherwise never be written.
 
 ```
-Metric,Selenium + POM (hrs),BDDFrame (hrs),Delta
+Metric,Selenium + POM (hrs),Noodle Test Framework (hrs),Delta
 Creation time per scenario,6,1.5,-75%
 ```
 
@@ -140,17 +140,17 @@ Creation time per scenario,6,1.5,-75%
 
 #### 2. Maintenance Effort per Broken Test
 
-| Scenario | Traditional (hrs) | BDDFrame (hrs) |
+| Scenario | Traditional (hrs) | Noodle Test Framework (hrs) |
 |----------|------------------:|---------------:|
 | CSS selector changed | 1–3 | 0 (accessibility locator unaffected) |
 | Element label renamed | 1–2 | 0.25 (update feature sentence) |
 | New unlabelled element | 2–4 | 0.5 (add one `pom.yaml` entry, suggested by healing log) |
 | Step verb not in patterns | 2–4 (add step def) | 0 (LLM fallback handles it) |
 
-**Average maintenance per broken test: ~4 hrs (traditional) → ~0.5 hrs (BDDFrame)**
+**Average maintenance per broken test: ~4 hrs (traditional) → ~0.5 hrs (Noodle Test Framework)**
 
 ```
-Metric,Selenium + POM (hrs),BDDFrame (hrs),Delta
+Metric,Selenium + POM (hrs),Noodle Test Framework (hrs),Delta
 Maintenance effort per broken test,4,0.5,-87%
 ```
 
@@ -158,7 +158,7 @@ Maintenance effort per broken test,4,0.5,-87%
 
 #### 3. Percentage of Tests That Fail a Given Cycle
 
-| Cause of failure | Traditional risk | BDDFrame risk |
+| Cause of failure | Traditional risk | Noodle Test Framework risk |
 |-----------------|-----------------|---------------|
 | CSS/XPath selector drift | High (every deploy) | Near zero (no hand-written selectors) |
 | Step definition mismatch | Medium (sentence edit) | Low (pattern covers variants) |
@@ -166,12 +166,12 @@ Maintenance effort per broken test,4,0.5,-87%
 | True regression | Same | Same |
 
 **Industry baseline:** 10–20% of a traditional Selenium suite breaks per release due to locator drift.  
-**BDDFrame target:** <5% failure rate attributable to framework brittleness (locator heals or logs a fix; only genuine regressions fail).
+**Noodle Test Framework target:** <5% failure rate attributable to framework brittleness (locator heals or logs a fix; only genuine regressions fail).
 
 _At 200 tests, that's the difference between triaging 20–40 false failures per release vs. 0–10._
 
 ```
-Metric,Selenium + POM (%),BDDFrame (%),Delta
+Metric,Selenium + POM (%),Noodle Test Framework (%),Delta
 % of tests failing per cycle (locator drift),15,3,-80%
 ```
 
@@ -179,7 +179,7 @@ Metric,Selenium + POM (%),BDDFrame (%),Delta
 
 #### 4. Percentage of Automation Work Not Completed in Sprint
 
-| Work type | Traditional capacity consumed | BDDFrame capacity consumed |
+| Work type | Traditional capacity consumed | Noodle Test Framework capacity consumed |
 |-----------|------------------------------|---------------------------|
 | Selector maintenance | 30–40% | <5% |
 | Step definition glue | 10–20% | 0% |
@@ -188,7 +188,7 @@ Metric,Selenium + POM (%),BDDFrame (%),Delta
 **Net effect:** Maintenance drops from ~50% of sprint capacity to ~5%, freeing the team to write new coverage instead of fixing old tests.
 
 ```
-Metric,Selenium + POM (%),BDDFrame (%),Delta
+Metric,Selenium + POM (%),Noodle Test Framework (%),Delta
 % sprint capacity lost to maintenance,45,5,-89%
 ```
 
@@ -196,7 +196,7 @@ Metric,Selenium + POM (%),BDDFrame (%),Delta
 
 #### Summary Calculator
 
-| Metric | Selenium + POM | BDDFrame | Delta |
+| Metric | Selenium + POM | Noodle Test Framework | Delta |
 |--------|---------------|----------|-------|
 | Creation time per scenario | 6 hrs avg | 1.5 hrs avg | **−75%** |
 | Maintenance hrs per broken test | 4 hrs | 0.5 hrs | **−87%** |
@@ -204,7 +204,7 @@ Metric,Selenium + POM (%),BDDFrame (%),Delta
 | % sprint capacity lost to maintenance | 45% | 5% | **−89%** |
 
 ```
-Metric,Selenium + POM,BDDFrame,Delta
+Metric,Selenium + POM,Noodle Test Framework,Delta
 Creation time per scenario (hrs),6,1.5,-75%
 Maintenance effort per broken test (hrs),4,0.5,-87%
 % of tests failing per cycle,15%,3%,-80%

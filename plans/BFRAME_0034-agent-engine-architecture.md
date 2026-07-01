@@ -16,7 +16,7 @@ a developer convenience layer on top.
 │  User's Workspace  (lives anywhere, outside BFRAME repo)         │
 │                                                                  │
 │  ~/my-tests/                                                     │
-│  ├── bddframe.yaml        ← workspace config                     │
+│  ├── noodle.yaml        ← workspace config                     │
 │  ├── .env                 ← secrets / env vars                   │
 │  ├── features/            ← .feature files                       │
 │  └── pageobjects/         ← *_pom.yaml files                     │
@@ -25,15 +25,15 @@ a developer convenience layer on top.
            │ reads                      │ writes
            │                            │
 ┌──────────┴──────────┐    ┌────────────┴──────────────────────────┐
-│   BFRAME Engine      │    │   bddframe-agent  (new)               │
+│   BFRAME Engine      │    │   noodle-agent  (new)               │
 │  (pip install        │◄───│                                        │
-│   bddframe)          │    │  Interactive REPL in terminal          │
+│   noodle)          │    │  Interactive REPL in terminal          │
 │                      │    │  Intent Parser (rule-based, free)     │
-│  bddframe run        │    │  └── Ollama fallback (opt-in, local)  │
-│  bddframe validate   │    │                                        │
-│  bddframe init       │    │  Actions:                             │
-│  bddframe report     │    │  • create test for <url/description>  │
-│  bddframe list       │    │  • run [tag/feature/all]              │
+│  noodle run        │    │  └── Ollama fallback (opt-in, local)  │
+│  noodle validate   │    │                                        │
+│  noodle init       │    │  Actions:                             │
+│  noodle report     │    │  • create test for <url/description>  │
+│  noodle list       │    │  • run [tag/feature/all]              │
 └──────────┬──────────┘    │  • list / what tests do we have       │
            │                │  • summary / what failed              │
            │                └───────────────────────────────────────┘
@@ -42,8 +42,8 @@ a developer convenience layer on top.
 │  CI/CD Pipeline      │
 │  (no agent needed)   │
 │                      │
-│  pip install bddframe│
-│  bddframe run        │
+│  pip install noodle│
+│  noodle run        │
 │    --workspace ./tests│
 └──────────────────────┘
 ```
@@ -55,11 +55,11 @@ a developer convenience layer on top.
 | Capability                             | Status  | Notes                                          |
 |----------------------------------------|---------|------------------------------------------------|
 | pip-installable package                | ✅ done  | hatchling + pyproject.toml                     |
-| `bddframe run <path>` CLI              | ✅ done  | accepts any path already                       |
-| `litellm` optional dep                 | ✅ done  | `pip install bddframe[llm]`                    |
-| LLM client module (`bddframe/llm/`)    | ✅ done  |                                                |
-| External workspace isolation           | ⚠️ partial | CLI accepts paths; no `bddframe.yaml` config or `init` command yet |
-| `bddframe-agent` REPL                  | ❌ missing |                                               |
+| `noodle run <path>` CLI              | ✅ done  | accepts any path already                       |
+| `litellm` optional dep                 | ✅ done  | `pip install noodle[llm]`                    |
+| LLM client module (`noodle/llm/`)    | ✅ done  |                                                |
+| External workspace isolation           | ⚠️ partial | CLI accepts paths; no `noodle.yaml` config or `init` command yet |
+| `noodle-agent` REPL                  | ❌ missing |                                               |
 | Test generation (feature + POM scaffold)| ❌ missing |                                              |
 | Plain-English report summary           | ❌ missing |                                               |
 
@@ -74,10 +74,10 @@ BFRAME is a library you install; your test workspace is separate.
 
 **Changes:**
 
-1. `bddframe init [path]` command — scaffolds a workspace outside the BFRAME repo:
+1. `noodle init [path]` command — scaffolds a workspace outside the BFRAME repo:
    ```
    my-tests/
-   ├── bddframe.yaml
+   ├── noodle.yaml
    ├── .env
    ├── features/
    │   └── .gitkeep
@@ -85,7 +85,7 @@ BFRAME is a library you install; your test workspace is separate.
        └── .gitkeep
    ```
 
-2. `bddframe.yaml` — workspace config file:
+2. `noodle.yaml` — workspace config file:
    ```yaml
    features_dir: ./features
    pageobjects_dir: ./pageobjects
@@ -95,47 +95,47 @@ BFRAME is a library you install; your test workspace is separate.
    headless: false
    ```
 
-3. `bddframe run` — reads `bddframe.yaml` from CWD when no path is given.
+3. `noodle run` — reads `noodle.yaml` from CWD when no path is given.
 
 **CI/CD usage (unchanged in principle):**
 ```bash
-pip install bddframe
-bddframe run --workspace ./tests        # reads tests/bddframe.yaml
+pip install noodle
+noodle run --workspace ./tests        # reads tests/noodle.yaml
 # or existing form still works:
-bddframe run ./tests/features/login.feature
+noodle run ./tests/features/login.feature
 ```
 
-**Upgrade path for users:** `pip install --upgrade bddframe` — they never touch framework code.
+**Upgrade path for users:** `pip install --upgrade noodle` — they never touch framework code.
 
 ---
 
 ### Phase 2 — Rule-based agent shell (zero LLM cost)
 
-**Goal:** `bddframe-agent` REPL maps natural language to engine commands.
+**Goal:** `noodle-agent` REPL maps natural language to engine commands.
 No paid API, no Ollama required.
 
 **New entry point** in `pyproject.toml`:
 ```
-bddframe-agent = "bddframe.agent.repl:main"
+noodle-agent = "noodle.agent.repl:main"
 ```
 
 **Usage:**
 ```
-$ bddframe-agent --workspace ~/my-tests
+$ noodle-agent --workspace ~/my-tests
 
-bddframe> run smoke tests
-→ bddframe run ./features --tag smoke
+noodle> run smoke tests
+→ noodle run ./features --tag smoke
 
-bddframe> list all scenarios
-→ bddframe list ./features
+noodle> list all scenarios
+→ noodle list ./features
 
-bddframe> run checkout
-→ bddframe run ./features/checkout.feature
+noodle> run checkout
+→ noodle run ./features/checkout.feature
 
-bddframe> what failed last time
+noodle> what failed last time
 → [Phase 4 summary]
 
-bddframe> create test for login at https://saucedemo.com
+noodle> create test for login at https://saucedemo.com
 → [Phase 3 generator]
 ```
 
@@ -143,9 +143,9 @@ bddframe> create test for login at https://saucedemo.com
 
 | Keywords | Action |
 |---|---|
-| `run [all]` | `bddframe run` |
+| `run [all]` | `noodle run` |
 | `run <name>` | match feature file or tag, run it |
-| `list`, `what tests` | `bddframe list` |
+| `list`, `what tests` | `noodle list` |
 | `create test for <desc>` | Phase 3 generator |
 | `summary`, `what failed`, `report` | Phase 4 summary |
 | `help` | print help |
@@ -168,16 +168,16 @@ into the user's workspace.
 
 **Example output:**
 ```
-bddframe> create test for login at https://saucedemo.com
+noodle> create test for login at https://saucedemo.com
 
 → Writing features/login.feature ...
 → Writing pageobjects/login_pom.yaml ...
-→ Done. Run: bddframe run features/login.feature
+→ Done. Run: noodle run features/login.feature
 ```
 
 **Ollama upgrade (opt-in, local, free):**
 ```bash
-bddframe-agent --workspace ~/my-tests --llm ollama --model llama3.2
+noodle-agent --workspace ~/my-tests --llm ollama --model llama3.2
 ```
 - Routes through `litellm` (already a dep, zero new dependencies)
 - Natural language description → full Gherkin via local model
@@ -214,7 +214,7 @@ root-cause narrative. Same `--llm ollama` flag as Phase 3.
 
 Users who want Claude/GPT for richer generation or analysis:
 ```bash
-bddframe-agent --llm claude --model claude-sonnet-4-6
+noodle-agent --llm claude --model claude-sonnet-4-6
 ```
 
 `litellm` already handles routing. The flag is already wired by Phase 3. This phase is
@@ -236,8 +236,8 @@ just exposing what's there; the user brings their own API key.
 
 ```yaml
 # .github/workflows/test.yml or azure-pipelines.yml
-- run: pip install bddframe
-- run: bddframe run --workspace ./tests --headless --tag smoke
+- run: pip install noodle
+- run: noodle run --workspace ./tests --headless --tag smoke
 ```
 
 The agent is a developer convenience. The engine is the CI artifact. Fully decoupled.

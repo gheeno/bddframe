@@ -1,4 +1,4 @@
-# BDDFrame — Claude Instructions
+# Noodle Test Framework — Claude Instructions
 
 ## Commit message format
 
@@ -14,7 +14,7 @@ Short description of what this commit does
 - adds documentation
 ```
 
-**JIRA_ID** — the ticket number (e.g. `BFRAME_0019`). Always ask the user if not clear from context.
+**JIRA_ID** — the ticket number (e.g. `NOOD_0019`). Always ask the user if not clear from context.
 
 **worktype** — one of:
 - `feature` — new capability
@@ -29,7 +29,7 @@ Short description of what this commit does
 
 Example:
 ```
-BFRAME_0001 feature:adds baseline framework
+NOOD_0001 feature:adds baseline framework
 
 this commit adds
 - playwright
@@ -49,7 +49,7 @@ To squash: `git reset --soft $(git merge-base HEAD main) && git commit` — or `
 
 ## Branch naming
 
-Branches follow the pattern `feature/BFRAME_XXXX` or `patch/BFRAME_XXXX`.
+Branches follow the pattern `feature/nood_XXXX` or `patch/nood_XXXX`.
 
 ---
 

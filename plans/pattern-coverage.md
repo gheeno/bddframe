@@ -1,7 +1,7 @@
-# BDDFrame — Pattern Coverage Review (BFRAME_0025)
+# Noodle Test Framework — Pattern Coverage Review (BFRAME_0025)
 
 Review of the plain-English steps in `features/**.feature` against the built-in
-pattern table (`bddframe/resolver/patterns.py`), plus the manual-tester actions
+pattern table (`noodle/resolver/patterns.py`), plus the manual-tester actions
 a mature suite expects but the table doesn't yet cover.
 
 Source date: 2026-06-28. Method: ran `patterns.match(normalize_subject(step))`
@@ -120,8 +120,8 @@ a ticket and add a pattern (this doc shows how the table is structured).
 
 ## VSCode — Gherkin LSP (stop the "Undefined step" warnings)
 
-BDDFrame has **no per-step definitions** — the whole suite runs through one
-catch-all regex step (`bddframe/steps/catch_all.py`: `@step(r"(?P<anything>.*)")`).
+Noodle Test Framework has **no per-step definitions** — the whole suite runs through one
+catch-all regex step (`noodle/steps/catch_all.py`: `@step(r"(?P<anything>.*)")`).
 A Gherkin language server that doesn't know this flags **every** line as an
 undefined step.
 
@@ -158,7 +158,7 @@ extension**:
    squiggles are gone, with no per-tester config.
 
 > **Caveat:** because every step resolves to the single `.*` stub, the LSP can't
-> autocomplete BDDFrame's *English* phrases (they live as regexes in
+> autocomplete Noodle Test Framework's *English* phrases (they live as regexes in
 > `resolver/patterns.py`, not as discrete step defs). Use §6 above as the
 > autocomplete reference. The extension still gives Gherkin syntax highlighting,
 > table formatting, and snippets — it just won't suggest our verbs.

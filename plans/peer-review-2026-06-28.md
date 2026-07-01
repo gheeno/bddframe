@@ -1,4 +1,4 @@
-# Peer Review — BDDFrame (2026-06-28)
+# Peer Review — Noodle Test Framework (2026-06-28)
 
 Reviewer: external/independent. Branch: BFRAME_0018. Status: **all 7 items implemented on this branch** (see the summary table; 0018-3 uses Pillow `histogram()` rather than the numpy swap originally sketched — lazier, no new dep).
 
@@ -29,7 +29,7 @@ strategy (the moat) or the CI pipeline (correct as-is).
 
 **BFRAME_0018-1: LLM step resolver has no output validation**
 
-File: `bddframe/resolver/step_resolver.py:28` (`_llm_resolve`)
+File: `noodle/resolver/step_resolver.py:28` (`_llm_resolve`)
 
 Current behaviour: one `ask()` call → `json.loads` → dispatch. If the model
 returns a syntactically valid JSON with the wrong `type` (e.g. `"click"` when
@@ -61,7 +61,7 @@ return a leading explanation sentence before the JSON.
 
 **BFRAME_0018-2: `_vision_locate` CSS selector prompt is too loose**
 
-File: `bddframe/agents/web/locator.py:108` (`_vision_locate`)
+File: `noodle/agents/web/locator.py:108` (`_vision_locate`)
 
 Current: asks the LLM for a CSS selector. LLMs hallucinate selectors. The
 `strip('`')` only strips single backtick delimiters — a markdown-fenced response
@@ -88,7 +88,7 @@ This eliminates the silent wrong-element risk.
 
 **BFRAME_0018-3: `pixel_baseline` is a pure-Python pixel loop**
 
-File: `bddframe/agents/web/actions.py:_pixel_diff_ratio`
+File: `noodle/agents/web/actions.py:_pixel_diff_ratio`
 
 Full-page 1920×1080 = 2M pixel comparisons in a Python `sum()` loop. In a
 sharded matrix with several scenarios each running a pixel baseline, this is
@@ -118,7 +118,7 @@ The existing `ponytail:` comment already calls this out — this is the upgrade.
 
 **BFRAME_0018-4: `wait_for` uses a manual 250ms polling loop**
 
-File: `bddframe/agents/web/locator.py:wait_for` (~line 60)
+File: `noodle/agents/web/locator.py:wait_for` (~line 60)
 
 Current: Python `while time.monotonic() < deadline` + `page.wait_for_timeout(250)`.
 This has a race window: element appears between polls, deadline check passes,
@@ -159,7 +159,7 @@ Requires the test app to support namespaced fixtures.
 
 **BFRAME_0018-6: `assert_count` counts text occurrences, not element instances**
 
-File: `bddframe/agents/web/actions.py:assert_count`
+File: `noodle/agents/web/actions.py:assert_count`
 
 `page.get_by_text(locator_text).count()` counts every DOM node whose text
 contains the string — including aria-label duplicates, sr-only copies, and
@@ -193,7 +193,7 @@ if os.getenv("BDDFRAME_MODEL") and os.getenv("BDDFRAME_RCA"):
     _run_rca(context, step, raw_path)
 
 def _run_rca(context, step, screenshot_path):
-    from bddframe.llm.client import ask_vision
+    from noodle.llm.client import ask_vision
     import base64, json as _json
 
     b64 = base64.b64encode(Path(screenshot_path).read_bytes()).decode()

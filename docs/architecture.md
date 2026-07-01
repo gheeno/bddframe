@@ -1,9 +1,9 @@
-# BDDFrame — The Tech, End to End
+# Noodle Test Framework — The Tech, End to End
 
-The one-stop reference for *how BDDFrame actually works*. Read this the way you'd
+The one-stop reference for *how Noodle Test Framework actually works*. Read this the way you'd
 study Selenium, Selenide, or Appium: the mental model first, then the request
 lifecycle, the resolution hierarchy, the LLM layer, and the tech stack. Every
-moving part is a real file in `bddframe/`.
+moving part is a real file in `noodle/`.
 
 New here? Start with the **[Guide](guide.md)** (install → write → run). This page
 is the deep dive behind it.
@@ -25,17 +25,17 @@ is the deep dive behind it.
 
 ## 1. Mental model
 
-You already know the tools BDDFrame is reacting to. Here's the one-line diff.
+You already know the tools Noodle Test Framework is reacting to. Here's the one-line diff.
 
 | Tool | What *you* write | Locators |
 |------|------------------|----------|
 | **Selenium** | WebDriver code + step glue + Page Objects | `By.id("login-btn")` — by hand |
 | **Selenide** | Concise fluent code + smart waits | `$("#login-btn")` — by hand, still in code |
 | **Appium** | Selenium protocol for mobile + code | accessibility id / xpath — by hand |
-| **BDDFrame** | **one plain-English sentence** | none — found by role / label / text |
+| **Noodle Test Framework** | **one plain-English sentence** | none — found by role / label / text |
 
 In Selenium-family tools you hand-write three layers: the test, the glue, and the
-locator. BDDFrame keeps only the sentence and infers the rest.
+locator. Noodle Test Framework keeps only the sentence and infers the rest.
 
 ```java
 // SELENIUM POM — you write ALL of this
@@ -149,24 +149,24 @@ flowchart TD
 
 | Layer | Module(s) | Job |
 |-------|-----------|-----|
-| **Parse** | `behave` | Read the `.feature` file into Feature → Scenario → Step. BDDFrame uses behave's parser **and** its runner. |
-| **Wire** | `bddframe/steps/catch_all.py` (+ `features/steps/z_catch_all.py`) | One catch-all step definition receives *every* sentence. No per-step glue. |
-| **Route** | `bddframe/hooks.py` | Reads scenario tags → launches the right browser (or routes `@visual` to the desktop agent), and wires reporting into behave's lifecycle. |
-| **Interpret** | `bddframe/resolver/` | Turn a sentence into a structured action via regex; LLM fallback only if no pattern matches. |
-| **Act (web)** | `bddframe/agents/web/` | `actions.py` (do it) → `locator.py` (find it, accessibility-first) → `pom.py` (named selectors). |
-| **Pixel/OCR bridge** | `bddframe/agents/web/screen.py` | Canvas and terminal UIs with no semantic DOM: OCR-locates text in a Playwright screenshot (device-pixel coords converted to CSS-pixel mouse coords), then drives `page.mouse` / `page.keyboard`. Activated by the `focuses on`, `type_text`, `click_at`, `assert screen text` step family. |
-| **Test data / scripts** | `bddframe/orchestrator/script_runner.py`, `agents/web/actions.py` | Non-UI steps: run an external script/command (`run the script …`), call an API, mock a route, load a fixture. |
-| **Preconditions** | `bddframe/preconditions.py` | `@precondition:NAME` → seed data before a scenario and tear it down after (even on failure), from a per-folder `preconditions.yaml`. |
-| **Act (visual)** | `bddframe/agents/visual/` | OpenCV template match + Tesseract OCR + PyAutoGUI for non-DOM UIs. |
-| **LLM** | `bddframe/llm/client.py` | The single gateway to any model via LiteLLM. Reached only as a leaf-level fallback. |
-| **Report** | `bddframe/reporting/` | Allure JSON per step, JUnit XML for Azure, annotated failure screenshots. |
-| **Trace** | `bddframe/hooks.py` (Playwright tracing) | A `trace.zip` per **failed** scenario (DOM/network/timeline); discarded on pass. |
-| **Heal telemetry** | `bddframe/healing.py` | Records every self-heal / POM-disambiguation / vision-locate → `healing.jsonl` + `pom.yaml` suggestions. |
-| **Agentic RCA** | `bddframe/rca.py` | On a step **failure** (opt-in `BDDFRAME_RCA`), a vision model classifies the root cause → `rca_category` label on the Allure result. |
-| **Secrets/config** | `bddframe/secrets_akv.py`, `environments.yaml` | Base URLs + secrets (Azure Key Vault or `secrets.env`) resolved into `[VAR]`s. |
-| **Log** | `bddframe/log.py` | One logger, `BDDFRAME_LOG_LEVEL`. |
-| **Drive** | `bddframe/cli.py` | The `bddframe` command (run, validate, list, record, report) + retry/quarantine exit code. |
-| **Edit** | `bddframe/lsp/` + `vscode-extension/` | LSP step validation, tag/variable autocomplete, syntax highlighting. |
+| **Parse** | `behave` | Read the `.feature` file into Feature → Scenario → Step. Noodle Test Framework uses behave's parser **and** its runner. |
+| **Wire** | `noodle/steps/catch_all.py` (+ `features/steps/z_catch_all.py`) | One catch-all step definition receives *every* sentence. No per-step glue. |
+| **Route** | `noodle/hooks.py` | Reads scenario tags → launches the right browser (or routes `@visual` to the desktop agent), and wires reporting into behave's lifecycle. |
+| **Interpret** | `noodle/resolver/` | Turn a sentence into a structured action via regex; LLM fallback only if no pattern matches. |
+| **Act (web)** | `noodle/agents/web/` | `actions.py` (do it) → `locator.py` (find it, accessibility-first) → `pom.py` (named selectors). |
+| **Pixel/OCR bridge** | `noodle/agents/web/screen.py` | Canvas and terminal UIs with no semantic DOM: OCR-locates text in a Playwright screenshot (device-pixel coords converted to CSS-pixel mouse coords), then drives `page.mouse` / `page.keyboard`. Activated by the `focuses on`, `type_text`, `click_at`, `assert screen text` step family. |
+| **Test data / scripts** | `noodle/orchestrator/script_runner.py`, `agents/web/actions.py` | Non-UI steps: run an external script/command (`run the script …`), call an API, mock a route, load a fixture. |
+| **Preconditions** | `noodle/preconditions.py` | `@precondition:NAME` → seed data before a scenario and tear it down after (even on failure), from a per-folder `preconditions.yaml`. |
+| **Act (visual)** | `noodle/agents/visual/` | OpenCV template match + Tesseract OCR + PyAutoGUI for non-DOM UIs. |
+| **LLM** | `noodle/llm/client.py` | The single gateway to any model via LiteLLM. Reached only as a leaf-level fallback. |
+| **Report** | `noodle/reporting/` | Allure JSON per step, JUnit XML for Azure, annotated failure screenshots. |
+| **Trace** | `noodle/hooks.py` (Playwright tracing) | A `trace.zip` per **failed** scenario (DOM/network/timeline); discarded on pass. |
+| **Heal telemetry** | `noodle/healing.py` | Records every self-heal / POM-disambiguation / vision-locate → `healing.jsonl` + `pom.yaml` suggestions. |
+| **Agentic RCA** | `noodle/rca.py` | On a step **failure** (opt-in `BDDFRAME_RCA`), a vision model classifies the root cause → `rca_category` label on the Allure result. |
+| **Secrets/config** | `noodle/secrets_akv.py`, `environments.yaml` | Base URLs + secrets (Azure Key Vault or `secrets.env`) resolved into `[VAR]`s. |
+| **Log** | `noodle/log.py` | One logger, `BDDFRAME_LOG_LEVEL`. |
+| **Drive** | `noodle/cli.py` | The `noodle` command (run, validate, list, record, report) + retry/quarantine exit code. |
+| **Edit** | `noodle/lsp/` + `vscode-extension/` | LSP step validation, tag/variable autocomplete, syntax highlighting. |
 
 ---
 
@@ -199,7 +199,7 @@ flowchart LR
     style AZ fill:#1e3a5f,color:#b8d8f5,stroke:#4a80aa
 ```
 
-**One sentence to remember:** you write the *what* (a plain sentence); BDDFrame
+**One sentence to remember:** you write the *what* (a plain sentence); Noodle Test Framework
 figures out the *how* (regex → find by name → POM → LLM only if stuck) and hands
 you a screenshot-filled report.
 
@@ -322,7 +322,7 @@ What model is used, what triggers it, and the one module that handles it.
 
 ### Model-agnostic by design
 
-BDDFrame talks to whatever **[LiteLLM](https://github.com/BerriAI/litellm)**
+Noodle Test Framework talks to whatever **[LiteLLM](https://github.com/BerriAI/litellm)**
 supports, through one provider/model string. There is no hard-coded vendor — you
 pick the model in `.env`.
 
@@ -349,7 +349,7 @@ uv pip install -e ".[llm]"     # or: pip install -e ".[llm]"
 
 ### The client module
 
-One thin module — **`bddframe/llm/client.py`** — two functions, no class hierarchy:
+One thin module — **`noodle/llm/client.py`** — two functions, no class hierarchy:
 
 | Function | Purpose | Reads |
 |----------|---------|-------|
@@ -487,7 +487,7 @@ Run it (needs a model — with `BDDFRAME_MODEL` unset, the `[LLM]` step fails by
 
 ```bash
 # .env: BDDFRAME_MODEL=ollama/llama3  (or a Foundry Local / OpenAI id) + BDDFRAME_LLM_URL
-bddframe run features/web/fallback-demo/llm_fallback.feature --headed
+noodle run features/web/fallback-demo/llm_fallback.feature --headed
 ```
 
 To watch the raw prompt/response exchange:
@@ -606,7 +606,7 @@ newer), and why it's here.
 |---------|-----|---------|
 | [behave](https://behave.readthedocs.io/) | `1.2.6` | BDD runner — parses Gherkin and drives each step. **Synchronous**, which is why Playwright's sync API is used. |
 | [playwright](https://playwright.dev/python/) | `1.40.0` | Browser automation (Web Agent). Sync API. Chromium / Firefox / WebKit. |
-| [typer](https://typer.tiangolo.com/) | `0.9.0` | The `bddframe` CLI. |
+| [typer](https://typer.tiangolo.com/) | `0.9.0` | The `noodle` CLI. |
 | [python-dotenv](https://github.com/theskumar/python-dotenv) | `1.0.0` | Loads `.env` config + credentials. |
 | [pillow](https://python-pillow.org/) | `10.0.0` | Screenshot annotation **and deterministic pixel-diff baselines** (`pixel_baseline`). |
 | [pyyaml](https://pyyaml.org/) | `6.0` | Parses `pom.yaml`. |

@@ -15,7 +15,7 @@ fixed per change first).
 following a JS-redirect). Fixed on `feature/BFRAME_0032` during the run
 session — `wait_for(state="attached")` added before the visibility scan.
 
-**File:** `bddframe/agents/web/actions.py` — `assert_visible()`
+**File:** `noodle/agents/web/actions.py` — `assert_visible()`
 
 **Status:** Merged into this branch as baseline.
 
@@ -32,7 +32,7 @@ session — `wait_for(state="attached")` added before the visibility scan.
 `actions.assert_state()` builds a dict literal `{"enabled": loc.is_enabled(), "checked": loc.is_checked(), ...}` — Python evaluates ALL values eagerly before the key lookup. So `loc.is_checked()` is always called regardless of what `state` is. Playwright throws `Locator.is_checked: Error: Not a checkbox or radio button` for any non-checkbox/radio element (`<select>`, `<button>`, etc.).
 
 **Exact fix:**
-`bddframe/agents/web/actions.py` — `assert_state()`, lines 349-357:
+`noodle/agents/web/actions.py` — `assert_state()`, lines 349-357:
 
 ```python
 # Current (broken):
@@ -86,7 +86,7 @@ Then User should see 50 "Add to Cart" items
 
 ### 3b — POM lookup fires AFTER self-heal partial text (wrong priority order)
 
-**Root cause (precise):** In `bddframe/agents/web/locator.py` — `find()`, the resolution order is:
+**Root cause (precise):** In `noodle/agents/web/locator.py` — `find()`, the resolution order is:
 
 ```
 1. a11y strategies (exact)
@@ -103,7 +103,7 @@ For locator `catalog heading`:
 - Partial text: first word `catalog` → `get_by_label(re.compile("catalog"))` → matches `<h1>` partially, but `inner_text()` on a deeply-nested element that `get_by_text("catalog")` resolves to returns just `'Catalog'` (a text node), not the full h1 text — **returns early, POM never reached**
 - Result: `HEADING = 'Catalog'` not `'VHS Catalog'`
 
-**Fix:** `bddframe/agents/web/locator.py` — `find()`: move POM lookup to immediately after the initial a11y miss, before self-heal:
+**Fix:** `noodle/agents/web/locator.py` — `find()`: move POM lookup to immediately after the initial a11y miss, before self-heal:
 
 ```python
 # nothing found — check POM first (explicit > heuristic)
@@ -124,7 +124,7 @@ if loc:
 
 `_q('"movie count" text')` → first char `"`, last char `t` → no stripping → locator = `"movie count" text` → POM lookup misses key `movie count`.
 
-**Fix:** `bddframe/resolver/patterns.py` — add a quoted-locator variant of `store_text` **before** the existing pattern. It strips inner quotes and consumes an optional single trailing qualifier word (`text`, `heading`, `value`, `content`, `label`, `element`):
+**Fix:** `noodle/resolver/patterns.py` — add a quoted-locator variant of `store_text` **before** the existing pattern. It strips inner quotes and consumes an optional single trailing qualifier word (`text`, `heading`, `value`, `content`, `label`, `element`):
 
 ```python
 # Quoted locator with optional qualifier: stores the "X" text/heading as `VAR`
@@ -143,8 +143,8 @@ This makes:
 
 **Files to change:**
 - `features/web/busterblock/assertions.feature` (3a)
-- `bddframe/agents/web/locator.py` — `find()` POM priority (3b)
-- `bddframe/resolver/patterns.py` — quoted store_text pattern (3c)
+- `noodle/agents/web/locator.py` — `find()` POM priority (3b)
+- `noodle/resolver/patterns.py` — quoted store_text pattern (3c)
 
 **Acceptance:** All six scenarios above pass.
 
@@ -162,9 +162,9 @@ The step sequence is:
 1. `User clicks "Preview"` → click fires; browser starts opening `target="_blank"` tab asynchronously
 2. `a new tab should open` → immediately calls `_switch_tab(context, 'new', assert_opened=True)`
 
-`_switch_tab` in `bddframe/orchestrator/runner.py` calls `_pages(context)` synchronously. The browser event hasn't fired yet, so `len(pages) == 1` → raises immediately. No wait at all.
+`_switch_tab` in `noodle/orchestrator/runner.py` calls `_pages(context)` synchronously. The browser event hasn't fired yet, so `len(pages) == 1` → raises immediately. No wait at all.
 
-**Exact fix:** `bddframe/orchestrator/runner.py` — `_switch_tab()`:
+**Exact fix:** `noodle/orchestrator/runner.py` — `_switch_tab()`:
 
 ```python
 def _switch_tab(context, target, assert_opened=False):
@@ -185,7 +185,7 @@ def _switch_tab(context, target, assert_opened=False):
 
 Key: `bctx.wait_for_event("page")` blocks until a new `Page` is created in the context (timeout in ms). The fast-path `if len(pages) < 2` means if the tab already opened by the time we check, we skip the wait entirely.
 
-**File to change:** `bddframe/orchestrator/runner.py` — `_switch_tab()`
+**File to change:** `noodle/orchestrator/runner.py` — `_switch_tab()`
 
 **Acceptance:** Both navigation tab scenarios pass with `--headless`.
 
@@ -223,7 +223,7 @@ username:
   selector: "#userName"
 ```
 
-This is the correct BDDFrame mechanism for pages where accessible labels are
+This is the correct Noodle Test Framework mechanism for pages where accessible labels are
 ambiguous — POM aliases short-circuit the text search.
 
 **Files to change:**
@@ -268,7 +268,7 @@ the screenshot to locate elements correctly.
 **6b — Use a cloud vision model for LLM tests only:**
 ```bash
 BDDFRAME_MODEL=anthropic/claude-haiku-4-5-20251001 ANTHROPIC_API_KEY=... \
-bddframe run features/web/busterblock/llm_fallback.feature features/web/busterblock/pure_llm.feature
+noodle run features/web/busterblock/llm_fallback.feature features/web/busterblock/pure_llm.feature
 ```
 
 **6c — Improve the LLM system prompt for text-only models:**
@@ -311,8 +311,8 @@ These are live-site tests — the site changed. Options:
 Live-site tests are inherently fragile. Tag them `@live` so they're excluded
 from the headless CI run and only run deliberately:
 ```bash
-bddframe run features/ --tag ~@live   # skip live-site tests
-bddframe run features/ --tag @live    # run only live-site tests
+noodle run features/ --tag ~@live   # skip live-site tests
+noodle run features/ --tag @live    # run only live-site tests
 ```
 
 **Recommended:** 7b — add `@live` tag, update known counts, skip double-click
@@ -383,7 +383,7 @@ def assert_hidden(page: Page, text: str):
     raise AssertionError(...)  # immediate fail, no wait
 ```
 
-**Fix:** `bddframe/agents/web/actions.py` — `assert_hidden()`: if the element IS visible at the moment of check, wait up to `BDDFRAME_TIMEOUT` ms for it to become hidden before failing:
+**Fix:** `noodle/agents/web/actions.py` — `assert_hidden()`: if the element IS visible at the moment of check, wait up to `BDDFRAME_TIMEOUT` ms for it to become hidden before failing:
 
 ```python
 def assert_hidden(page: Page, text: str):
@@ -404,7 +404,7 @@ def assert_hidden(page: Page, text: str):
 
 Fast-path: if element absent (`count == 0`) or already hidden → return immediately (no perf hit for normal cases). Slow-path: element visible → wait up to timeout for it to hide.
 
-**File to change:** `bddframe/agents/web/actions.py` — `assert_hidden()`
+**File to change:** `noodle/agents/web/actions.py` — `assert_hidden()`
 
 ---
 
@@ -426,7 +426,7 @@ After `load_resource` stores it and `` `PAYLOAD` `` is substituted into the step
 ```
 `patterns.match()` calls `re.match(pattern, step_text, re.IGNORECASE)`. Without `re.DOTALL`, `.` doesn't match `\n`, so `(.+?)` in `assert_compare` pattern can't consume the newlines → no pattern matches → step falls through to LLM (auto mode) → LLM not configured → empty `AssertionError`.
 
-**Fix:** `bddframe/resolver/patterns.py` — `match()`: add `re.DOTALL`:
+**Fix:** `noodle/resolver/patterns.py` — `match()`: add `re.DOTALL`:
 
 ```python
 def match(step_text: str):
@@ -439,7 +439,7 @@ def match(step_text: str):
 
 `re.DOTALL` only affects `.` (now matches `\n`); it does NOT change `^`/`$` behaviour (those need `re.MULTILINE`). Anchors still bind to string start/end, so no existing patterns are broken.
 
-**File to change:** `bddframe/resolver/patterns.py` — `match()`
+**File to change:** `noodle/resolver/patterns.py` — `match()`
 
 ---
 
@@ -460,5 +460,5 @@ def match(step_text: str):
 | 11 | Fix 7 — Live-site tag + count updates | 1 h | 4 |
 | 12 | Fix 8 — REST rate limit (defer or mock) | — | 10 |
 
-Fixes 2–11 (busterblock-targeted) recover **12 scenarios** across saucedemo/canadiantire/busterblock with pure BDDFrameEngine.
+Fixes 2–11 (busterblock-targeted) recover **12 scenarios** across saucedemo/canadiantire/busterblock with pure Noodle Test FrameworkEngine.
 Completing all fixes should bring the full suite to **~120+ passing with <15 expected failures** (live-site / rate-limited category).

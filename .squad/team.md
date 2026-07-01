@@ -1,6 +1,6 @@
 # Squad Team
 
-> bddframe
+> noodle
 
 ## Coordinator
 
@@ -15,5 +15,5 @@
 
 ## Project Context
 
-- **Project:** bddframe
+- **Project:** noodle
 - **Created:** 2026-06-30

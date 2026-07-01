@@ -1,4 +1,4 @@
-# BDDFrame — Future Roadmap
+# Noodle Test Framework — Future Roadmap
 
 Implementation plan for the gaps identified in the 2026-06-28 peer review.
 Source: [enterprise-plan.md → Future Plans](enterprise-plan.md#future-plans).
@@ -50,7 +50,7 @@ dependencies. behave stays single-process per shard — we just shard finer.
 ### Follow-up — local parallelism (BFRAME_0022) ✅ Done
 
 - `behavex` added as an opt-in `[parallel]` extra for **local** multi-process
-  runs (`bddframe run --parallel N`, web only). CI stays on the dynamic matrix;
+  runs (`noodle run --parallel N`, web only). CI stays on the dynamic matrix;
   the two aren't stacked. Reporting was made parallel-safe (per-worker
   `allure-results/p<pid>/` dirs, merged on completion).
 - `pytest-bdd` migration — still skipped; no benefit over behave + behavex.
@@ -69,7 +69,7 @@ same plain-English Gherkin steps as the web agent where possible.
    mobile = ["Appium-Python-Client>=3.0.0"]
    ```
 
-2. **Create `bddframe/agents/mobile/` package.**
+2. **Create `noodle/agents/mobile/` package.**
    - `driver.py` — session lifecycle: `start_session(capabilities)`,
      `stop_session()`. Capabilities loaded from `BDDFRAME_APPIUM_URL`,
      `BDDFRAME_APPIUM_CAPS` (JSON string or path to a `.json` file).
@@ -79,7 +79,7 @@ same plain-English Gherkin steps as the web agent where possible.
    - `actions.py` — tap, swipe, long-press, back, home, send-keys. Wrap
      Appium's `TouchAction` / W3C Actions.
 
-3. **Add mobile patterns** to `bddframe/resolver/patterns.py`.
+3. **Add mobile patterns** to `noodle/resolver/patterns.py`.
    - `tap the "X" button` → `{type: tap, locator: X}`
    - `swipe left|right|up|down` → `{type: swipe, direction: ...}`
    - `press the back button` → `{type: back}`
@@ -104,7 +104,7 @@ same plain-English Gherkin steps as the web agent where possible.
 
 ### Acceptance criteria
 
-- `bddframe run features/mobile/ --tag appium` drives a connected emulator.
+- `noodle run features/mobile/ --tag appium` drives a connected emulator.
 - `@web` scenarios are unaffected.
 - Session cleanup runs even on scenario failure.
 
@@ -134,7 +134,7 @@ the OpenCV or OCR search area. Any step that follows it searches the full screen
 **Fix:**
 
 1. Add a module-level `_active_region: dict | None = None` to
-   `bddframe/agents/visual/screenshot.py` (or a new `context.py`).
+   `noodle/agents/visual/screenshot.py` (or a new `context.py`).
 
 2. Update `capture()` in `screenshot.py` to crop the captured frame to
    `_active_region` when set.
@@ -172,7 +172,7 @@ multiple apps are open.
 
 **Fix:**
 
-1. Add `bddframe/agents/visual/window.py`.
+1. Add `noodle/agents/visual/window.py`.
    - `focus_window(title: str)` — uses `pygetwindow` on Windows/macOS,
      `wmctrl` on Linux. Falls back gracefully with a clear error if neither
      is available.
@@ -216,7 +216,7 @@ multiple apps are open.
 
 ### Acceptance criteria
 
-- `BDDFRAME_REMOTE_URL=wss://... bddframe run features/saucedemo/` runs against
+- `BDDFRAME_REMOTE_URL=wss://... noodle run features/saucedemo/` runs against
   a remote browser without code changes.
 - Local runs (no `BDDFRAME_REMOTE_URL`) are unaffected.
 
@@ -230,7 +230,7 @@ multiple apps are open.
 
 1. Add `BDDFRAME_LLM_MAX_CALLS` (int, default `0` = unlimited) to `.env.example`.
 
-2. Add a call counter to `bddframe/llm/client.py` — module-level `_call_count`
+2. Add a call counter to `noodle/llm/client.py` — module-level `_call_count`
    reset in `hooks.before_all`.
 
 3. Before every `ask()` / `ask_vision()` call, check the counter. If at cap,
@@ -275,7 +275,7 @@ restarting the scenario.
 
 1. Add `BDDFRAME_STEP_RETRIES` (int, default `0`) to `.env.example`.
 
-2. In `bddframe/steps/catch_all.py` (the catch-all step that calls
+2. In `noodle/steps/catch_all.py` (the catch-all step that calls
    `execute_step`), wrap the call in a retry loop when the count is > 0.
    Only retry on `AssertionError` or Playwright `TimeoutError`; let
    unexpected exceptions propagate immediately.

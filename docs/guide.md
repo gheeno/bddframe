@@ -1,4 +1,4 @@
-# BDDFrame — The Complete Guide
+# Noodle Test Framework — The Complete Guide
 
 Everything a tester needs, in the order you'll need it: install, write your first
 test, run it, read the output, then the harder stuff — problematic locators
@@ -37,8 +37,8 @@ Just want the elevator pitch and copy-paste commands? The
 project ships `uv.lock`; plain `pip` also works everywhere below).
 
 ```bash
-git clone https://github.com/gheeno/bddframe.git
-cd bddframe
+git clone https://github.com/gheeno/noodle.git
+cd noodle
 
 # Core only (no LLM, no OpenCV)
 uv pip install -e .            # or: pip install -e .
@@ -69,9 +69,9 @@ A `Dockerfile` based on the official Playwright image (browsers + system deps
 preinstalled) runs the whole suite with no local Python setup:
 
 ```bash
-docker build -t bddframe .
-docker run --rm bddframe                       # default: bddframe run features/ --headless
-docker run --rm bddframe run features/web/busterblock/ --headless
+docker build -t noodle .
+docker run --rm noodle                       # default: noodle run features/ --headless
+docker run --rm noodle run features/web/busterblock/ --headless
 ```
 
 `.devcontainer/` opens the same image in VS Code ("Reopen in Container").
@@ -79,7 +79,7 @@ docker run --rm bddframe run features/web/busterblock/ --headless
 ### Project layout
 
 ```
-bddframe/             ← the package (cli, hooks, agents, resolver, reporting, llm, lsp)
+noodle/             ← the package (cli, hooks, agents, resolver, reporting, llm, lsp)
 features/             ← your tests live here
   saucedemo/
     checkout.feature
@@ -146,7 +146,7 @@ BDDFRAME_PIXEL_THRESHOLD=0.01    # max fraction of changed pixels for "match the
 BDDFRAME_LOG_LEVEL=INFO          # DEBUG | INFO | WARNING | ERROR
 ```
 
-**LLM (optional)** — BDDFrame works fully without one. By default no LLM is
+**LLM (optional)** — Noodle Test Framework works fully without one. By default no LLM is
 called and no AI costs are incurred. To enable, see
 **[§16 Using an LLM](#16-using-an-llm--setup-providers-and-modes)** — it covers
 every provider, step-by-step setup, and which file each setting goes in.
@@ -226,23 +226,23 @@ by capability — see the README for how to start BusterBlock and run it.
 ## 4. Run it & read the output
 
 ```bash
-bddframe run                                              # all features
-bddframe run features/web/busterblock/login.feature       # one file
-bddframe run features/web/busterblock/                    # one folder
-bddframe run --tag smoke                        # only @smoke scenarios
-bddframe run --headless                         # no visible browser
-bddframe run --headed                           # force visible (overrides .env)
-bddframe run --browser firefox                  # firefox | webkit
-bddframe run --retries 2                        # re-run a failed scenario up to 2x
-bddframe run --log-level WARNING                 # quieter output
-bddframe list                                   # discovered scenarios, no browser
-bddframe validate                               # parse + check [variables], no browser
+noodle run                                              # all features
+noodle run features/web/busterblock/login.feature       # one file
+noodle run features/web/busterblock/                    # one folder
+noodle run --tag smoke                        # only @smoke scenarios
+noodle run --headless                         # no visible browser
+noodle run --headed                           # force visible (overrides .env)
+noodle run --browser firefox                  # firefox | webkit
+noodle run --retries 2                        # re-run a failed scenario up to 2x
+noodle run --log-level WARNING                 # quieter output
+noodle list                                   # discovered scenarios, no browser
+noodle validate                               # parse + check [variables], no browser
 ```
 
 ### Bundled example suites
 
 The repo ships ready-to-run examples under `features/`. One of them drives a
-**local** test app, so know what each needs before `bddframe run` (no arg) runs
+**local** test app, so know what each needs before `noodle run` (no arg) runs
 them all:
 
 | Suite | Hits | Needs |
@@ -262,9 +262,9 @@ cd test-app && npm install && npm start   # serves http://localhost:3333
 Then run all BusterBlock tests or a single capability file:
 
 ```bash
-bddframe run features/web/busterblock/ --headless
-bddframe run features/web/busterblock/login.feature --headless
-bddframe run features/web/busterblock/ --tag @smoke --headless
+noodle run features/web/busterblock/ --headless
+noodle run features/web/busterblock/login.feature --headless
+noodle run features/web/busterblock/ --tag @smoke --headless
 ```
 
 Full capability map and credential setup: **[README → Run the bundled test app](../README.md#run-the-bundled-test-app-busterblock)**.
@@ -284,7 +284,7 @@ Retries fire **only on failure**, so green scenarios cost nothing.
 | Tag | Effect |
 |-----|--------|
 | `@no_retry` | Never retry this scenario (e.g. a known-failing assertion you're asserting *does* fail) |
-| `@quarantine` | Still runs, but its failure is **non-blocking** — the build stays green. `bddframe run` exits 0 if every failure this run is quarantined. |
+| `@quarantine` | Still runs, but its failure is **non-blocking** — the build stays green. `noodle run` exits 0 if every failure this run is quarantined. |
 
 Use `@quarantine` to keep a newly-flaky test visible in reports without blocking
 the pipeline while you fix it.
@@ -611,7 +611,7 @@ Then `total` should be greater than "0"                      # numeric/string co
 And  "abc" should contain "b"
 ```
 
-The principle: **the app computes, the test observes.** BDDFrame stores the app's
+The principle: **the app computes, the test observes.** Noodle Test Framework stores the app's
 output and asserts on it — it never re-implements the app's arithmetic. Variables
 reset between scenarios (tests stay independent).
 
@@ -622,9 +622,9 @@ reset between scenarios (tests stay independent).
 Requires `[reporting]` installed and `allure` on your PATH.
 
 ```bash
-bddframe run features/             # 1. produces allure-results/
-bddframe report generate           # 2. allure-results/ → allure-report/ (HTML)
-bddframe report open               # 3. build + open in a browser
+noodle run features/             # 1. produces allure-results/
+noodle report generate           # 2. allure-results/ → allure-report/ (HTML)
+noodle report open               # 3. build + open in a browser
 ```
 
 > ⚠️ You can't double-click `allure-report/index.html` — it loads data over XHR,
@@ -633,8 +633,8 @@ bddframe report open               # 3. build + open in a browser
 
 | Goal | Command |
 |------|---------|
-| Build static HTML only (CI artifact) | `bddframe report generate` → `allure-report/` |
-| Build + open on a local server | `bddframe report open` |
+| Build static HTML only (CI artifact) | `noodle report generate` → `allure-report/` |
+| Build + open on a local server | `noodle report open` |
 | One-shot from results (no saved dir) | `allure serve allure-results` |
 | Host an already-built report (no Allure CLI) | `python -m http.server 8000 --directory allure-report` |
 
@@ -642,8 +642,8 @@ Keep trends across runs by carrying the history folder forward:
 
 ```bash
 cp -r allure-report/history allure-results/history 2>/dev/null || true
-bddframe run features/
-bddframe report generate           # now shows trends
+noodle run features/
+noodle report generate           # now shows trends
 ```
 
 **What you see:** overview (pass/fail/skip + trend), suites (feature → scenario →
@@ -668,7 +668,7 @@ instead of guessing from a log.
 
 When the locator layer resolves something by a non-primary path (scroll/partial-
 text self-heal, POM disambiguation, vision-LLM locate), it's recorded. At end of
-run, if anything healed, BDDFrame writes `healing.jsonl` (one event per line) and
+run, if anything healed, Noodle Test Framework writes `healing.jsonl` (one event per line) and
 `healing-report.txt` with a suggested `pom.yaml` entry per healed locator — turn a
 flaky-by-naming locator into a one-line deterministic fix.
 
@@ -683,7 +683,7 @@ BDDFRAME_MODEL=openai/gpt-4o     # vision-capable
 BDDFRAME_RCA=true
 ```
 
-On **each failed step**, BDDFrame sends the failure screenshot + step text +
+On **each failed step**, Noodle Test Framework sends the failure screenshot + step text +
 error to the model and gets back a structured verdict. It's logged to the console
 and attached to the Allure result as the `rca_category` label, so you can filter
 the report by root cause:
@@ -714,10 +714,10 @@ suggests the *why*.
 Rather click through your app than write Gherkin?
 
 ```bash
-bddframe record --output features/myapp/login.feature --name "Login Flow"
+noodle record --output features/myapp/login.feature --name "Login Flow"
 ```
 
-A browser opens. Perform the flow. Close it. BDDFrame writes the `.feature` file.
+A browser opens. Perform the flow. Close it. Noodle Test Framework writes the `.feature` file.
 Sensitive values (emails, card numbers, passwords) are auto-detected and replaced
 with `[VARIABLE]` placeholders — the real values go in `.env`.
 
@@ -755,7 +755,7 @@ steps can mix in one scenario; the orchestrator switches agents per step.
 Drop-in pipeline files are in the project root: `azure-pipelines.yml` (Linux) and
 `azure-pipelines-windows.yml` (Windows).
 
-1. Create a variable group `bddframe-secrets` with your credentials (`BASE_URL`, `MY_EMAIL`, …).
+1. Create a variable group `noodle-secrets` with your credentials (`BASE_URL`, `MY_EMAIL`, …).
 2. Link the pipeline YAML.
 
 Recommended CI defaults: `BDDFRAME_HEADLESS=true` and `BDDFRAME_STRICT_LOCATOR=true`.
@@ -775,7 +775,7 @@ extension.)
 
 ### Parallel execution (sharding)
 
-behave is single-process, so BDDFrame parallelizes by **sharding feature folders
+behave is single-process, so Noodle Test Framework parallelizes by **sharding feature folders
 across agents**. The pipeline uses a matrix — one agent per folder — and each shard
 publishes its own `junit.xml`; the Tests tab aggregates them into one run:
 
@@ -788,7 +788,7 @@ jobs:
         busterblock:  { featurePath: 'features/web/busterblock/' }
         api:          { featurePath: 'features/api/' }
     steps:
-      - script: bddframe run $(featurePath) --headless
+      - script: noodle run $(featurePath) --headless
       # ... PublishTestResults / artifacts per shard
 ```
 
@@ -828,7 +828,7 @@ against its own instance.
 Instead of putting credentials in the variable group, set `BDDFRAME_KEYVAULT_URL`
 and grant the pipeline's service connection / managed identity `get` + `list` on
 the vault. Install the extra (`pip install -e ".[azure]"`, included in `[all]`)
-and BDDFrame loads the vault at startup. See [Configure → Secrets](#secrets--azure-key-vault).
+and Noodle Test Framework loads the vault at startup. See [Configure → Secrets](#secrets--azure-key-vault).
 
 ---
 
@@ -840,7 +840,7 @@ Syntax highlighting, `[variable]` colouring, step-validation squiggles, and
 ```bash
 uv pip install -e ".[lsp]"
 cd vscode-extension && npm install && cd ..
-ln -s $(pwd)/vscode-extension ~/.vscode/extensions/bddframe-0.1.0
+ln -s $(pwd)/vscode-extension ~/.vscode/extensions/noodle-0.1.0
 ```
 
 Fully quit VS Code (`Cmd+Q`, not just close the window), then reopen.
@@ -853,14 +853,14 @@ Unknown steps get a yellow squiggle (the LLM may handle them at runtime). Tune i
 in `.vscode/settings.json`:
 
 ```json
-{ "bddframe.unknownStepSeverity": "none" }   // "warning" (default) | "information" | "none"
+{ "noodle.unknownStepSeverity": "none" }   // "warning" (default) | "information" | "none"
 ```
 
 ---
 
 ## 13. Testing the framework itself
 
-BDDFrame's own suite runs with **no browser, no LLM, and no display**.
+Noodle Test Framework's own suite runs with **no browser, no LLM, and no display**.
 
 ```bash
 make test                               # == python -m pytest unit_tests/ -v
@@ -891,8 +891,8 @@ Create any `*.py` file in `features/steps/` and use the `@hook` decorator:
 ```python
 # features/steps/custom_hooks.py
 import time, uuid
-from bddframe.hooks import hook
-from bddframe.log import logger
+from noodle.hooks import hook
+from noodle.log import logger
 
 @hook("before_scenario")
 def assign_session(context, scenario):
@@ -925,7 +925,7 @@ before any scenario runs. The `@hook` decorator is the only API you need.
 Alternatively, call `register(event, fn)` directly (no decorator):
 
 ```python
-from bddframe.hooks import register
+from noodle.hooks import register
 register("after_all", lambda ctx: print("suite done"))
 ```
 
@@ -945,7 +945,7 @@ instead:
 
 ```python
 # features/environment.py
-from bddframe.hooks import before_all, ..., register
+from noodle.hooks import before_all, ..., register
 
 def my_before_all(context):
     context.suite_start = time.monotonic()
@@ -991,11 +991,11 @@ def maybe_seed(context, scenario):
 
 ## 15. Writing a custom step
 
-### How BDDFrame resolves a step
+### How Noodle Test Framework resolves a step
 
 Every step goes through two tiers:
 
-1. **Pattern match** — `bddframe/resolver/patterns.py` is tried first. A regex
+1. **Pattern match** — `noodle/resolver/patterns.py` is tried first. A regex
    match returns an action dict immediately; no model is invoked.
 2. **LLM fallback** — if no pattern matches *and* `BDDFRAME_MODEL` is set, the
    step text is sent to the configured model. Without `BDDFRAME_MODEL` the run
@@ -1012,7 +1012,7 @@ No built-in pattern matched — LLM will resolve at runtime.  [llm-fallback]
 
 **Option A — add a pattern (preferred)**
 
-Open `bddframe/resolver/patterns.py` and append an entry to `PATTERNS`:
+Open `noodle/resolver/patterns.py` and append an entry to `PATTERNS`:
 
 ```python
 # My new verb
@@ -1025,7 +1025,7 @@ top-to-bottom; first match wins. Regex is anchored (`^…$`) and
 case-insensitive.
 
 Pick the closest existing `action_type` — you rarely need a new one. The full
-list is in `bddframe/resolver/step_resolver.py::VALID_TYPES`.
+list is in `noodle/resolver/step_resolver.py::VALID_TYPES`.
 
 After adding the pattern, save the file. The LSP re-validates open `.feature`
 files immediately and the warning disappears. No restart needed.
@@ -1063,7 +1063,7 @@ the editor warning.
 
 ```bash
 python3 -c "
-from bddframe.resolver.patterns import match, normalize_subject
+from noodle.resolver.patterns import match, normalize_subject
 step = 'verifies that the cart is displayed'
 print(match(normalize_subject(step)))
 "
@@ -1073,11 +1073,11 @@ A `None` result means the pattern didn't match. Check anchoring and quoting.
 
 ### Checklist before you push
 
-- [ ] Pattern added to `bddframe/resolver/patterns.py`
+- [ ] Pattern added to `noodle/resolver/patterns.py`
 - [ ] `VALID_TYPES` in `step_resolver.py` updated if you added a new `action_type`
 - [ ] Runner (`orchestrator/runner.py`) handles the new action type in `execute_step`
 - [ ] LSP warning gone in VS Code
-- [ ] Quick smoke: `python3 -c "from bddframe.resolver.patterns import match, normalize_subject; print(match(normalize_subject('your step text')))"` returns the expected action
+- [ ] Quick smoke: `python3 -c "from noodle.resolver.patterns import match, normalize_subject; print(match(normalize_subject('your step text')))"` returns the expected action
 
 ---
 
@@ -1091,19 +1091,19 @@ No prior knowledge assumed.
 An **LLM** (Large Language Model) is the same technology behind ChatGPT and Claude.
 It can read plain English and interpret it.
 
-BDDFrame uses an LLM in two specific situations:
+Noodle Test Framework uses an LLM in two specific situations:
 
-1. **A step phrase has no matching pattern.** BDDFrame has 50+ built-in step
+1. **A step phrase has no matching pattern.** Noodle Test Framework has 50+ built-in step
    patterns (`clicks the X button`, `enters Y in the Z field`, etc.). If you write
    a step that doesn't match any of them, the LLM can read your sentence and figure
    out what action to run. Without an LLM, the test would simply fail with a "no
    pattern matched" error.
 
-2. **An element can't be found on the page.** If BDDFrame can't locate a button or
+2. **An element can't be found on the page.** If Noodle Test Framework can't locate a button or
    field by its label, the LLM can look at a screenshot and find it visually.
    Without an LLM, the test would fail with a "could not find element" error.
 
-**You do not need an LLM to use BDDFrame.** The default setup is fully local and
+**You do not need an LLM to use Noodle Test Framework.** The default setup is fully local and
 deterministic — no AI calls, no cost, no internet. Most test suites work perfectly
 without it.
 
@@ -1111,7 +1111,7 @@ without it.
 
 ### Default behaviour — no LLM
 
-Out of the box, with no configuration, BDDFrame:
+Out of the box, with no configuration, Noodle Test Framework:
 
 - Uses regex patterns to understand steps (fast, free, deterministic)
 - Uses Playwright's accessibility tree to find elements on the page
@@ -1165,7 +1165,7 @@ it can both interpret steps AND find elements on screen by looking at screenshot
    uv pip install -e ".[llm]"
    ```
 
-5. Run your tests as normal. BDDFrame will now use Gemini as a fallback for
+5. Run your tests as normal. Noodle Test Framework will now use Gemini as a fallback for
    steps and elements it can't resolve locally.
 
 ---
@@ -1252,7 +1252,7 @@ Requires a machine with a reasonable amount of RAM (8 GB+ recommended).
 | **Ollama (local)** | Free | ✅ with llava | No | Air-gapped, private data |
 | **Foundry Local** | Free | model-dependent | No | Locked-down corporate networks |
 
-**"Vision-capable"** means the model can look at a screenshot. BDDFrame uses this
+**"Vision-capable"** means the model can look at a screenshot. Noodle Test Framework uses this
 when an element can't be found by its label — it takes a screenshot, sends it to
 the model, and asks "where is the Login button?". Without vision capability, only
 step-text fallback works (the model reads words but not images).
@@ -1270,7 +1270,7 @@ step-text fallback works (the model reads words but not images).
 BDDFRAME_LLM_MODE=auto     # this is the default; you can leave this line out entirely
 ```
 
-BDDFrame tries to resolve everything locally first:
+Noodle Test Framework tries to resolve everything locally first:
 - Step text → matched against 50+ built-in patterns (fast, free)
 - If no pattern matches → asks the LLM
 - Element location → scanned by Playwright's accessibility tree (fast, free)
@@ -1286,7 +1286,7 @@ Most steps never touch the LLM at all. The LLM is only the last resort.
 BDDFRAME_LLM_MODE=full
 ```
 
-BDDFrame skips all pattern matching and accessibility scanning. Every step and
+Noodle Test Framework skips all pattern matching and accessibility scanning. Every step and
 every element location goes directly to the LLM. This is slower and costs more
 per test run, but it lets you write completely free-form test steps without
 worrying about whether they match a pattern.
@@ -1295,7 +1295,7 @@ worrying about whether they match a pattern.
 
 **Requires a vision-capable model** for element location (Google Gemini, Claude,
 OpenAI gpt-4o, Ollama llava). With a text-only model (Groq, llama3) in `full`
-mode, BDDFrame will warn you and fall back to the accessibility tree for elements.
+mode, Noodle Test Framework will warn you and fall back to the accessibility tree for elements.
 
 **Recommended for:** exploratory testing, legacy app automation, writing tests
 without learning the step vocabulary first.
@@ -1323,7 +1323,7 @@ secrets.env                   ← edit this for API keys (gitignored — never c
 |---------|-------------|-----|
 | `No pattern matched` error with no model set | LLM not enabled | Add `BDDFRAME_MODEL` to `.env` |
 | `BDDFRAME_LLM_MODE=full but BDDFRAME_MODEL is not set` | Full mode needs a model | Add `BDDFRAME_MODEL` to `.env` |
-| `LLM support requires: pip install bddframe[llm]` | Extra not installed | Run `uv pip install -e ".[llm]"` |
+| `LLM support requires: pip install noodle[llm]` | Extra not installed | Run `uv pip install -e ".[llm]"` |
 | `AuthenticationError` or `401` | Wrong or missing API key | Check `secrets.env` for the right key name |
 | Vision-locate warning: `is BDDFRAME_MODEL vision-capable?` | Text-only model used with full mode | Switch to a vision-capable model (see table above) or use `auto` mode |
 | Ollama: `ConnectionRefused` | Ollama not running | Run `ollama serve` in a terminal first |
