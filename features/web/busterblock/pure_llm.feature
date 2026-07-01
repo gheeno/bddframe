@@ -1,7 +1,7 @@
 @web @headless @llm @pure_llm @capability
 Feature: Pure LLM Mode — every step interpreted by the language model
 
-  # BDDFRAME_LLM_MODE=full bypasses the built-in pattern resolver entirely.
+  # NOODLE_LLM_MODE=full bypasses the built-in pattern resolver entirely.
   # EVERY step goes directly to the LLM — no regex matching, no POM lookup.
   # The model interprets each Gherkin step from the screenshot + step text.
   #
@@ -18,14 +18,14 @@ Feature: Pure LLM Mode — every step interpreted by the language model
   #   - Not suitable for CI where reproducibility matters
   #
   # Requires:
-  #   BDDFRAME_LLM_MODE=full
-  #   BDDFRAME_MODEL=anthropic/claude-sonnet-4-6   (or any vision model)
+  #   NOODLE_LLM_MODE=full
+  #   NOODLE_MODEL=anthropic/claude-sonnet-4-6   (or any vision model)
   #   ANTHROPIC_API_KEY=sk-ant-...
   #
   # Run:
-  #   BDDFRAME_LLM_MODE=full \
-  #   BDDFRAME_MODEL=anthropic/claude-sonnet-4-6 \
-  #   bddframe run features/web/busterblock/pure_llm.feature --no-capture
+  #   NOODLE_LLM_MODE=full \
+  #   NOODLE_MODEL=anthropic/claude-sonnet-4-6 \
+  #   noodle run features/web/busterblock/pure_llm.feature --no-capture
 
   @no_retry
   Scenario: Full LLM mode — entire login flow interpreted by the model

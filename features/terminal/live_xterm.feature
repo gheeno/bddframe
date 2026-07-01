@@ -8,14 +8,14 @@
 #   - https://hackertyper.net    iconic green-on-black, echoes as you type
 #   - https://copy.sh/v86/       a full OS booted in a <canvas>
 #
-# Opt-in only — skipped unless BDDFRAME_RUN_LIVE=1 (so CI/casual runs never make
+# Opt-in only — skipped unless NOODLE_RUN_LIVE=1 (so CI/casual runs never make
 # surprise network calls). Run it:
-#   BDDFRAME_RUN_LIVE=1 bddframe run features/terminal/live_xterm.feature --headed
+#   NOODLE_RUN_LIVE=1 noodle run features/terminal/live_xterm.feature --headed
 @web @terminal @live
 Feature: Real canvas terminal — xterm.js live demo
 
   Scenario: focus the live terminal by coordinate, type, and read it back
     Given User is on "https://xtermjs.org"
     When User clicks at 600, 400
-    And User types "echo hello-bddframe"
-    Then the screen shows "hello-bddframe"
+    And User types "echo hello-noodle"
+    Then the screen shows "hello-noodle"

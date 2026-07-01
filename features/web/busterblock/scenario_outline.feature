@@ -7,7 +7,7 @@ Feature: Scenario Outline and Data Tables — parameterised and table-driven tes
   #   Doc String in a step               — multi-line string parameter
   #   Inline data table in a step        — table-driven step body
   #
-  # Run:  bddframe run features/web/busterblock/scenario_outline.feature --headless
+  # Run:  noodle run features/web/busterblock/scenario_outline.feature --headless
 
   @smoke @outline_basic
   Scenario Outline: Genre filter — one outline, multiple genre/movie combos
@@ -49,7 +49,7 @@ Feature: Scenario Outline and Data Tables — parameterised and table-driven tes
   @table_step
   Scenario: Table-driven step body — load multiple payloads from a table
     # When a step ends in ':' and is followed by a table, Behave passes the table
-    # to the step as context.table. BDDFrame's load_resource step uses this to
+    # to the step as context.table. Noodle's load_resource step uses this to
     # load multiple files in one step. Each row is processed in order.
     # See also: resource_files.feature for the single-file variant.
     Given sets `REST_BASE_URL` to '[BUSTERBLOCK]'

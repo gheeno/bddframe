@@ -16,7 +16,7 @@ from unittest.mock import MagicMock, patch
 
 class TestValidate:
     def _validate(self, source):
-        from bddframe.lsp.server import _validate
+        from noodle.lsp.server import _validate
         return _validate(source)
 
     def test_no_diagnostics_for_known_step(self):
@@ -65,7 +65,7 @@ class TestValidate:
     def test_severity_none_suppresses_diagnostics(self):
         from lsprotocol import types as lsp
         source = "When User does something unknown"
-        import bddframe.lsp.server as srv
+        import noodle.lsp.server as srv
         original = srv._UNKNOWN_STEP_SEVERITY
         try:
             srv._UNKNOWN_STEP_SEVERITY = None
@@ -88,27 +88,27 @@ class TestValidate:
 
 class TestKnownTags:
     def test_headed_tag_present(self):
-        from bddframe.lsp.server import KNOWN_TAGS
+        from noodle.lsp.server import KNOWN_TAGS
         tags = [t for t, _ in KNOWN_TAGS]
         assert "headed" in tags
 
     def test_headless_tag_present(self):
-        from bddframe.lsp.server import KNOWN_TAGS
+        from noodle.lsp.server import KNOWN_TAGS
         tags = [t for t, _ in KNOWN_TAGS]
         assert "headless" in tags
 
     def test_slow_tag_present(self):
-        from bddframe.lsp.server import KNOWN_TAGS
+        from noodle.lsp.server import KNOWN_TAGS
         tags = [t for t, _ in KNOWN_TAGS]
         assert "slow" in tags
 
     def test_record_video_tag_present(self):
-        from bddframe.lsp.server import KNOWN_TAGS
+        from noodle.lsp.server import KNOWN_TAGS
         tags = [t for t, _ in KNOWN_TAGS]
         assert "record_video" in tags
 
     def test_no_duplicate_tags(self):
-        from bddframe.lsp.server import KNOWN_TAGS
+        from noodle.lsp.server import KNOWN_TAGS
         tags = [t for t, _ in KNOWN_TAGS]
         assert len(tags) == len(set(tags)), "Duplicate tag entries in KNOWN_TAGS"
 
@@ -125,7 +125,7 @@ class TestEnvVarNames:
         feature.parent.mkdir()
         feature.touch()
 
-        from bddframe.lsp.server import _env_var_names
+        from noodle.lsp.server import _env_var_names
         names = _env_var_names(str(feature))
 
         assert "MY_EMAIL" in names
@@ -137,7 +137,7 @@ class TestEnvVarNames:
         feature = tmp_path / "feature.feature"
         feature.touch()
 
-        from bddframe.lsp.server import _env_var_names
+        from noodle.lsp.server import _env_var_names
         names = _env_var_names(str(feature))
 
         assert "my email" in names
@@ -148,7 +148,7 @@ class TestEnvVarNames:
         feature = tmp_path / "f.feature"
         feature.touch()
 
-        from bddframe.lsp.server import _env_var_names
+        from noodle.lsp.server import _env_var_names
         names = _env_var_names(str(feature))
 
         comment_names = [n for n in names if "comment" in n]
@@ -159,7 +159,7 @@ class TestEnvVarNames:
         feature = tmp_path / "f.feature"
         feature.touch()
 
-        from bddframe.lsp.server import _env_var_names
+        from noodle.lsp.server import _env_var_names
         names = _env_var_names(str(feature))
 
         assert names == []
@@ -171,7 +171,7 @@ class TestEnvVarNames:
         nested.parent.mkdir(parents=True)
         nested.touch()
 
-        from bddframe.lsp.server import _env_var_names
+        from noodle.lsp.server import _env_var_names
         names = _env_var_names(str(nested))
 
         assert "ROOT_VAR" in names

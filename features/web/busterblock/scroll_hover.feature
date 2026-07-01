@@ -6,7 +6,7 @@ Feature: Scroll and Hover — move the viewport, trigger hover states
   #   scrolls to 'X'       — scroll an element into view
   #   hovers over X        — trigger :hover CSS and mouseover events
   #
-  # Run:  bddframe run features/web/busterblock/scroll_hover.feature --headless
+  # Run:  noodle run features/web/busterblock/scroll_hover.feature --headless
 
   Background:
     Given User is on "[BUSTERBLOCK]"

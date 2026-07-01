@@ -1,8 +1,8 @@
 """Phase C — healing telemetry + Azure Key Vault loader (no Azure, no network)."""
 import os
 
-from bddframe import healing
-from bddframe.secrets_akv import _normalize, _apply
+from noodle import healing
+from noodle.secrets_akv import _normalize, _apply
 
 
 # --- healing telemetry -------------------------------------------------------

@@ -1,14 +1,14 @@
 """BFRAME_0035 — agent + workspace self-checks. No browser, no LLM, no network."""
 import json
 
-from bddframe import config
-from bddframe.agent import generate, repl
-from bddframe.reporting import summary
+from noodle import config
+from noodle.agent import generate, repl
+from noodle.reporting import summary
 
 
 def test_config_defaults_and_override(tmp_path):
     assert config.load(str(tmp_path))["features_dir"] == "features"
-    (tmp_path / "bddframe.yaml").write_text("features_dir: tests\nheadless: true\n")
+    (tmp_path / "noodle.yaml").write_text("features_dir: tests\nheadless: true\n")
     cfg = config.load(str(tmp_path))
     assert cfg["features_dir"] == "tests"
     assert cfg["headless"] is True

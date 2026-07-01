@@ -1,6 +1,6 @@
 """Phase D — network mocking, API setup/teardown, test-data fixtures."""
-from bddframe.resolver.patterns import match, normalize_subject
-from bddframe.agents.web.actions import flatten_data, load_data
+from noodle.resolver.patterns import match, normalize_subject
+from noodle.agents.web.actions import flatten_data, load_data
 
 
 def _resolve(text):

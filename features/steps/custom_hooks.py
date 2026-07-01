@@ -3,7 +3,7 @@
 Two things live here:
   1. Hook registrations — fire around every scenario (before/after) without
      touching .feature files. See hooks.feature for usage.
-  2. Custom step definitions — steps NOT in BDDFrame's built-in dictionary.
+  2. Custom step definitions — steps NOT in Noodle's built-in dictionary.
      Behave discovers all *.py in features/steps/ at startup. The z_ prefix
      on z_catch_all.py keeps it last in load order, so custom steps registered
      here are tried before the catch-all. See custom_steps.feature for usage.
@@ -14,8 +14,8 @@ import time
 import uuid
 
 from behave import then, when
-from bddframe.hooks import hook
-from bddframe.log import logger
+from noodle.hooks import hook
+from noodle.log import logger
 
 
 @hook("before_scenario")

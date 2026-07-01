@@ -8,9 +8,9 @@ set_var and assert_compare never touch the DOM).
 import types
 import pytest
 
-from bddframe.resolver.patterns import match, normalize_subject
-from bddframe.agents.web.actions import assert_compare
-from bddframe.orchestrator.runner import execute_step
+from noodle.resolver.patterns import match, normalize_subject
+from noodle.agents.web.actions import assert_compare
+from noodle.orchestrator.runner import execute_step
 
 
 # --- patterns ---------------------------------------------------------------
@@ -124,7 +124,7 @@ def test_failing_comparison_raises_through_execute_step():
 
 
 def test_backtick_is_capture_only_not_env(monkeypatch):
-    from bddframe.orchestrator.runner import substitute
+    from noodle.orchestrator.runner import substitute
     monkeypatch.setenv("SECRET", "from-env")
     # backticks read ONLY the run store, never .env
     assert substitute("`SECRET`", {}) == "`SECRET`"            # not in store -> untouched

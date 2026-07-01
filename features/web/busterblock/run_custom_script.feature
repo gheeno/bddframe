@@ -3,7 +3,7 @@ Feature: Run a custom script — invoke external code as a Gherkin step
 
   # Sometimes a test needs to do something the browser can't — seed a database,
   # call a shell tool, run a Java jar, invoke a Python data-setup script.
-  # BDDFrame can run any external script or command as a step and capture stdout.
+  # Noodle can run any external script or command as a step and capture stdout.
   #
   # Patterns demonstrated:
   #   the script 'path' runs                          — run and ignore output
@@ -16,7 +16,7 @@ Feature: Run a custom script — invoke external code as a Gherkin step
   #   .py → python3   .js → node   .sh → bash   .jar → java -jar
   # A non-zero exit code fails the step.
   #
-  # Run:  bddframe run features/web/busterblock/run_custom_script.feature --headless
+  # Run:  noodle run features/web/busterblock/run_custom_script.feature --headless
 
   @smoke @script_basic
   Scenario: Run a Python script that seeds data, then assert the UI reflects it
@@ -43,8 +43,8 @@ Feature: Run a custom script — invoke external code as a Gherkin step
   Scenario: Run a shell command and capture its output
     # "runs the command '...'" executes a raw shell command via subprocess.
     # stdout is captured into SCRIPT_OUTPUT (and optionally a named variable).
-    When User runs the command "echo BDDFrame-command-test" and storing the output in `CMD_OUT`
-    Then `CMD_OUT` should contain "BDDFrame-command-test"
+    When User runs the command "echo Noodle-command-test" and storing the output in `CMD_OUT`
+    Then `CMD_OUT` should contain "Noodle-command-test"
 
   @run_command @api_via_curl
   Scenario: Use curl as a command to hit the BusterBlock test API

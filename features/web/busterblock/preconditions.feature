@@ -2,7 +2,7 @@
 Feature: Preconditions — seed and tear down app state via YAML declarations
 
   # Instead of clicking the UI into the state you need, seed it directly via the
-  # app's test API. BDDFrame reads preconditions.yaml (same folder as this file)
+  # app's test API. Noodle reads preconditions.yaml (same folder as this file)
   # and fires HTTP calls before/after the scenario — like a JDBC @Before/@After.
   #
   # Tag a scenario with @precondition:NAME to activate a named block from
@@ -11,7 +11,7 @@ Feature: Preconditions — seed and tear down app state via YAML declarations
   #
   # See preconditions.yaml in this folder for the full definitions.
   #
-  # Run:  bddframe run features/web/busterblock/preconditions.feature --headless
+  # Run:  noodle run features/web/busterblock/preconditions.feature --headless
 
   Background:
     Given User is on "[BUSTERBLOCK]"

@@ -35,12 +35,12 @@ def _make_context():
 
 class TestTagConflictWarning:
     def test_warns_when_both_tags_present(self, capsys):
-        from bddframe import hooks
+        from noodle import hooks
 
         scenario = _make_scenario(tags=["headed", "headless"])
         context = MagicMock()
 
-        with patch("bddframe.hooks.sync_playwright") as mock_pw_fn:
+        with patch("noodle.hooks.sync_playwright") as mock_pw_fn:
             mock_pw = MagicMock()
             mock_pw_fn.return_value.start.return_value = mock_pw
             mock_browser = MagicMock()
@@ -56,12 +56,12 @@ class TestTagConflictWarning:
         assert "headless" in captured.out
 
     def test_no_warning_when_only_headed(self, capsys):
-        from bddframe import hooks
+        from noodle import hooks
 
         scenario = _make_scenario(tags=["headed"])
         context = MagicMock()
 
-        with patch("bddframe.hooks.sync_playwright") as mock_pw_fn:
+        with patch("noodle.hooks.sync_playwright") as mock_pw_fn:
             mock_pw = MagicMock()
             mock_pw_fn.return_value.start.return_value = mock_pw
             mock_browser = MagicMock()
@@ -76,12 +76,12 @@ class TestTagConflictWarning:
 
     def test_headed_tag_wins_over_headless_tag(self):
         """@headed + @headless → browser launched with headless=False."""
-        from bddframe import hooks
+        from noodle import hooks
 
         scenario = _make_scenario(tags=["headed", "headless"])
         context = MagicMock()
 
-        with patch("bddframe.hooks.sync_playwright") as mock_pw_fn:
+        with patch("noodle.hooks.sync_playwright") as mock_pw_fn:
             mock_pw = MagicMock()
             mock_pw_fn.return_value.start.return_value = mock_pw
             mock_browser = MagicMock()
@@ -97,29 +97,29 @@ class TestTagConflictWarning:
 
 
 # ---------------------------------------------------------------------------
-# Bug 4 — invalid BDDFRAME_BROWSER raises ValueError with clear message
+# Bug 4 — invalid NOODLE_BROWSER raises ValueError with clear message
 # ---------------------------------------------------------------------------
 
 class TestBrowserValidation:
     def test_invalid_browser_raises(self, monkeypatch):
-        from bddframe import hooks
+        from noodle import hooks
 
-        monkeypatch.setenv("BDDFRAME_BROWSER", "chrome")
+        monkeypatch.setenv("NOODLE_BROWSER", "chrome")
         scenario = _make_scenario()
         context = MagicMock()
 
-        with patch("bddframe.hooks.sync_playwright"):
+        with patch("noodle.hooks.sync_playwright"):
             with pytest.raises(ValueError, match="chrome"):
                 hooks.before_scenario(context, scenario)
 
     def test_valid_browser_env_accepted(self, monkeypatch):
-        from bddframe import hooks
+        from noodle import hooks
 
-        monkeypatch.setenv("BDDFRAME_BROWSER", "firefox")
+        monkeypatch.setenv("NOODLE_BROWSER", "firefox")
         scenario = _make_scenario()
         context = MagicMock()
 
-        with patch("bddframe.hooks.sync_playwright") as mock_pw_fn:
+        with patch("noodle.hooks.sync_playwright") as mock_pw_fn:
             mock_pw = MagicMock()
             mock_pw_fn.return_value.start.return_value = mock_pw
             mock_browser = MagicMock()
@@ -132,14 +132,14 @@ class TestBrowserValidation:
         mock_pw.firefox.launch.assert_called_once()
 
     def test_firefox_tag_overrides_invalid_env(self, monkeypatch):
-        """@firefox tag takes precedence over a bad BDDFRAME_BROWSER value."""
-        from bddframe import hooks
+        """@firefox tag takes precedence over a bad NOODLE_BROWSER value."""
+        from noodle import hooks
 
-        monkeypatch.setenv("BDDFRAME_BROWSER", "chrome")
+        monkeypatch.setenv("NOODLE_BROWSER", "chrome")
         scenario = _make_scenario(tags=["firefox"])
         context = MagicMock()
 
-        with patch("bddframe.hooks.sync_playwright") as mock_pw_fn:
+        with patch("noodle.hooks.sync_playwright") as mock_pw_fn:
             mock_pw = MagicMock()
             mock_pw_fn.return_value.start.return_value = mock_pw
             mock_browser = MagicMock()
@@ -156,7 +156,7 @@ class TestBrowserValidation:
 
 class TestAfterScenarioCleanup:
     def test_all_three_resources_closed_on_success(self):
-        from bddframe import hooks
+        from noodle import hooks
 
         context = MagicMock()
         mock_bctx = MagicMock()
@@ -175,7 +175,7 @@ class TestAfterScenarioCleanup:
 
     def test_pw_stop_called_even_when_bctx_close_raises(self):
         """If _bctx.close() raises, _browser.close() and _pw.stop() still run."""
-        from bddframe import hooks
+        from noodle import hooks
 
         context = MagicMock()
         mock_bctx = MagicMock()
@@ -197,7 +197,7 @@ class TestAfterScenarioCleanup:
         If before_scenario failed before _bctx was assigned,
         after_scenario must still stop _pw without AttributeError.
         """
-        from bddframe import hooks
+        from noodle import hooks
 
         context = MagicMock(spec=["_browser", "_pw"])
         mock_browser = MagicMock()
@@ -213,7 +213,7 @@ class TestAfterScenarioCleanup:
 
     def test_cleanup_with_no_resources_at_all(self):
         """Context with no playwright attributes — must not raise."""
-        from bddframe import hooks
+        from noodle import hooks
 
         context = MagicMock(spec=[])
         scenario = _make_scenario()
@@ -228,7 +228,7 @@ class TestAfterScenarioCleanup:
 @pytest.fixture(autouse=False)
 def clean_registry():
     """Clear _registry before and after each test that touches it."""
-    from bddframe import hooks
+    from noodle import hooks
     hooks._registry.clear()
     yield
     hooks._registry.clear()
@@ -236,7 +236,7 @@ def clean_registry():
 
 class TestCustomHookRegistry:
     def test_register_and_call_before_scenario(self, clean_registry):
-        from bddframe import hooks
+        from noodle import hooks
 
         calls = []
         hooks.register("before_scenario", lambda ctx, sc: calls.append((ctx, sc)))
@@ -244,7 +244,7 @@ class TestCustomHookRegistry:
         context = MagicMock()
         scenario = _make_scenario()
 
-        with patch("bddframe.hooks.sync_playwright") as mock_pw_fn:
+        with patch("noodle.hooks.sync_playwright") as mock_pw_fn:
             mock_pw = MagicMock()
             mock_pw_fn.return_value.start.return_value = mock_pw
             mock_pw.chromium.launch.return_value = MagicMock()
@@ -254,7 +254,7 @@ class TestCustomHookRegistry:
         assert calls[0][1] is scenario
 
     def test_hook_decorator(self, clean_registry):
-        from bddframe import hooks
+        from noodle import hooks
 
         calls = []
 
@@ -263,27 +263,27 @@ class TestCustomHookRegistry:
             calls.append(ctx)
 
         ctx = MagicMock()
-        with patch("bddframe.hooks.healing"), \
-             patch("bddframe.hooks._REPORTING", False):
+        with patch("noodle.hooks.healing"), \
+             patch("noodle.hooks._REPORTING", False):
             hooks.after_all(ctx)
 
         assert calls == [ctx]
 
     def test_invalid_event_raises(self, clean_registry):
-        from bddframe import hooks
+        from noodle import hooks
 
         with pytest.raises(ValueError, match="Unknown hook event"):
             hooks.register("before_step", lambda: None)
 
     def test_multiple_hooks_same_event_called_in_order(self, clean_registry):
-        from bddframe import hooks
+        from noodle import hooks
 
         order = []
         hooks.register("after_all", lambda ctx: order.append(1))
         hooks.register("after_all", lambda ctx: order.append(2))
 
-        with patch("bddframe.hooks.healing"), \
-             patch("bddframe.hooks._REPORTING", False):
+        with patch("noodle.hooks.healing"), \
+             patch("noodle.hooks._REPORTING", False):
             hooks.after_all(MagicMock())
 
         assert order == [1, 2]

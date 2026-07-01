@@ -1,6 +1,6 @@
-"""Unit tests for bddframe/resolver/visual_patterns.py — no screen access."""
+"""Unit tests for noodle/resolver/visual_patterns.py — no screen access."""
 import pytest
-from bddframe.resolver.visual_patterns import match
+from noodle.resolver.visual_patterns import match
 
 
 class TestClickImage:

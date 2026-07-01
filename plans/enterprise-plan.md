@@ -108,7 +108,7 @@ which we mostly already do. Lean into that and close the debug/scale gap.
 ### Phase B — CI maturity — DONE 2026-06-27
 
 - [x] Retry via behave's `scenario_autoretry` (`hooks.before_feature`), gated by
-      `BDDFRAME_RETRIES` (default 1; `--retries` flag). Retries fire only on
+      `NOODLE_RETRIES` (default 1; `--retries` flag). Retries fire only on
       failure → green scenarios cost nothing. `@no_retry` opts out.
       `@quarantine` = non-blocking: `cli.run` scans this run's Allure results and
       exits 0 if every failure is quarantined (`_all_failures_quarantined`).
@@ -116,12 +116,12 @@ which we mostly already do. Lean into that and close the debug/scale gap.
       only this run.
 - [x] Deterministic pixel diff with Pillow (no new dep): `pixel_baseline` action
       + step "the [\"name\"] screen should match the baseline", threshold
-      `BDDFRAME_PIXEL_THRESHOLD` (default 1%), diff image saved on mismatch. LLM
+      `NOODLE_PIXEL_THRESHOLD` (default 1%), diff image saved on mismatch. LLM
       baseline kept as the opt-in semantic tier.
       *Skipped: Playwright `to_have_screenshot` — its pytest-oriented baseline/
       first-run semantics fought the BDD flow; Pillow gave full control in ~25
       lines.*
-- [x] `noodle/log.py` logger, `BDDFRAME_LOG_LEVEL` + `--log-level`; runtime
+- [x] `noodle/log.py` logger, `NOODLE_LOG_LEVEL` + `--log-level`; runtime
       breadcrumbs migrated off `print()` (live-stdout handler keeps capsys/behave
       output intact). *Skipped: migrating CLI command UX prints — those are user
       output, not runtime telemetry.*
@@ -129,7 +129,7 @@ which we mostly already do. Lean into that and close the debug/scale gap.
 ### Phase C — Enterprise integration — DONE 2026-06-27
 
 - [x] `noodle/secrets_akv.py` — Key Vault loader gated by
-      `BDDFRAME_KEYVAULT_URL`, `DefaultAzureCredential` (managed identity in CI,
+      `NOODLE_KEYVAULT_URL`, `DefaultAzureCredential` (managed identity in CI,
       `az login` locally), dash→underscore name mapping. `[azure]` extra. Wired
       into `hooks.before_all`; `$(VAR)`-literal guarded. Unset → `.env` fallback.
 - [x] `noodle/healing.py` — every self-heal (scroll/partial), POM
@@ -263,7 +263,7 @@ legacy app target is named.
 
 Currently all Playwright browsers launch locally. Enterprise teams run against
 device/browser farms. Playwright supports remote CDP endpoints and
-`connect_over_cdp()`; Noodle Test Framework needs to expose a `BDDFRAME_REMOTE_URL`
+`connect_over_cdp()`; Noodle Test Framework needs to expose a `NOODLE_REMOTE_URL`
 environment variable and pass it through `hooks.before_scenario` as an
 alternative launch path.
 
@@ -271,9 +271,9 @@ alternative launch path.
 
 ### F5 — LLM cost cap
 
-When `BDDFRAME_MODEL` is set and a build is broken, every failed step triggers a
+When `NOODLE_MODEL` is set and a build is broken, every failed step triggers a
 model call (step-resolver fallback + vision locate + RCA). There is no token
-budget, rate limit, or per-run call ceiling. Add `BDDFRAME_LLM_MAX_CALLS`
+budget, rate limit, or per-run call ceiling. Add `NOODLE_LLM_MAX_CALLS`
 (default: unlimited for backward compat) checked before each `ask()`/`ask_vision()`
 call. Log a warning when the cap is hit; subsequent LLM steps fall back to the
 pattern resolver's fail path.
@@ -293,7 +293,7 @@ context stored in `context._named_contexts`.
 ### F7 — Step-level retry
 
 Retries today are scenario-level: a flaky `wait_visible` at step 8 of 15 retries
-from step 1. Add a `@retry_step` tag (or `BDDFRAME_STEP_RETRIES`) that wraps
+from step 1. Add a `@retry_step` tag (or `NOODLE_STEP_RETRIES`) that wraps
 individual step execution in a retry loop before handing off to the scenario
 retry. Useful for steps with inherent network latency (SSO redirects, CDN-
 backed assets).

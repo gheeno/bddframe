@@ -189,7 +189,7 @@ The bones are all there. Sketch:
 
 ```python
 # in hooks.after_step, on failure:
-if os.getenv("BDDFRAME_MODEL") and os.getenv("BDDFRAME_RCA"):
+if os.getenv("NOODLE_MODEL") and os.getenv("NOODLE_RCA"):
     _run_rca(context, step, raw_path)
 
 def _run_rca(context, step, screenshot_path):
@@ -225,7 +225,7 @@ Reply with JSON only:
         pass  # RCA is best-effort, never blocks the run
 ```
 
-Gate it behind `BDDFRAME_RCA=true` — opt-in because it costs one LLM call per
+Gate it behind `NOODLE_RCA=true` — opt-in because it costs one LLM call per
 failure. The Allure label attachment means you can filter by RCA category in the
 report (`rca_category:B` → all locator rot failures in this run).
 

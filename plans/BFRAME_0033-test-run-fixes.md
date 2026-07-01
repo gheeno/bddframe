@@ -174,7 +174,7 @@ def _switch_tab(context, target, assert_opened=False):
         bctx = getattr(context, "_bctx", None)
         if bctx is None:
             raise AssertionError("Expected a new tab to open, but only one tab is open")
-        timeout_ms = int(os.getenv("BDDFRAME_TIMEOUT", "10000"))
+        timeout_ms = int(os.getenv("NOODLE_TIMEOUT", "10000"))
         try:
             bctx.wait_for_event("page", timeout=timeout_ms)
         except Exception:
@@ -262,12 +262,12 @@ visually. Specific failure modes observed:
 ```bash
 ollama pull llava
 ```
-Then run LLM tests with `BDDFRAME_MODEL=ollama/llava`. Vision-capable; can see
+Then run LLM tests with `NOODLE_MODEL=ollama/llava`. Vision-capable; can see
 the screenshot to locate elements correctly.
 
 **6b — Use a cloud vision model for LLM tests only:**
 ```bash
-BDDFRAME_MODEL=anthropic/claude-haiku-4-5-20251001 ANTHROPIC_API_KEY=... \
+NOODLE_MODEL=anthropic/claude-haiku-4-5-20251001 ANTHROPIC_API_KEY=... \
 noodle run features/web/busterblock/llm_fallback.feature features/web/busterblock/pure_llm.feature
 ```
 
@@ -383,7 +383,7 @@ def assert_hidden(page: Page, text: str):
     raise AssertionError(...)  # immediate fail, no wait
 ```
 
-**Fix:** `noodle/agents/web/actions.py` — `assert_hidden()`: if the element IS visible at the moment of check, wait up to `BDDFRAME_TIMEOUT` ms for it to become hidden before failing:
+**Fix:** `noodle/agents/web/actions.py` — `assert_hidden()`: if the element IS visible at the moment of check, wait up to `NOODLE_TIMEOUT` ms for it to become hidden before failing:
 
 ```python
 def assert_hidden(page: Page, text: str):
@@ -393,7 +393,7 @@ def assert_hidden(page: Page, text: str):
     if not loc.first.is_visible():
         return
     # Element is visible — wait for it to disappear (handles debounced filters etc.)
-    timeout_ms = int(os.getenv("BDDFRAME_TIMEOUT", "10000"))
+    timeout_ms = int(os.getenv("NOODLE_TIMEOUT", "10000"))
     try:
         loc.first.wait_for(state="hidden", timeout=timeout_ms)
     except Exception:

@@ -1,4 +1,4 @@
-# BDDFrame — Azure DevOps pipeline (Linux)
+# Noodle — Azure DevOps pipeline (Linux)
 trigger:
   - main
   - develop
@@ -7,7 +7,7 @@ pool:
   vmImage: ubuntu-latest
 
 variables:
-  - group: bddframe-secrets   # BASE_URL, MY_EMAIL, MY_CARD, BDDFRAME_LLM_URL
+  - group: noodle-secrets   # BASE_URL, MY_EMAIL, MY_CARD, NOODLE_LLM_URL
   # Parallelism toggle. 0 = single process per shard (default — the matrix
   # already gives one .feature file per agent). Set >0 (e.g. at queue time) to
   # also run feature files multi-process *within* a job via behavex — useful
@@ -50,31 +50,31 @@ jobs:
           sudo apt-get update && sudo apt-get install -y tesseract-ocr
           pip install -e ".[all]"
           playwright install chromium --with-deps
-        displayName: Install BDDFrame
+        displayName: Install Noodle
 
       - script: |
           export DISPLAY=:99
           Xvfb :99 -screen 0 1920x1080x24 &
-          bddframe run $(featurePath) --headless
+          noodle run $(featurePath) --headless
         displayName: 'Run tests — $(featurePath)'
         env:
           BASE_URL: $(BASE_URL)
           MY_EMAIL: $(MY_EMAIL)
           MY_CARD: $(MY_CARD)
-          BDDFRAME_LLM_URL: $(BDDFRAME_LLM_URL)
-          BDDFRAME_MODEL: $(BDDFRAME_MODEL)
-          BDDFRAME_PARALLEL_PROCESSES: $(parallelProcesses)   # 0 = single process
+          NOODLE_LLM_URL: $(NOODLE_LLM_URL)
+          NOODLE_MODEL: $(NOODLE_MODEL)
+          NOODLE_PARALLEL_PROCESSES: $(parallelProcesses)   # 0 = single process
           # Optional: pull secrets from Key Vault instead of the variable group.
-          # Set BDDFRAME_KEYVAULT_URL in the group + grant the agent identity
+          # Set NOODLE_KEYVAULT_URL in the group + grant the agent identity
           # 'get'/'list' on the vault. Unset → variable-group env is used.
-          BDDFRAME_KEYVAULT_URL: $(BDDFRAME_KEYVAULT_URL)
+          NOODLE_KEYVAULT_URL: $(NOODLE_KEYVAULT_URL)
 
       - task: PublishTestResults@2
         condition: always()
         inputs:
           testResultsFormat: JUnit
           testResultsFiles: allure-results/junit.xml
-          testRunTitle: 'BDDFrame — $(Build.SourceBranchName) — $(featurePath)'
+          testRunTitle: 'Noodle — $(Build.SourceBranchName) — $(featurePath)'
 
       - task: PublishPipelineArtifact@1
         condition: always()

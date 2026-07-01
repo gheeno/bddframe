@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from bddframe.preconditions import parse_call
+from noodle.preconditions import parse_call
 
 
 def test_parse_call_with_body():

@@ -7,10 +7,10 @@
 #                  calls the model, which returns a JSON action. ([LLM])
 #
 # Requires a model (this is the whole point):
-#   BDDFRAME_MODEL=openai/qwen2.5-7b-instruct-generic-cpu   # via Foundry Local
-#   BDDFRAME_LLM_URL=http://localhost:<port>/v1
+#   NOODLE_MODEL=openai/qwen2.5-7b-instruct-generic-cpu   # via Foundry Local
+#   NOODLE_LLM_URL=http://localhost:<port>/v1
 #   OPENAI_API_KEY=not-needed
-#   (with BDDFRAME_MODEL unset, the [LLM] steps FAIL locally — by design.)
+#   (with NOODLE_MODEL unset, the [LLM] steps FAIL locally — by design.)
 #
 # Run it:   behave features/web/fallback-demo/llm_fallback.feature --no-capture
 #

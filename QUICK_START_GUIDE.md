@@ -75,9 +75,9 @@ The default credentials in `secrets.env.example` already work for the bundled te
 Open `.env`. It should look like this (already there by default):
 
 ```bash
-BDDFRAME_HEADLESS=false
-BDDFRAME_BROWSER=chromium
-BDDFRAME_TIMEOUT=10000
+NOODLE_HEADLESS=false
+NOODLE_BROWSER=chromium
+NOODLE_TIMEOUT=10000
 ```
 
 Leave this as-is for now. You will add LLM settings in Part 5 if you want them.
@@ -266,20 +266,20 @@ Keep Ollama running. Do not close this terminal.
 Open `.env` and add these three lines:
 
 ```bash
-BDDFRAME_LLM_MODE=auto
-BDDFRAME_MODEL=ollama/llama3.1:8b
-BDDFRAME_LLM_URL=http://localhost:11434
+NOODLE_LLM_MODE=auto
+NOODLE_MODEL=ollama/llama3.1:8b
+NOODLE_LLM_URL=http://localhost:11434
 ```
 
 Your full `.env` should now look like:
 
 ```bash
-BDDFRAME_HEADLESS=false
-BDDFRAME_BROWSER=chromium
-BDDFRAME_TIMEOUT=10000
-BDDFRAME_LLM_MODE=auto
-BDDFRAME_MODEL=ollama/llama3.1:8b
-BDDFRAME_LLM_URL=http://localhost:11434
+NOODLE_HEADLESS=false
+NOODLE_BROWSER=chromium
+NOODLE_TIMEOUT=10000
+NOODLE_LLM_MODE=auto
+NOODLE_MODEL=ollama/llama3.1:8b
+NOODLE_LLM_URL=http://localhost:11434
 ```
 
 No API key. No account. Everything runs on your machine.
@@ -313,11 +313,11 @@ Expected: 2 scenarios pass.
 `full` mode: every step goes directly to the model, even the ones that would match a built-in pattern. The steps in this feature file are written in natural, free-form English — not the framework's structured vocabulary.
 
 ```bash
-BDDFRAME_LLM_MODE=full \
+NOODLE_LLM_MODE=full \
 noodle run features/web/busterblock/pure_llm.feature --no-capture
 ```
 
-The `BDDFRAME_LLM_MODE=full` here overrides the `auto` setting in `.env` for this one run only.
+The `NOODLE_LLM_MODE=full` here overrides the `auto` setting in `.env` for this one run only.
 
 Expected: 2 scenarios pass. Every step — navigation, login, catalog check, cart interaction — is handled entirely by the model.
 
@@ -325,29 +325,29 @@ Expected: 2 scenarios pass. Every step — navigation, login, catalog check, car
 
 ### Swapping the model
 
-`BDDFRAME_MODEL` accepts any model string that LiteLLM understands. Change it in `.env`:
+`NOODLE_MODEL` accepts any model string that LiteLLM understands. Change it in `.env`:
 
 ```bash
 # Different Ollama model
-BDDFRAME_MODEL=ollama/llama3.2
-BDDFRAME_LLM_URL=http://localhost:11434
+NOODLE_MODEL=ollama/llama3.2
+NOODLE_LLM_URL=http://localhost:11434
 
 # Anthropic Claude (needs ANTHROPIC_API_KEY in secrets.env)
-BDDFRAME_MODEL=claude-sonnet-4-6
-# remove BDDFRAME_LLM_URL — not needed for cloud providers
+NOODLE_MODEL=anthropic/claude-sonnet-5
+# remove NOODLE_LLM_URL — not needed for cloud providers
 
 # OpenAI (needs OPENAI_API_KEY in secrets.env)
-BDDFRAME_MODEL=gpt-4o
-# remove BDDFRAME_LLM_URL
+NOODLE_MODEL=gpt-4o
+# remove NOODLE_LLM_URL
 ```
 
 For vision-based element location (fallback locator that reads screenshots), set a separate vision-capable model:
 
 ```bash
-BDDFRAME_VISION_MODEL=ollama/llava
+NOODLE_VISION_MODEL=ollama/llava
 ```
 
-If `BDDFRAME_VISION_MODEL` is not set, the framework uses `BDDFRAME_MODEL` for vision tasks too.
+If `NOODLE_VISION_MODEL` is not set, the framework uses `NOODLE_MODEL` for vision tasks too.
 
 ---
 
@@ -400,7 +400,7 @@ Add this scenario to the same file:
     Then User should see "VHS Catalog"
 ```
 
-`authenticates via` is not a built-in pattern. With `BDDFRAME_LLM_MODE=auto` and `BDDFRAME_MODEL=ollama/llama3.1:8b` set in `.env`, this step will be handed to the model.
+`authenticates via` is not a built-in pattern. With `NOODLE_LLM_MODE=auto` and `NOODLE_MODEL=ollama/llama3.1:8b` set in `.env`, this step will be handed to the model.
 
 ```bash
 noodle run features/web/busterblock/my_first_test.feature --no-capture
@@ -447,7 +447,7 @@ python -m pytest unit_tests/ -v
 noodle run features/web/busterblock/llm_fallback.feature --no-capture
 
 # Pure LLM (full mode — every step goes to AI)
-BDDFRAME_LLM_MODE=full \
+NOODLE_LLM_MODE=full \
 noodle run features/web/busterblock/pure_llm.feature --no-capture
 ```
 
@@ -461,7 +461,7 @@ noodle run features/web/busterblock/pure_llm.feature --no-capture
 
 ### LLM mode toggle
 
-| `BDDFRAME_LLM_MODE` in `.env` | Behaviour |
+| `NOODLE_LLM_MODE` in `.env` | Behaviour |
 |---|---|
 | *(not set)* | No AI. Unmatched step = immediate failure. |
 | `auto` | Patterns first. AI only when no pattern matches. |
@@ -498,7 +498,7 @@ Normal. The model loads into memory on first use; subsequent calls are faster. `
 Terminal A is not running the app. `cd test-app && npm start`
 
 **`No pattern matched and no LLM configured`**  
-You wrote a step that does not match a built-in pattern, and no model is set. Either use a built-in step phrase (see `docs/steps_dictionary.md`) or add `BDDFRAME_MODEL=ollama/llama3.1:8b` to `.env`.
+You wrote a step that does not match a built-in pattern, and no model is set. Either use a built-in step phrase (see `docs/steps_dictionary.md`) or add `NOODLE_MODEL=ollama/llama3.1:8b` to `.env`.
 
 **Allure report is blank when I open `index.html` directly**  
 Use `noodle report open` instead. The report uses HTTP — it cannot load from `file://`.

@@ -59,10 +59,10 @@ LiteLLM gateway carried through unchanged.
 
 **Goal:** close six correctness bugs found reviewing Phase 2, each with a concrete failure scenario.
 
-1. **`BDDFRAME_HEADLESS` passthrough** — normalise any truthy value (`1`/`yes`/`on`) to canonical `true`/`false` so headless CI isn't silently downgraded to headed.
+1. **`NOODLE_HEADLESS` passthrough** — normalise any truthy value (`1`/`yes`/`on`) to canonical `true`/`false` so headless CI isn't silently downgraded to headed.
 2. **`--headed` + `--headless` together** — now a hard error instead of a silent winner.
 3. **`@headed` + `@headless` on one scenario** — emits a warning (priority `@headed` wins, but the conflict is surfaced).
-4. **`BDDFRAME_BROWSER` validation** — bad values (`chrome`, `safari`) give a clear "unsupported browser" error, not a cryptic `AttributeError`.
+4. **`NOODLE_BROWSER` validation** — bad values (`chrome`, `safari`) give a clear "unsupported browser" error, not a cryptic `AttributeError`.
 5. **Hardcoded `features/` base** — the behave root is now derived from the passed path (nearest ancestor with `steps/` or `environment.py`), so non-standard layouts work.
 6. **Cleanup leak** — per-resource `try/except` with guards in `after_scenario`, so a failed close no longer orphans Playwright processes.
 
@@ -75,7 +75,7 @@ Covered by `unit_tests/test_cli_hardening.py` and `unit_tests/test_hooks_hardeni
 - Tag `@visual` routes to `agents/visual/`. Three locator types:
   1. **Image match** — OpenCV `matchTemplate` against a reference PNG (a path relative to the run dir, e.g. `assets/`), with DPI-scale variants (0.8×–1.2×).
   2. **OCR** — `pytesseract` reads on-screen text (grayscale + contrast preprocessing).
-  3. **Description** — vision LLM coordinate fallback, gated on `BDDFRAME_VISION_MODEL`.
+  3. **Description** — vision LLM coordinate fallback, gated on `NOODLE_VISION_MODEL`.
 - **PyAutoGUI** performs click/type/key/drag/scroll; **mss** captures the screen.
 - Failed image matches produce an annotated screenshot (searched region, best candidate + score). Web and visual steps can mix in one scenario.
 
@@ -120,7 +120,7 @@ label. This content now lives in the **[Guide](guide.md)**.
 
 Two failure modes were fixed:
 
-- **9.1 Ambiguity detection** — the accessibility path no longer blindly returns `.first`. On 2+ matches it consults the POM for a scoped entry first; with none, **lenient** mode (default) warns + uses first, **strict** mode (`BDDFRAME_STRICT_LOCATOR` / `@strict`) fails with the full candidate list. *This is the linchpin* — most wrong-element bugs were "ambiguous but found" cases that never reached the POM before.
+- **9.1 Ambiguity detection** — the accessibility path no longer blindly returns `.first`. On 2+ matches it consults the POM for a scoped entry first; with none, **lenient** mode (default) warns + uses first, **strict** mode (`NOODLE_STRICT_LOCATOR` / `@strict`) fails with the full candidate list. *This is the linchpin* — most wrong-element bugs were "ambiguous but found" cases that never reached the POM before.
 - **9.2 URL page-scoped POM** — optional `pages:` / `shared:` blocks; `pom.locate` reads `page.url` and consults the matching block, so the same key resolves to different selectors per page. Flat files still work unchanged.
 - **9.3 Page pinning** — `Given User is on the "X" page` for SPAs where the URL never changes.
 - **9.4** (per-page POM files) deferred — YAGNI until one file actually hurts.
@@ -142,8 +142,8 @@ which already speaks OpenAI-compatible endpoints — so unblocking it needs **no
 framework, only `.env`**:
 
 ```bash
-BDDFRAME_MODEL=openai/qwen2.5-7b-instruct-generic-cpu   # exact id from `foundry model list`
-BDDFRAME_LLM_URL=http://localhost:<port>/v1
+NOODLE_MODEL=openai/qwen2.5-7b-instruct-generic-cpu   # exact id from `foundry model list`
+NOODLE_LLM_URL=http://localhost:<port>/v1
 OPENAI_API_KEY=not-needed                               # local service ignores it
 ```
 

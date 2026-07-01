@@ -8,7 +8,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from bddframe.agents.web import actions
+from noodle.agents.web import actions
 
 
 def _page_with_visible_count(n):

@@ -1,6 +1,6 @@
-"""Smoke test: bddframe -> LiteLLM -> an OpenAI-compatible local endpoint.
+"""Smoke test: noodle -> LiteLLM -> an OpenAI-compatible local endpoint.
 
-This is the contract bddframe relies on to run against Foundry Local (or any
+This is the contract noodle relies on to run against Foundry Local (or any
 OpenAI-compatible local server) on a network where Ollama/Hugging Face are
 blocked. A stdlib stub stands in for the Foundry Local web service so the test
 has no external dependency.
@@ -22,8 +22,8 @@ import pytest
 
 litellm = pytest.importorskip("litellm")  # skip if the [llm] extra isn't installed
 
-from bddframe.llm.client import ask
-from bddframe.resolver import step_resolver
+from noodle.llm.client import ask
+from noodle.resolver import step_resolver
 
 
 class _Stub:
@@ -64,7 +64,7 @@ class _Stub:
 
     @property
     def last_prompt(self):
-        """The user prompt bddframe actually sent the model on the last call."""
+        """The user prompt noodle actually sent the model on the last call."""
         return self.requests[-1]["messages"][-1]["content"]
 
 
@@ -72,8 +72,8 @@ class _Stub:
 def foundry(monkeypatch):
     stub = _Stub()
     # exactly the .env.example Foundry Local config (port = the stub's)
-    monkeypatch.setenv("BDDFRAME_MODEL", "openai/qwen2.5-7b-instruct-generic-cpu")
-    monkeypatch.setenv("BDDFRAME_LLM_URL", stub.endpoint)
+    monkeypatch.setenv("NOODLE_MODEL", "openai/qwen2.5-7b-instruct-generic-cpu")
+    monkeypatch.setenv("NOODLE_LLM_URL", stub.endpoint)
     monkeypatch.setenv("OPENAI_API_KEY", "not-needed")  # LiteLLM's openai/ path requires it set
     yield stub
     stub.stop()
@@ -82,7 +82,7 @@ def foundry(monkeypatch):
 def test_ask_round_trips_through_the_endpoint(foundry):
     foundry.reply = "the model is reachable"
     assert ask("are you there?") == "the model is reachable"
-    # bddframe sent our prompt to the endpoint
+    # noodle sent our prompt to the endpoint
     assert foundry.last_prompt == "are you there?"
 
 
@@ -91,7 +91,7 @@ def test_resolve_falls_back_to_llm_on_no_pattern_match(foundry):
     foundry.reply = '{"type": "click", "locator": "Login"}'
     action = step_resolver.resolve("User does a barrel roll")
     assert action == {"type": "click", "locator": "Login"}
-    # the step text bddframe asked the model to interpret reached the endpoint
+    # the step text noodle asked the model to interpret reached the endpoint
     assert "does a barrel roll" in foundry.last_prompt
 
 
@@ -150,8 +150,8 @@ if __name__ == "__main__":
     # Verbose run: show exactly what the model received and returned for Trigger 1.
     stub = _Stub()
     os.environ.update(
-        BDDFRAME_MODEL="openai/qwen2.5-7b-instruct-generic-cpu",
-        BDDFRAME_LLM_URL=stub.endpoint,
+        NOODLE_MODEL="openai/qwen2.5-7b-instruct-generic-cpu",
+        NOODLE_LLM_URL=stub.endpoint,
         OPENAI_API_KEY="not-needed",
     )
     stub.reply = '{"type": "click", "locator": "Login"}'
@@ -161,11 +161,11 @@ if __name__ == "__main__":
     print(f"  feature step (no regex match): {step!r}\n")
     action = step_resolver.resolve(step)
 
-    print("  ── what bddframe SENT the model ───────────────────────────────")
+    print("  ── what noodle SENT the model ───────────────────────────────")
     print("    " + stub.last_prompt.replace("\n", "\n    "))
     print("  ── what the model RETURNED ────────────────────────────────────")
     print(f"    {stub.reply}")
-    print("  ── how bddframe USED it (parsed action) ───────────────────────")
+    print("  ── how noodle USED it (parsed action) ───────────────────────")
     print(f"    {action}\n")
     assert action == {"type": "click", "locator": "Login"}
     print("  PASS: no-match step -> LLM -> parsed action.\n")

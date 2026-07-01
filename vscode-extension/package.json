@@ -1,39 +1,39 @@
 {
-  "name": "bddframe",
-  "displayName": "BDDFrame",
-  "description": "Syntax highlighting, step validation and autocompletion for BDDFrame .feature files",
+  "name": "noodle",
+  "displayName": "Noodle",
+  "description": "Syntax highlighting, step validation and autocompletion for Noodle .feature files",
   "version": "0.1.0",
-  "publisher": "bddframe",
+  "publisher": "noodle",
   "engines": { "vscode": "^1.80.0" },
   "categories": ["Testing", "Programming Languages"],
   "keywords": ["bdd", "gherkin", "feature", "testing", "cucumber"],
-  "activationEvents": ["onLanguage:bddframe"],
+  "activationEvents": ["onLanguage:noodle"],
   "main": "./client/extension.js",
   "contributes": {
     "languages": [
       {
-        "id": "bddframe",
-        "aliases": ["BDDFrame Feature", "Gherkin", "BDD"],
+        "id": "noodle",
+        "aliases": ["Noodle Feature", "Gherkin", "BDD"],
         "extensions": [".feature"],
         "configuration": "./language-configuration.json"
       }
     ],
     "grammars": [
       {
-        "language": "bddframe",
-        "scopeName": "source.bddframe",
-        "path": "./syntaxes/bddframe.tmLanguage.json"
+        "language": "noodle",
+        "scopeName": "source.noodle",
+        "path": "./syntaxes/noodle.tmLanguage.json"
       }
     ],
     "configuration": {
-      "title": "BDDFrame",
+      "title": "Noodle",
       "properties": {
-        "bddframe.pythonPath": {
+        "noodle.pythonPath": {
           "type": "string",
           "default": "python3",
-          "description": "Path to the Python interpreter that has bddframe installed."
+          "description": "Path to the Python interpreter that has noodle installed."
         },
-        "bddframe.unknownStepSeverity": {
+        "noodle.unknownStepSeverity": {
           "type": "string",
           "default": "warning",
           "enum": ["warning", "information", "none"],

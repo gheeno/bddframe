@@ -4,8 +4,8 @@ new verbs normalise from 1st person, and stored vars substitute.
 Patterns are matched in 3rd-person form (after normalize_subject), mirroring the
 existing pattern tests.
 """
-from bddframe.resolver.patterns import match, normalize_subject
-from bddframe.orchestrator.runner import substitute
+from noodle.resolver.patterns import match, normalize_subject
+from noodle.orchestrator.runner import substitute
 
 
 # --- Tier A -----------------------------------------------------------------

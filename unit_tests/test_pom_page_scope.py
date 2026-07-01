@@ -2,7 +2,7 @@
 import textwrap
 import pytest
 
-from bddframe.agents.web import pom
+from noodle.agents.web import pom
 
 
 @pytest.fixture

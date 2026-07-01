@@ -137,13 +137,13 @@ SAUCE_PASSWORD=secret_sauce
 **Run settings — `.env`** (no secrets):
 
 ```bash
-BDDFRAME_BROWSER=chromium        # chromium | firefox | webkit
-BDDFRAME_HEADLESS=false          # true = no visible window
-BDDFRAME_TIMEOUT=10000           # ms to wait for elements
-BDDFRAME_STRICT_LOCATOR=false    # true = ambiguous locators FAIL (recommended in CI)
-BDDFRAME_RETRIES=1               # re-run a failed scenario N extra times (flaky guard)
-BDDFRAME_PIXEL_THRESHOLD=0.01    # max fraction of changed pixels for "match the baseline"
-BDDFRAME_LOG_LEVEL=INFO          # DEBUG | INFO | WARNING | ERROR
+NOODLE_BROWSER=chromium        # chromium | firefox | webkit
+NOODLE_HEADLESS=false          # true = no visible window
+NOODLE_TIMEOUT=10000           # ms to wait for elements
+NOODLE_STRICT_LOCATOR=false    # true = ambiguous locators FAIL (recommended in CI)
+NOODLE_RETRIES=1               # re-run a failed scenario N extra times (flaky guard)
+NOODLE_PIXEL_THRESHOLD=0.01    # max fraction of changed pixels for "match the baseline"
+NOODLE_LOG_LEVEL=INFO          # DEBUG | INFO | WARNING | ERROR
 ```
 
 **LLM (optional)** — Noodle Test Framework works fully without one. By default no LLM is
@@ -154,10 +154,10 @@ every provider, step-by-step setup, and which file each setting goes in.
 The short version of what goes in `.env`:
 
 ```bash
-BDDFRAME_MODEL=gemini/gemini-1.5-flash   # which LLM to use (free Gemini shown)
-BDDFRAME_LLM_MODE=auto                   # auto (default) or full — see §16
-# BDDFRAME_LLM_URL=...                   # only for Ollama / self-hosted endpoints
-# BDDFRAME_VISION_MODEL=...              # separate model for the @visual agent
+NOODLE_MODEL=gemini/gemini-1.5-flash   # which LLM to use (free Gemini shown)
+NOODLE_LLM_MODE=auto                   # auto (default) or full — see §16
+# NOODLE_LLM_URL=...                   # only for Ollama / self-hosted endpoints
+# NOODLE_VISION_MODEL=...              # separate model for the @visual agent
 ```
 
 API keys (never in `.env`) → `secrets.env`.
@@ -173,7 +173,7 @@ For enterprise CI, pull secrets from a vault instead of `secrets.env`:
 
 ```bash
 uv pip install -e ".[azure]"
-export BDDFRAME_KEYVAULT_URL=https://my-vault.vault.azure.net/
+export NOODLE_KEYVAULT_URL=https://my-vault.vault.azure.net/
 ```
 
 On set, `before_all` authenticates with `DefaultAzureCredential` (a managed
@@ -278,7 +278,7 @@ Full capability map and credential setup: **[README → Run the bundled test app
 
 ### Flaky tests — retries & quarantine
 
-Failed scenarios are retried once by default (`BDDFRAME_RETRIES`, or `--retries`).
+Failed scenarios are retried once by default (`NOODLE_RETRIES`, or `--retries`).
 Retries fire **only on failure**, so green scenarios cost nothing.
 
 | Tag | Effect |
@@ -367,7 +367,7 @@ Supported selector types: `css`, `xpath`, `id`, `testid`, `text`, `role`.
 Six identical "Add to cart" buttons → `clicks "Add to cart"` matches all six.
 Default (lenient): warns and clicks the first. Two ways to handle it:
 
-1. **Make CI strict** — `@strict` tag or `BDDFRAME_STRICT_LOCATOR=true`. The step
+1. **Make CI strict** — `@strict` tag or `NOODLE_STRICT_LOCATOR=true`. The step
    then fails with the candidate list, forcing you to disambiguate.
 2. **Scope it in `pom.yaml`** — a POM entry is always used *before* blind
    first-match:
@@ -419,7 +419,7 @@ Local wins when the same key exists in both. A flat `pom.yaml` (no `pages:` /
 2. If MANY match → ambiguity: POM scoped entry, else warn/fail   (Problem B)
 3. Self-heal: scroll, then partial-text retry
 4. POM yaml — page-scoped block → shared → flat keys   (Problems A & C)
-5. Vision LLM (only if BDDFRAME_MODEL is set; else the step fails)
+5. Vision LLM (only if NOODLE_MODEL is set; else the step fails)
 ```
 
 Full picture, including the LLM boundary: [Architecture → Resolution hierarchy](architecture.md#4-the-resolution-hierarchy).
@@ -521,14 +521,14 @@ And User should see 3 "result" items                 # count (visible only)
 
 ### Visual regression — deterministic (no LLM)
 Pixel diff against a stored baseline. First run captures `baselines/<name>.png`;
-later runs fail if more than `BDDFRAME_PIXEL_THRESHOLD` (default 1%) of pixels
+later runs fail if more than `NOODLE_PIXEL_THRESHOLD` (default 1%) of pixels
 changed, saving `screenshots/DIFF_<name>.png` as evidence.
 ```gherkin
 Then the screen should match the baseline
 Then the "checkout" screen should match the baseline
 ```
 
-### Semantic / visual — LLM (requires `BDDFRAME_MODEL`)
+### Semantic / visual — LLM (requires `NOODLE_MODEL`)
 ```gherkin
 Then the checkout form should show a success state
 And the screen should look the same as before
@@ -566,7 +566,7 @@ DB, run a jar, call a CLI tool. Interpreter inferred from the extension; a
 non-zero exit **fails the step**. stdout is captured into `` `SCRIPT_OUTPUT` ``
 (and any var you name), so a later step can assert on it. `[VAR]` refs in the
 path/args/command are substituted from config first. Timeout:
-`BDDFRAME_SCRIPT_TIMEOUT` (default 60s).
+`NOODLE_SCRIPT_TIMEOUT` (default 60s).
 ```gherkin
 Given the script "scripts/seed_db.py" runs
 And   `SCRIPT_OUTPUT` should contain "seeded 42 rows"
@@ -679,8 +679,8 @@ it with a vision model plus the opt-in flag:
 
 ```bash
 # .env
-BDDFRAME_MODEL=openai/gpt-4o     # vision-capable
-BDDFRAME_RCA=true
+NOODLE_MODEL=openai/gpt-4o     # vision-capable
+NOODLE_RCA=true
 ```
 
 On **each failed step**, Noodle Test Framework sends the failure screenshot + step text +
@@ -698,12 +698,12 @@ the report by root cause:
 
 ```
 🔍 RCA [environment-flap] (medium): the page never finished loading before the assertion
-💡 Suggested fix: add a "wait until ... is visible" step or raise BDDFRAME_TIMEOUT
+💡 Suggested fix: add a "wait until ... is visible" step or raise NOODLE_TIMEOUT
 ```
 
 RCA is **best-effort**: it never changes a test's pass/fail and never raises, and
 it fires only on failure (one model call per failed step — green runs cost
-nothing). Off unless both `BDDFRAME_MODEL` and `BDDFRAME_RCA` are set. It pairs
+nothing). Off unless both `NOODLE_MODEL` and `NOODLE_RCA` are set. It pairs
 with [failure traces](#failure-traces-playwright): the trace shows the *what*, RCA
 suggests the *why*.
 
@@ -745,7 +745,7 @@ Scenario: Upload via file picker
 ```
 
 It finds targets by OpenCV template match (with DPI-scale variants) → Tesseract
-OCR → optional vision LLM (only if `BDDFRAME_VISION_MODEL` is set). Web and visual
+OCR → optional vision LLM (only if `NOODLE_VISION_MODEL` is set). Web and visual
 steps can mix in one scenario; the orchestrator switches agents per step.
 
 ---
@@ -758,7 +758,7 @@ Drop-in pipeline files are in the project root: `azure-pipelines.yml` (Linux) an
 1. Create a variable group `noodle-secrets` with your credentials (`BASE_URL`, `MY_EMAIL`, …).
 2. Link the pipeline YAML.
 
-Recommended CI defaults: `BDDFRAME_HEADLESS=true` and `BDDFRAME_STRICT_LOCATOR=true`.
+Recommended CI defaults: `NOODLE_HEADLESS=true` and `NOODLE_STRICT_LOCATOR=true`.
 
 What you get:
 
@@ -825,7 +825,7 @@ against its own instance.
 
 ### Secrets via Key Vault
 
-Instead of putting credentials in the variable group, set `BDDFRAME_KEYVAULT_URL`
+Instead of putting credentials in the variable group, set `NOODLE_KEYVAULT_URL`
 and grant the pipeline's service connection / managed identity `get` + `list` on
 the vault. Install the extra (`pip install -e ".[azure]"`, included in `[all]`)
 and Noodle Test Framework loads the vault at startup. See [Configure → Secrets](#secrets--azure-key-vault).
@@ -997,8 +997,8 @@ Every step goes through two tiers:
 
 1. **Pattern match** — `noodle/resolver/patterns.py` is tried first. A regex
    match returns an action dict immediately; no model is invoked.
-2. **LLM fallback** — if no pattern matches *and* `BDDFRAME_MODEL` is set, the
-   step text is sent to the configured model. Without `BDDFRAME_MODEL` the run
+2. **LLM fallback** — if no pattern matches *and* `NOODLE_MODEL` is set, the
+   step text is sent to the configured model. Without `NOODLE_MODEL` the run
    fails with a clear "add a pattern" message.
 
 The VS Code extension (LSP) shows an inline warning on any step that would fall
@@ -1128,7 +1128,7 @@ You need to set exactly two things:
 
 | What | Which file | Variable |
 |------|-----------|---------|
-| Which LLM to use | `.env` | `BDDFRAME_MODEL` |
+| Which LLM to use | `.env` | `NOODLE_MODEL` |
 | Your API key (for cloud providers) | `secrets.env` | Provider-specific (e.g. `ANTHROPIC_API_KEY`) |
 
 That's it. No code changes. No restarts.
@@ -1157,7 +1157,7 @@ it can both interpret steps AND find elements on screen by looking at screenshot
 
 3. Open `.env` and add:
    ```bash
-   BDDFRAME_MODEL=gemini/gemini-1.5-flash
+   NOODLE_MODEL=gemini/gemini-1.5-flash
    ```
 
 4. Install the LLM extra (once):
@@ -1185,7 +1185,7 @@ to find elements. Good for step fallback, not for visual location.
 
 3. Open `.env` and add:
    ```bash
-   BDDFRAME_MODEL=groq/llama-3.1-8b-instant
+   NOODLE_MODEL=groq/llama-3.1-8b-instant
    ```
 
 4. Install the LLM extra (once):
@@ -1208,7 +1208,7 @@ Claude is a paid service but has low per-call cost and is vision-capable.
 
 3. Open `.env` and add:
    ```bash
-   BDDFRAME_MODEL=anthropic/claude-sonnet-4-6
+   NOODLE_MODEL=anthropic/claude-sonnet-4-6
    ```
 
 4. Install the LLM extra (once):
@@ -1233,8 +1233,8 @@ Requires a machine with a reasonable amount of RAM (8 GB+ recommended).
 
 3. Open `.env` and add (no API key needed, no `secrets.env` change):
    ```bash
-   BDDFRAME_MODEL=ollama/llava        # vision-capable
-   BDDFRAME_LLM_URL=http://localhost:11434
+   NOODLE_MODEL=ollama/llava        # vision-capable
+   NOODLE_LLM_URL=http://localhost:11434
    ```
 
 4. Make sure Ollama is running before you run tests (`ollama serve` or the desktop app).
@@ -1261,13 +1261,13 @@ step-text fallback works (the model reads words but not images).
 
 ### The mode toggle — `auto` vs `full`
 
-`BDDFRAME_LLM_MODE` controls when the LLM is called. Edit this in `.env`.
+`NOODLE_LLM_MODE` controls when the LLM is called. Edit this in `.env`.
 
 #### `auto` (default — LLM as backup only)
 
 ```bash
 # .env
-BDDFRAME_LLM_MODE=auto     # this is the default; you can leave this line out entirely
+NOODLE_LLM_MODE=auto     # this is the default; you can leave this line out entirely
 ```
 
 Noodle Test Framework tries to resolve everything locally first:
@@ -1283,7 +1283,7 @@ Most steps never touch the LLM at all. The LLM is only the last resort.
 
 ```bash
 # .env
-BDDFRAME_LLM_MODE=full
+NOODLE_LLM_MODE=full
 ```
 
 Noodle Test Framework skips all pattern matching and accessibility scanning. Every step and
@@ -1291,7 +1291,7 @@ every element location goes directly to the LLM. This is slower and costs more
 per test run, but it lets you write completely free-form test steps without
 worrying about whether they match a pattern.
 
-**Requires `BDDFRAME_MODEL` to be set.** `full` mode with no model is an error.
+**Requires `NOODLE_MODEL` to be set.** `full` mode with no model is an error.
 
 **Requires a vision-capable model** for element location (Google Gemini, Claude,
 OpenAI gpt-4o, Ollama llava). With a text-only model (Groq, llama3) in `full`
@@ -1306,9 +1306,9 @@ without learning the step vocabulary first.
 
 ```
 .env                          ← edit this for model and mode settings (committed to git)
-  BDDFRAME_MODEL=...
-  BDDFRAME_LLM_MODE=...
-  BDDFRAME_LLM_URL=...        ← only for Ollama / Foundry Local / self-hosted
+  NOODLE_MODEL=...
+  NOODLE_LLM_MODE=...
+  NOODLE_LLM_URL=...        ← only for Ollama / Foundry Local / self-hosted
 
 secrets.env                   ← edit this for API keys (gitignored — never committed)
   ANTHROPIC_API_KEY=...
@@ -1321,10 +1321,10 @@ secrets.env                   ← edit this for API keys (gitignored — never c
 
 | Symptom | Likely cause | Fix |
 |---------|-------------|-----|
-| `No pattern matched` error with no model set | LLM not enabled | Add `BDDFRAME_MODEL` to `.env` |
-| `BDDFRAME_LLM_MODE=full but BDDFRAME_MODEL is not set` | Full mode needs a model | Add `BDDFRAME_MODEL` to `.env` |
+| `No pattern matched` error with no model set | LLM not enabled | Add `NOODLE_MODEL` to `.env` |
+| `NOODLE_LLM_MODE=full but NOODLE_MODEL is not set` | Full mode needs a model | Add `NOODLE_MODEL` to `.env` |
 | `LLM support requires: pip install noodle[llm]` | Extra not installed | Run `uv pip install -e ".[llm]"` |
 | `AuthenticationError` or `401` | Wrong or missing API key | Check `secrets.env` for the right key name |
-| Vision-locate warning: `is BDDFRAME_MODEL vision-capable?` | Text-only model used with full mode | Switch to a vision-capable model (see table above) or use `auto` mode |
+| Vision-locate warning: `is NOODLE_MODEL vision-capable?` | Text-only model used with full mode | Switch to a vision-capable model (see table above) or use `auto` mode |
 | Ollama: `ConnectionRefused` | Ollama not running | Run `ollama serve` in a terminal first |
 </content>

@@ -405,18 +405,18 @@ The step text is normalised (subject stripped, verb normalised to 3rd person) an
 AssertionError: No pattern matched: "User frobnicates the widget"
   Normalized to: "frobnicates the widget"
   → Add a pattern to noodle/resolver/patterns.py
-  → OR set BDDFRAME_MODEL in .env to enable LLM fallback
+  → OR set NOODLE_MODEL in .env to enable LLM fallback
 ```
 
 The scenario stops at that step and is marked **FAILED**.
 
 ### 2. LLM fallback (optional)
 
-If `BDDFRAME_MODEL` is set in `.env`, the framework sends the unmatched step to the configured LLM and asks it to infer the action. The model picks from the known action types (click, fill, assert_visible, etc.) and constructs the parameter dict. This is a best-effort recovery — it works well for standard UI interactions phrased unusually, but won't invent new action types.
+If `NOODLE_MODEL` is set in `.env`, the framework sends the unmatched step to the configured LLM and asks it to infer the action. The model picks from the known action types (click, fill, assert_visible, etc.) and constructs the parameter dict. This is a best-effort recovery — it works well for standard UI interactions phrased unusually, but won't invent new action types.
 
 To enable:
 ```env
-BDDFRAME_MODEL=claude-sonnet-4-6   # or any litellm-compatible model id
+NOODLE_MODEL=claude-sonnet-4-6   # or any litellm-compatible model id
 ```
 
 Requires the llm extra:

@@ -10,7 +10,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from bddframe.agents.web import locator
+from noodle.agents.web import locator
 
 
 def test_wait_for_uses_pom_native_wait(monkeypatch):

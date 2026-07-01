@@ -49,7 +49,7 @@ public class LoginPage {
 ```
 
 ```gherkin
-# BDDFRAME — you write ONLY this. No glue, no Page Object, no By.id.
+# NOODLE — you write ONLY this. No glue, no Page Object, no By.id.
 When User clicks the login button
 ```
 
@@ -62,7 +62,7 @@ flowchart TB
         S4 --> S5["WebDriver acts"]
     end
 
-    subgraph BDD["BDDFRAME — you write 1 thing"]
+    subgraph BDD["NOODLE — you write 1 thing"]
         B1["Feature sentence<br/>(you write)"] --> B2["catch-all step<br/>(built-in)"]
         B2 --> B3["resolver picks the action<br/>(built-in)"]
         B3 --> B4["locator finds it by role/label/text<br/>(built-in)"]
@@ -83,7 +83,7 @@ cousin of `By.id` — you add it only for elements with no readable name (icon-o
 buttons, legacy apps). See the **[Guide → POM YAML](guide.md#5-pomyaml--when-natural-naming-fails)**.
 
 > **The whole framework is local and deterministic by default.** With no
-> `BDDFRAME_MODEL` set there is no LLM: it's pattern matching + Playwright
+> `NOODLE_MODEL` set there is no LLM: it's pattern matching + Playwright
 > accessibility + POM + OpenCV. Anything those can't resolve **fails loudly with
 > a screenshot** — it does not silently call a model. The LLM is opt-in and only
 > ever a *fallback* (see [§5](#5-the-llm-layer)).
@@ -116,7 +116,7 @@ flowchart TD
     REP["reporting/*<br/>Allure JSON · JUnit XML · annotate"]
     SEC["secrets_akv.py + environments.yaml<br/>config / secrets → [VAR]"]
     HEAL["healing.py<br/>self-heal telemetry → pom.yaml suggestions"]
-    LOG["log.py<br/>BDDFRAME_LOG_LEVEL"]
+    LOG["log.py<br/>NOODLE_LOG_LEVEL"]
     TRACE["traces/*.zip (on failure)<br/>playwright show-trace"]
 
     SEC -.-> HOOK
@@ -162,9 +162,9 @@ flowchart TD
 | **Report** | `noodle/reporting/` | Allure JSON per step, JUnit XML for Azure, annotated failure screenshots. |
 | **Trace** | `noodle/hooks.py` (Playwright tracing) | A `trace.zip` per **failed** scenario (DOM/network/timeline); discarded on pass. |
 | **Heal telemetry** | `noodle/healing.py` | Records every self-heal / POM-disambiguation / vision-locate → `healing.jsonl` + `pom.yaml` suggestions. |
-| **Agentic RCA** | `noodle/rca.py` | On a step **failure** (opt-in `BDDFRAME_RCA`), a vision model classifies the root cause → `rca_category` label on the Allure result. |
+| **Agentic RCA** | `noodle/rca.py` | On a step **failure** (opt-in `NOODLE_RCA`), a vision model classifies the root cause → `rca_category` label on the Allure result. |
 | **Secrets/config** | `noodle/secrets_akv.py`, `environments.yaml` | Base URLs + secrets (Azure Key Vault or `secrets.env`) resolved into `[VAR]`s. |
-| **Log** | `noodle/log.py` | One logger, `BDDFRAME_LOG_LEVEL`. |
+| **Log** | `noodle/log.py` | One logger, `NOODLE_LOG_LEVEL`. |
 | **Drive** | `noodle/cli.py` | The `noodle` command (run, validate, list, record, report) + retry/quarantine exit code. |
 | **Edit** | `noodle/lsp/` + `vscode-extension/` | LSP step validation, tag/variable autocomplete, syntax highlighting. |
 
@@ -219,7 +219,7 @@ flowchart TD
 
     subgraph L0["① Interpret the sentence — resolver"]
         P["Pattern match (50+ regex)\nLOCAL · no cost"] -->|matched| OUT0["action"]
-        P -->|no match| LLM0["LLM step fallback\nonly if BDDFRAME_MODEL set\nelse: step FAILS"]
+        P -->|no match| LLM0["LLM step fallback\nonly if NOODLE_MODEL set\nelse: step FAILS"]
         LLM0 --> OUT0
     end
 
@@ -235,13 +235,13 @@ flowchart TD
         HEAL -->|found| HIT
         HEAL -->|still 0| POM["POM YAML\npage-scoped → shared → flat\nLOCAL"]
         POM -->|found| HIT
-        POM -->|not found| VL["Vision LLM locate\nonly if BDDFRAME_MODEL set\nelse: step FAILS"]
+        POM -->|not found| VL["Vision LLM locate\nonly if NOODLE_MODEL set\nelse: step FAILS"]
         VL --> HIT
     end
 
     subgraph VIS["③ Visual — find on screen"]
         T["OpenCV template match + OCR\nLOCAL"] -->|found| HIT2["use coords"]
-        T -->|not found| VL2["Vision LLM locate\nonly if BDDFRAME_VISION_MODEL set\nelse: step FAILS"]
+        T -->|not found| VL2["Vision LLM locate\nonly if NOODLE_VISION_MODEL set\nelse: step FAILS"]
         VL2 --> HIT2
     end
 
@@ -250,7 +250,7 @@ flowchart TD
 
     subgraph L3["④ Assertions"]
         ST["Structural: text / url / title\nLOCAL"]
-        SE["Semantic / visual-baseline\nALWAYS vision LLM — requires BDDFRAME_MODEL"]
+        SE["Semantic / visual-baseline\nALWAYS vision LLM — requires NOODLE_MODEL"]
     end
 
     style P fill:#1e3a5f,color:#b8d8f5,stroke:#4a80aa
@@ -266,7 +266,7 @@ flowchart TD
 
 **Level ① — interpret the sentence** (`resolver/step_resolver.py`). Pattern match
 covers most steps for free. The LLM is asked for a JSON action only when every
-regex misses **and** `BDDFRAME_MODEL` is set; otherwise the step fails.
+regex misses **and** `NOODLE_MODEL` is set; otherwise the step fails.
 
 **Level ② — route by tag** (`steps/catch_all.py`). `@visual` → desktop/OpenCV
 agent; everything else → web/Playwright. Local and free.
@@ -276,16 +276,16 @@ agent; everything else → web/Playwright. Local and free.
 2. **Ambiguous** (2+ matches) → consult **POM** for a scoped selector. No entry → strict mode **fails** with the candidate list; lenient (default) warns and uses the first match.
 3. **Self-heal** — scroll and retry, then first-word partial match.
 4. **POM YAML** — page-scoped block → `shared:` → flat keys.
-5. **Vision LLM locate** — screenshot → "give me a CSS selector". Only if `BDDFRAME_MODEL` is set.
+5. **Vision LLM locate** — screenshot → "give me a CSS selector". Only if `NOODLE_MODEL` is set.
 
 **Level ③ (visual) — find on screen** (`orchestrator/visual_runner.py`): OpenCV
 template match + OCR, then vision-LLM-locate-by-description only if
-`BDDFRAME_VISION_MODEL` is set.
+`NOODLE_VISION_MODEL` is set.
 
 **Level ④ — assertions**: structural checks (`should see`, `url containing`,
 `page title`) are direct DOM/text — never an LLM. Semantic / visual-baseline
 assertions (`the X should show…`, `the screen should look the same as before`)
-are **always** a vision LLM call and require `BDDFRAME_MODEL`.
+are **always** a vision LLM call and require `NOODLE_MODEL`.
 
 ### "What runs for this step?"
 
@@ -307,7 +307,7 @@ By default ambiguity is lenient (warn + first match) so suites stay green. For C
 you usually want it to **fail** so wrong-element bugs surface:
 
 ```bash
-BDDFRAME_STRICT_LOCATOR=true      # whole run
+NOODLE_STRICT_LOCATOR=true      # whole run
 ```
 ```gherkin
 @strict
@@ -328,10 +328,10 @@ pick the model in `.env`.
 
 | Setting | Env var | Notes |
 |---------|---------|-------|
-| Model id (LiteLLM format) | `BDDFRAME_MODEL` | e.g. `ollama/llama3`, `openai/gpt-4o`, `anthropic/claude-sonnet-4-6`. **Unset by default → no LLM.** |
-| API base URL | `BDDFRAME_LLM_URL` | e.g. `http://localhost:11434` (Ollama) or `https://api.openai.com/v1`. Not required for Anthropic/Gemini/Groq. |
-| Desktop/visual model | `BDDFRAME_VISION_MODEL` | gates only the `@visual` image fallback |
-| Resolution mode | `BDDFRAME_LLM_MODE` | `auto` (default) — patterns first, LLM on no-match; `full` — LLM resolves every step, patterns skipped. Requires `BDDFRAME_MODEL`. |
+| Model id (LiteLLM format) | `NOODLE_MODEL` | e.g. `ollama/llama3`, `openai/gpt-4o`, `anthropic/claude-sonnet-4-6`. **Unset by default → no LLM.** |
+| API base URL | `NOODLE_LLM_URL` | e.g. `http://localhost:11434` (Ollama) or `https://api.openai.com/v1`. Not required for Anthropic/Gemini/Groq. |
+| Desktop/visual model | `NOODLE_VISION_MODEL` | gates only the `@visual` image fallback |
+| Resolution mode | `NOODLE_LLM_MODE` | `auto` (default) — patterns first, LLM on no-match; `full` — LLM resolves every step, patterns skipped. Requires `NOODLE_MODEL`. |
 
 Features that send a screenshot (vision-locate, semantic assertions) need a
 **vision-capable** model (`openai/gpt-4o`, `ollama/llava`, `anthropic/claude-sonnet-4-6`,
@@ -353,8 +353,8 @@ One thin module — **`noodle/llm/client.py`** — two functions, no class hiera
 
 | Function | Purpose | Reads |
 |----------|---------|-------|
-| `ask(prompt) -> str` | text completion (step interpretation) | `BDDFRAME_MODEL`, `BDDFRAME_LLM_URL` |
-| `ask_vision(prompt, image_b64) -> str` | text + screenshot (locate / assert) | `BDDFRAME_MODEL`, `BDDFRAME_LLM_URL` |
+| `ask(prompt) -> str` | text completion (step interpretation) | `NOODLE_MODEL`, `NOODLE_LLM_URL` |
+| `ask_vision(prompt, image_b64) -> str` | text + screenshot (locate / assert) | `NOODLE_MODEL`, `NOODLE_LLM_URL` |
 
 `litellm` is imported lazily, so the framework imports and runs with **no LLM
 extra installed** — you only hit the import error if you actually trigger an LLM
@@ -368,30 +368,30 @@ is unset, the step fails locally instead — the LLM is never called.
 
 | # | Trigger (local layer missed) | Caller | Function | Gate |
 |---|------------------------------|--------|----------|------|
-| 1 | No regex pattern matched the sentence | `resolver/step_resolver.py` | `ask` | `BDDFRAME_MODEL` |
-| 2 | Web element not found by accessibility + POM | `agents/web/locator.py` | `ask_vision` | `BDDFRAME_MODEL` |
-| 3 | Semantic / visual-baseline assertion | `agents/web/actions.py` | `ask_vision` | `BDDFRAME_MODEL` |
-| 4 | `@visual` image not found by OpenCV/OCR | `agents/visual/vision_locate.py` | `ask_vision` | `BDDFRAME_VISION_MODEL` |
+| 1 | No regex pattern matched the sentence | `resolver/step_resolver.py` | `ask` | `NOODLE_MODEL` |
+| 2 | Web element not found by accessibility + POM | `agents/web/locator.py` | `ask_vision` | `NOODLE_MODEL` |
+| 3 | Semantic / visual-baseline assertion | `agents/web/actions.py` | `ask_vision` | `NOODLE_MODEL` |
+| 4 | `@visual` image not found by OpenCV/OCR | `agents/visual/vision_locate.py` | `ask_vision` | `NOODLE_VISION_MODEL` |
 
-Note the split: triggers 1–3 (web path) gate on `BDDFRAME_MODEL`; trigger 4
-(desktop path) gates on `BDDFRAME_VISION_MODEL`.
+Note the split: triggers 1–3 (web path) gate on `NOODLE_MODEL`; trigger 4
+(desktop path) gates on `NOODLE_VISION_MODEL`.
 
-### Full LLM mode (`BDDFRAME_LLM_MODE=full`)
+### Full LLM mode (`NOODLE_LLM_MODE=full`)
 
-Setting `BDDFRAME_LLM_MODE=full` promotes the LLM from fallback to **primary**
+Setting `NOODLE_LLM_MODE=full` promotes the LLM from fallback to **primary**
 resolver for both step interpretation and element location. Patterns are not
-consulted. `BDDFRAME_MODEL` must be set and vision-capable for the locator path.
+consulted. `NOODLE_MODEL` must be set and vision-capable for the locator path.
 
 ```mermaid
 flowchart TD
-    STEP["Gherkin step"] --> MODE{"BDDFRAME_LLM_MODE"}
+    STEP["Gherkin step"] --> MODE{"NOODLE_LLM_MODE"}
 
     MODE -->|auto default| RES["Resolver: 50+ regex patterns<br/>LOCAL"]
     RES -->|matched| ROUTE{"route by tag"}
-    RES -->|no match| T1F["ask() fallback<br/>BDDFRAME_MODEL"]
+    RES -->|no match| T1F["ask() fallback<br/>NOODLE_MODEL"]
     T1F --> ROUTE
 
-    MODE -->|full| T1["ask() — primary resolver<br/>patterns skipped<br/>BDDFRAME_MODEL required"]
+    MODE -->|full| T1["ask() — primary resolver<br/>patterns skipped<br/>NOODLE_MODEL required"]
     T1 --> ROUTE
 
     ROUTE -->|web · auto| PW["Playwright accessibility<br/>LOCAL → POM → ask_vision()"]
@@ -421,7 +421,7 @@ rich or too inconsistent to pattern-match upfront.
 flowchart TD
     STEP["Gherkin step"] --> RES["Resolver: 50+ regex patterns<br/>LOCAL"]
     RES -->|matched| ROUTE{"route by tag"}
-    RES -->|no match| T1["ask() — step fallback<br/>trigger 1 · BDDFRAME_MODEL"]
+    RES -->|no match| T1["ask() — step fallback<br/>trigger 1 · NOODLE_MODEL"]
     T1 --> ROUTE
 
     ROUTE -->|web| PW["Playwright accessibility<br/>role / label / text · LOCAL"]
@@ -430,15 +430,15 @@ flowchart TD
     PW -->|found| ACT["run web action"]
     PW -->|not found| POM["POM YAML · LOCAL"]
     POM -->|found| ACT
-    POM -->|not found| T2["ask_vision() — vision locate<br/>trigger 2 · BDDFRAME_MODEL"]
+    POM -->|not found| T2["ask_vision() — vision locate<br/>trigger 2 · NOODLE_MODEL"]
     T2 --> ACT
 
     CV -->|found| VACT["run visual action"]
-    CV -->|not found| T4["ask_vision() — locate by description<br/>trigger 4 · BDDFRAME_VISION_MODEL"]
+    CV -->|not found| T4["ask_vision() — locate by description<br/>trigger 4 · NOODLE_VISION_MODEL"]
 
     ACT --> ASSERT{"assertion?"}
     ASSERT -->|structural: text/url/title| LOCALA["DOM check · LOCAL"]
-    ASSERT -->|semantic / baseline| T3["ask_vision() — semantic assert<br/>trigger 3 · BDDFRAME_MODEL"]
+    ASSERT -->|semantic / baseline| T3["ask_vision() — semantic assert<br/>trigger 3 · NOODLE_MODEL"]
 
     T1 -.calls.-> CLIENT["llm/client.py<br/>ask · ask_vision → LiteLLM"]
     T2 -.calls.-> CLIENT
@@ -483,10 +483,10 @@ Feature: LLM Fallback Demonstration
 The verb **"submits"** is in no regex pattern, so `step_resolver` hands the
 sentence to the model, which returns an action like `{"type":"click","locator":"Login"}`.
 
-Run it (needs a model — with `BDDFRAME_MODEL` unset, the `[LLM]` step fails by design):
+Run it (needs a model — with `NOODLE_MODEL` unset, the `[LLM]` step fails by design):
 
 ```bash
-# .env: BDDFRAME_MODEL=ollama/llama3  (or a Foundry Local / OpenAI id) + BDDFRAME_LLM_URL
+# .env: NOODLE_MODEL=ollama/llama3  (or a Foundry Local / OpenAI id) + NOODLE_LLM_URL
 noodle run features/web/fallback-demo/llm_fallback.feature --headed
 ```
 
@@ -502,38 +502,38 @@ uv run --with litellm --with pytest python -m pytest unit_tests/test_llm_openai_
 # ── auto mode (default) ───────────────────────────────────────────────────────
 
 # Local, free (Ollama) — text fallback only
-BDDFRAME_MODEL=ollama/llama3
-BDDFRAME_LLM_URL=http://localhost:11434
+NOODLE_MODEL=ollama/llama3
+NOODLE_LLM_URL=http://localhost:11434
 
 # Local vision (Ollama llava) — web locate + semantic assertions
-BDDFRAME_MODEL=ollama/llava
-BDDFRAME_LLM_URL=http://localhost:11434
+NOODLE_MODEL=ollama/llava
+NOODLE_LLM_URL=http://localhost:11434
 
-# Anthropic Claude — vision-capable, no BDDFRAME_LLM_URL needed
-BDDFRAME_MODEL=anthropic/claude-sonnet-4-6
+# Anthropic Claude — vision-capable, no NOODLE_LLM_URL needed
+NOODLE_MODEL=anthropic/claude-sonnet-4-6
 ANTHROPIC_API_KEY=sk-ant-...
 
 # Google Gemini — free tier, vision-capable
-BDDFRAME_MODEL=gemini/gemini-1.5-flash
+NOODLE_MODEL=gemini/gemini-1.5-flash
 GEMINI_API_KEY=...
 
 # Groq — free tier, text only (no vision)
-BDDFRAME_MODEL=groq/llama-3.1-8b-instant
+NOODLE_MODEL=groq/llama-3.1-8b-instant
 GROQ_API_KEY=...
 
 # OpenAI
-BDDFRAME_MODEL=openai/gpt-4o-mini
-BDDFRAME_LLM_URL=https://api.openai.com/v1
+NOODLE_MODEL=openai/gpt-4o-mini
+NOODLE_LLM_URL=https://api.openai.com/v1
 OPENAI_API_KEY=sk-...
 
 # Desktop @visual image fallback
-BDDFRAME_VISION_MODEL=ollama/llava     # or anthropic/claude-sonnet-4-6 / gpt-4o
+NOODLE_VISION_MODEL=ollama/llava     # or anthropic/claude-sonnet-4-6 / gpt-4o
 
 # ── full LLM mode ─────────────────────────────────────────────────────────────
 # Every step resolved by the model. Patterns skipped. Requires a vision-capable
 # model for element location. Slower and costs more — not recommended for CI.
-BDDFRAME_LLM_MODE=full
-BDDFRAME_MODEL=anthropic/claude-sonnet-4-6
+NOODLE_LLM_MODE=full
+NOODLE_MODEL=anthropic/claude-sonnet-4-6
 ANTHROPIC_API_KEY=sk-ant-...
 ```
 
@@ -575,7 +575,7 @@ flowchart TD
 
 - `before_all` clears stale `allure-results/` so the report + quarantine scan reflect only this run.
 - `before_scenario` starts a fresh `ScenarioResult` **and** Playwright tracing.
-- After **each step**, `after_step` records the result and, **on failure**, snaps a full-page screenshot (annotated by `annotate.py` with Pillow). If `BDDFRAME_RCA` is on, `rca.py` then classifies the failure's root cause from that screenshot and tags the result with an `rca_category` label (best-effort, never raises).
+- After **each step**, `after_step` records the result and, **on failure**, snaps a full-page screenshot (annotated by `annotate.py` with Pillow). If `NOODLE_RCA` is on, `rca.py` then classifies the failure's root cause from that screenshot and tags the result with an `rca_category` label (best-effort, never raises).
 - `after_scenario` saves the result as JSON; on failure it also writes `traces/<scenario>.zip` (trace discarded on pass).
 - `after_all` writes one `junit.xml` (Azure's Tests tab) and, if any locator healed, the `healing.jsonl` + report.
 - `builder.py` shells out to the **Allure CLI** to render `allure-results/` → `allure-report/` HTML.

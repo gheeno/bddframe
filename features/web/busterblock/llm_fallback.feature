@@ -1,26 +1,26 @@
 @web @headless @llm @fallback @capability
 Feature: LLM Fallback — unmatched steps resolved by a language model
 
-  # When a step text matches NO regex in patterns.py, BDDFrame hands it to the
+  # When a step text matches NO regex in patterns.py, Noodle hands it to the
   # configured LLM. The model receives the step text and a screenshot, then
   # returns a JSON action ({type, locator, ...}) that the orchestrator executes.
   #
   # Resolution order:
   #   1. Built-in patterns (patterns.py) — free, deterministic
   #   2. POM alias (pom.yaml)            — free, deterministic
-  #   3. LLM fallback                    — requires BDDFRAME_MODEL
+  #   3. LLM fallback                    — requires NOODLE_MODEL
   #
   # Steps that reach the LLM are marked [LLM] in comments below.
   # Steps resolved locally are marked [A11Y] or [PATTERN].
   #
   # Requires a model:
-  #   BDDFRAME_MODEL=anthropic/claude-haiku-4-5-20251001
+  #   NOODLE_MODEL=anthropic/claude-haiku-4-5-20251001
   #   ANTHROPIC_API_KEY=sk-ant-...
   # Without a model, [LLM] steps fail loudly: "No pattern matched and no LLM configured"
   #
   # Run (with model):
-  #   BDDFRAME_MODEL=anthropic/claude-haiku-4-5-20251001 \
-  #   bddframe run features/web/busterblock/llm_fallback.feature --no-capture
+  #   NOODLE_MODEL=anthropic/claude-haiku-4-5-20251001 \
+  #   noodle run features/web/busterblock/llm_fallback.feature --no-capture
 
   Scenario: An unrecognised verb falls through to the LLM
 

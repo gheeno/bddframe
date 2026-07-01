@@ -64,7 +64,7 @@ Step Resolver — 50+ regex patterns (free, deterministic)
 1. Regex pattern match — 50+ built-in patterns cover navigation, click, fill, assert, API calls, network mocks, waits.
 2. Accessibility tree — elements found by role, label, placeholder, text. No `By.id` needed.
 3. `pom.yaml` — optional named selectors for unlabelled elements (icon-only buttons, legacy widgets).
-4. LLM fallback — only reached when all local layers fail, and only when `BDDFRAME_MODEL` is configured.
+4. LLM fallback — only reached when all local layers fail, and only when `NOODLE_MODEL` is configured.
 
 **Key technology decisions:**
 
@@ -78,7 +78,7 @@ Step Resolver — 50+ regex patterns (free, deterministic)
 
 ```bash
 pip install noodle          # deterministic, zero cost
-pip install noodle[llm]     # adds LiteLLM; LLM still off until BDDFRAME_MODEL is set
+pip install noodle[llm]     # adds LiteLLM; LLM still off until NOODLE_MODEL is set
 ```
 
 ---
@@ -89,15 +89,15 @@ The LLM has four precisely-scoped triggers. It never runs speculatively.
 
 | # | Trigger | LLM call | Gate |
 |---|---------|----------|------|
-| 1 | No regex pattern matched the step sentence | `ask(step_text)` → returns structured action JSON | `BDDFRAME_MODEL` set |
-| 2 | Web element not found by accessibility tree + POM | `ask_vision(prompt, screenshot)` → returns CSS selector | `BDDFRAME_MODEL` set |
-| 3 | Semantic or visual-baseline assertion | `ask_vision(prompt, screenshot)` → pass/fail verdict | `BDDFRAME_MODEL` set |
-| 4 | `@visual` desktop image not found by OpenCV/OCR | `ask_vision(prompt, screenshot)` → coordinates | `BDDFRAME_VISION_MODEL` set |
+| 1 | No regex pattern matched the step sentence | `ask(step_text)` → returns structured action JSON | `NOODLE_MODEL` set |
+| 2 | Web element not found by accessibility tree + POM | `ask_vision(prompt, screenshot)` → returns CSS selector | `NOODLE_MODEL` set |
+| 3 | Semantic or visual-baseline assertion | `ask_vision(prompt, screenshot)` → pass/fail verdict | `NOODLE_MODEL` set |
+| 4 | `@visual` desktop image not found by OpenCV/OCR | `ask_vision(prompt, screenshot)` → coordinates | `NOODLE_VISION_MODEL` set |
 
 **Beyond test execution, the AI will also:**
 
 - **Generate test scaffolds** (Phase 3 of the agent roadmap): `create test for login at https://...` → writes a `.feature` file and `pom.yaml` skeleton, template-based (free) or LLM-assisted (opt-in Ollama or paid API).
-- **Classify failure root causes** (RCA): on step failure with `BDDFRAME_RCA` set, a vision model classifies the failure category and tags the Allure result — no manual triage needed.
+- **Classify failure root causes** (RCA): on step failure with `NOODLE_RCA` set, a vision model classifies the failure category and tags the Allure result — no manual triage needed.
 - **Summarise run results** in plain English (Phase 4): reads `allure-results/*.json` → emits a human-readable pass/fail summary without opening a browser.
 
 The LLM never executes steps for which local resolution already works. Green CI runs cost zero model calls.

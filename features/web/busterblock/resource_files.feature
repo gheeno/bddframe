@@ -12,7 +12,7 @@ Feature: Resource Files — load JSON payloads and fixtures from disk
   #
   # The path is relative to the feature file's resources/ sub-folder.
   #
-  # Run:  bddframe run features/web/busterblock/resource_files.feature --no-capture
+  # Run:  noodle run features/web/busterblock/resource_files.feature --no-capture
 
   @smoke @single_payload
   Scenario: Load a single JSON payload and POST it to the BusterBlock API

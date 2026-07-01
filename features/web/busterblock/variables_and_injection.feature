@@ -1,7 +1,7 @@
 @web @headless @variables @injection @capability
 Feature: Variables and Step Dependency Injection — capture values and chain them
 
-  # BDDFrame has a per-scenario variable store. Values captured in one step
+  # Noodle has a per-scenario variable store. Values captured in one step
   # are available to all later steps in the same scenario — this is "step
   # dependency injection": a step's output is injected into subsequent steps
   # without any function-call wiring.
@@ -19,7 +19,7 @@ Feature: Variables and Step Dependency Injection — capture values and chain th
   #   `VAR` should contain / equal               — assert on a stored value
   #   `VAR` used in a later step URL or text     — variable substitution mid-step
   #
-  # Run:  bddframe run features/web/busterblock/variables_and_injection.feature
+  # Run:  noodle run features/web/busterblock/variables_and_injection.feature
 
   Background:
     Given User is on "[BUSTERBLOCK]"

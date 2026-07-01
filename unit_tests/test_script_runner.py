@@ -2,8 +2,8 @@ import sys
 
 import pytest
 
-from bddframe.orchestrator import script_runner
-from bddframe.resolver.step_resolver import resolve
+from noodle.orchestrator import script_runner
+from noodle.resolver.step_resolver import resolve
 
 
 def test_command_for_infers_interpreter_by_extension():

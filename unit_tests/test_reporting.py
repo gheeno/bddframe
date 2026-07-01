@@ -46,7 +46,7 @@ def _tiny_png(path: Path) -> Path:
 
 class TestScenarioResult:
     def test_init_sets_name_and_feature(self):
-        from bddframe.reporting.writer import ScenarioResult
+        from noodle.reporting.writer import ScenarioResult
         scenario = _make_scenario("Login test", "Auth Feature")
         sr = ScenarioResult(scenario)
         assert sr.result["name"] == "Login test"
@@ -54,7 +54,7 @@ class TestScenarioResult:
         assert sr.result["status"] == "passed"
 
     def test_add_step_passed_appends_entry(self):
-        from bddframe.reporting.writer import ScenarioResult
+        from noodle.reporting.writer import ScenarioResult
         sr = ScenarioResult(_make_scenario())
         step = _make_step(status="passed")
         sr.add_step(step, "passed")
@@ -63,7 +63,7 @@ class TestScenarioResult:
         assert "When user clicks Login" in sr.result["steps"][0]["name"]
 
     def test_add_step_failed_includes_status_details(self):
-        from bddframe.reporting.writer import ScenarioResult
+        from noodle.reporting.writer import ScenarioResult
         sr = ScenarioResult(_make_scenario())
         step = _make_step(status="failed", exception=AssertionError("Element not found"), error_message="traceback here")
         sr.add_step(step, "failed")
@@ -72,7 +72,7 @@ class TestScenarioResult:
         assert "Element not found" in s["statusDetails"]["message"]
 
     def test_add_step_failed_with_attachment(self):
-        from bddframe.reporting.writer import ScenarioResult
+        from noodle.reporting.writer import ScenarioResult
         sr = ScenarioResult(_make_scenario())
         step = _make_step(status="failed")
         sr.add_step(step, "failed", attachment_path="/tmp/FAILED_foo_annotated.png")
@@ -81,14 +81,14 @@ class TestScenarioResult:
         assert s["attachments"][0]["source"] == "FAILED_foo_annotated.png"
 
     def test_finish_sets_status_passed_when_all_steps_pass(self):
-        from bddframe.reporting.writer import ScenarioResult
+        from noodle.reporting.writer import ScenarioResult
         sr = ScenarioResult(_make_scenario())
         sr.add_step(_make_step(status="passed"), "passed")
         sr.finish(_make_scenario())
         assert sr.result["status"] == "passed"
 
     def test_finish_sets_status_failed_when_any_step_fails(self):
-        from bddframe.reporting.writer import ScenarioResult
+        from noodle.reporting.writer import ScenarioResult
         sr = ScenarioResult(_make_scenario())
         sr.add_step(_make_step(status="passed"), "passed")
         sr.add_step(_make_step(status="failed", exception=AssertionError("oops")), "failed")
@@ -96,14 +96,14 @@ class TestScenarioResult:
         assert sr.result["status"] == "failed"
 
     def test_finish_propagates_failure_to_status_details(self):
-        from bddframe.reporting.writer import ScenarioResult
+        from noodle.reporting.writer import ScenarioResult
         sr = ScenarioResult(_make_scenario())
         sr.add_step(_make_step(status="failed", exception=AssertionError("boom")), "failed")
         sr.finish(_make_scenario())
         assert "boom" in sr.result["statusDetails"]["message"]
 
     def test_finish_sets_stop_timestamp(self):
-        from bddframe.reporting.writer import ScenarioResult
+        from noodle.reporting.writer import ScenarioResult
         import time
         sr = ScenarioResult(_make_scenario())
         before = int(time.time() * 1000)
@@ -113,8 +113,8 @@ class TestScenarioResult:
 
 class TestWriteResult:
     def test_writes_valid_json_file(self, tmp_path, monkeypatch):
-        from bddframe.reporting import writer
-        monkeypatch.setenv("BDDFRAME_RESULTS_DIR", str(tmp_path))
+        from noodle.reporting import writer
+        monkeypatch.setenv("NOODLE_RESULTS_DIR", str(tmp_path))
 
         sr = writer.ScenarioResult(_make_scenario("Demo", "Demo Feature"))
         sr.add_step(_make_step(), "passed")
@@ -128,9 +128,9 @@ class TestWriteResult:
         assert isinstance(data["steps"], list)
 
     def test_creates_allure_dir_if_missing(self, tmp_path, monkeypatch):
-        from bddframe.reporting import writer
+        from noodle.reporting import writer
         target = tmp_path / "new-allure-results"
-        monkeypatch.setenv("BDDFRAME_RESULTS_DIR", str(target))
+        monkeypatch.setenv("NOODLE_RESULTS_DIR", str(target))
 
         sr = writer.ScenarioResult(_make_scenario())
         sr.finish(_make_scenario())
@@ -145,7 +145,7 @@ class TestWriteResult:
 
 class TestWriteJunit:
     def _make_sr(self, name, feature, status, error_msg=None):
-        from bddframe.reporting.writer import ScenarioResult
+        from noodle.reporting.writer import ScenarioResult
         sr = ScenarioResult(_make_scenario(name, feature))
         if status == "failed":
             sr.add_step(_make_step(status="failed", exception=AssertionError(error_msg or "fail")), "failed")
@@ -155,14 +155,14 @@ class TestWriteJunit:
         return sr
 
     def test_writes_xml_file(self, tmp_path):
-        from bddframe.reporting import junit
+        from noodle.reporting import junit
         out = tmp_path / "junit.xml"
         sr = self._make_sr("Scenario A", "Feature X", "passed")
         junit.write_junit([sr], path=str(out))
         assert out.exists()
 
     def test_testsuite_counts(self, tmp_path):
-        from bddframe.reporting import junit
+        from noodle.reporting import junit
         out = tmp_path / "junit.xml"
         results = [
             self._make_sr("A", "F", "passed"),
@@ -175,7 +175,7 @@ class TestWriteJunit:
         assert root.attrib["failures"] == "1"
 
     def test_failed_testcase_has_failure_element(self, tmp_path):
-        from bddframe.reporting import junit
+        from noodle.reporting import junit
         out = tmp_path / "junit.xml"
         sr = self._make_sr("Bad test", "Bad Feature", "failed", "Element not found")
         junit.write_junit([sr], path=str(out))
@@ -186,7 +186,7 @@ class TestWriteJunit:
         assert "Element not found" in failure.attrib["message"]
 
     def test_passed_testcase_has_no_failure_element(self, tmp_path):
-        from bddframe.reporting import junit
+        from noodle.reporting import junit
         out = tmp_path / "junit.xml"
         sr = self._make_sr("Good test", "Good Feature", "passed")
         junit.write_junit([sr], path=str(out))
@@ -195,7 +195,7 @@ class TestWriteJunit:
         assert tc.find("failure") is None
 
     def test_classname_matches_feature(self, tmp_path):
-        from bddframe.reporting import junit
+        from noodle.reporting import junit
         out = tmp_path / "junit.xml"
         sr = self._make_sr("My test", "Checkout Feature", "passed")
         junit.write_junit([sr], path=str(out))
@@ -210,7 +210,7 @@ class TestWriteJunit:
 
 class TestAnnotate:
     def test_draw_not_found_creates_output(self, tmp_path):
-        from bddframe.reporting.annotate import draw_not_found
+        from noodle.reporting.annotate import draw_not_found
         src = tmp_path / "screenshot.png"
         _tiny_png(src)
         out = draw_not_found(str(src), "Login button")
@@ -218,7 +218,7 @@ class TestAnnotate:
         assert "_annotated" in out
 
     def test_draw_assertion_failure_creates_output(self, tmp_path):
-        from bddframe.reporting.annotate import draw_assertion_failure
+        from noodle.reporting.annotate import draw_assertion_failure
         src = tmp_path / "screenshot.png"
         _tiny_png(src)
         out = draw_assertion_failure(str(src), "Expected visible")
@@ -226,7 +226,7 @@ class TestAnnotate:
         assert "_annotated" in out
 
     def test_draw_timeout_creates_output(self, tmp_path):
-        from bddframe.reporting.annotate import draw_timeout
+        from noodle.reporting.annotate import draw_timeout
         src = tmp_path / "screenshot.png"
         _tiny_png(src)
         out = draw_timeout(str(src), "Login button")
@@ -234,7 +234,7 @@ class TestAnnotate:
         assert "_annotated" in out
 
     def test_original_file_not_overwritten(self, tmp_path):
-        from bddframe.reporting.annotate import draw_not_found
+        from noodle.reporting.annotate import draw_not_found
         src = tmp_path / "screenshot.png"
         _tiny_png(src)
         original_size = src.stat().st_size

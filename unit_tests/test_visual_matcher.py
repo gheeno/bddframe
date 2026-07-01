@@ -58,12 +58,12 @@ class TestFindOnScreen:
         pil_img = _make_pil_image()
 
         with patch.dict("sys.modules", {"cv2": cv2_mock}):
-            with patch("bddframe.agents.visual.screenshot.capture",
+            with patch("noodle.agents.visual.screenshot.capture",
                        return_value=(pil_img, "/tmp/screen.png")):
-                with patch("bddframe.agents.visual.matcher._np", return_value=np_real):
+                with patch("noodle.agents.visual.matcher._np", return_value=np_real):
                     with patch("os.unlink"):
                         from importlib import reload
-                        import bddframe.agents.visual.matcher as mod
+                        import noodle.agents.visual.matcher as mod
                         reload(mod)
                         return mod.find_on_screen(template_path, confidence=0.85)
 
@@ -74,11 +74,11 @@ class TestFindOnScreen:
         screen_arr = np.array(pil_img)
 
         with patch.dict("sys.modules", {"cv2": cv2}):
-            with patch("bddframe.agents.visual.screenshot.capture",
+            with patch("noodle.agents.visual.screenshot.capture",
                        return_value=(pil_img, "/tmp/s.png")):
                 with patch("os.unlink"):
                     from importlib import reload
-                    import bddframe.agents.visual.matcher as mod
+                    import noodle.agents.visual.matcher as mod
                     reload(mod)
                     result = mod.find_on_screen("tests/assets/btn.png", confidence=0.85)
 
@@ -92,12 +92,12 @@ class TestFindOnScreen:
         pil_img = _make_pil_image()
 
         with patch.dict("sys.modules", {"cv2": cv2}):
-            with patch("bddframe.agents.visual.screenshot.capture",
+            with patch("noodle.agents.visual.screenshot.capture",
                        return_value=(pil_img, "/tmp/s.png")):
                 with patch("os.unlink"):
                     with patch("os.makedirs"):
                         from importlib import reload
-                        import bddframe.agents.visual.matcher as mod
+                        import noodle.agents.visual.matcher as mod
                         reload(mod)
                         result = mod.find_on_screen("tests/assets/btn.png", confidence=0.85)
 
@@ -109,12 +109,12 @@ class TestFindOnScreen:
         pil_img = _make_pil_image()
 
         with patch.dict("sys.modules", {"cv2": cv2}):
-            with patch("bddframe.agents.visual.screenshot.capture",
+            with patch("noodle.agents.visual.screenshot.capture",
                        return_value=(pil_img, "/tmp/s.png")):
                 with patch("os.unlink"):
                     with patch("os.makedirs"):
                         from importlib import reload
-                        import bddframe.agents.visual.matcher as mod
+                        import noodle.agents.visual.matcher as mod
                         reload(mod)
                         mod.find_on_screen("tests/assets/btn.png", confidence=0.85)
 
@@ -128,10 +128,10 @@ class TestFindOnScreen:
         # Reload the module first so it picks up the cv2 mock, then patch
         # _save_annotated_failure on the already-loaded module object.
         from importlib import reload
-        import bddframe.agents.visual.matcher as mod
+        import noodle.agents.visual.matcher as mod
 
         with patch.dict("sys.modules", {"cv2": cv2}):
-            with patch("bddframe.agents.visual.screenshot.capture",
+            with patch("noodle.agents.visual.screenshot.capture",
                        return_value=(pil_img, "/tmp/s.png")):
                 with patch("os.unlink"):
                     with patch("os.makedirs"):
@@ -148,10 +148,10 @@ class TestFindOnScreen:
         pil_img = _make_pil_image()
 
         with patch.dict("sys.modules", {"cv2": cv2}):
-            with patch("bddframe.agents.visual.screenshot.capture",
+            with patch("noodle.agents.visual.screenshot.capture",
                        return_value=(pil_img, "/tmp/s.png")):
                 from importlib import reload
-                import bddframe.agents.visual.matcher as mod
+                import noodle.agents.visual.matcher as mod
                 reload(mod)
                 with pytest.raises(FileNotFoundError):
                     mod.find_on_screen("nonexistent.png")

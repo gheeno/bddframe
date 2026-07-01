@@ -1,5 +1,5 @@
 @web @headless @click @capability
-Feature: Click — every click pattern BDDFrame supports
+Feature: Click — every click pattern Noodle supports
 
   # Patterns demonstrated:
   #   clicks 'X' / clicks the X button / clicks the X link
@@ -9,7 +9,7 @@ Feature: Click — every click pattern BDDFrame supports
   #   clicks at X, Y  (coordinate/OCR click, no DOM lookup)
   #   clicks on the screen text 'X'  (OCR text click)
   #
-  # Run:  bddframe run features/web/busterblock/click.feature --headless
+  # Run:  noodle run features/web/busterblock/click.feature --headless
 
   Background:
     Given User is on "[BUSTERBLOCK]"
