@@ -19,9 +19,9 @@ off by default.
 
 ## Quick links
 
-- **How do I run the bundled BusterBlock test app?** → [README → Run the bundled test app](../README.md#run-the-bundled-test-app-busterblock).
-- **How do I seed data before a test (preconditions/teardowns)?** → [README → Preconditions & teardowns](../README.md#preconditions--teardowns).
-- **How do I run a Python/JS/jar/shell script from a step?** → [README → Run a script from a step](../README.md#run-a-script-from-a-step).
+- **How do I run the bundled BusterBlock test app?** → [README → BusterBlock](../README.md#busterblock--the-bundled-test-app).
+- **How do I seed data before a test (preconditions/teardowns)?** → [Architecture → Component map](architecture.md#2-the-component-map).
+- **How do I run a Python/JS/jar/shell script from a step?** → [Guide → Running scripts & commands](guide.md#running-scripts--commands).
 - **When does the LLM run, and which sample test triggers it?** → [Architecture → The LLM layer](architecture.md#5-the-llm-layer).
 - **How does step wording map to `pom.yaml` keys?** → [Guide → pom.yaml](guide.md#5-pomyaml--when-natural-naming-fails).
 - **Local agent vs LLM, step by step?** → [Architecture → Resolution hierarchy](architecture.md#4-the-resolution-hierarchy).

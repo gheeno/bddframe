@@ -15,16 +15,22 @@ terminal agent that turns plain English into test runs and new tests.
 ```
 ~/my-tests/                 ← your workspace (lives anywhere)
 ├── noodle.yaml           ← config
-├── .env                    ← settings (no secrets)
-├── secrets.env             ← credentials (gitignored)   [you add this]
-├── environments.yaml       ← base URLs                  [optional]
+├── .env                    ← settings (no secrets)             [optional, workspace-wide]
+├── secrets.env             ← credentials (gitignored)           [optional, workspace-wide]
+├── environments.yaml       ← base URLs                          [optional, workspace-wide]
 └── features/
     ├── environment.py      ← engine glue (auto-created)
     ├── steps/
     │   └── z_catch_all.py  ← engine glue (auto-created)
-    ├── pageobjects/        ← *_pom.yaml selector files
-    └── *.feature           ← your tests
+    └── <app>/               ← one folder per app-under-test
+        ├── environment/     ← per-app .env / secrets.env / environments.yaml [optional]
+        ├── pageobjects/     ← *_pom.yaml selector files
+        └── *.feature        ← your tests
 ```
+
+See [docs/feature-packages.md](docs/feature-packages.md) for the full
+per-app packaging model — workspace-wide files are project-wide defaults,
+`features/<app>/environment/` overrides them for that app only.
 
 ---
 
@@ -58,7 +64,6 @@ Created:
   ~/my-tests/.env
   ~/my-tests/features/environment.py
   ~/my-tests/features/steps/z_catch_all.py
-  ~/my-tests/features/pageobjects/.gitkeep
 ```
 
 `environment.py` and `steps/z_catch_all.py` are tiny files that re-export the
@@ -69,7 +74,6 @@ You don't edit them.
 
 ```yaml
 features_dir: features
-pageobjects_dir: features/pageobjects
 env_file: .env
 reports_dir: reports
 browser: chromium          # chromium | firefox | webkit
@@ -87,7 +91,10 @@ override them.
   references, e.g. `saucedemo: https://www.saucedemo.com` → `[SAUCEDEMO]`.
 
 Both are loaded automatically when the workspace runs. Skip them if your features
-use literal URLs and values.
+use literal URLs and values. Testing more than one app from this workspace?
+Put each app's `secrets.env`/`environments.yaml` in
+`features/<app>/environment/` instead — see
+[docs/feature-packages.md](docs/feature-packages.md).
 
 ---
 

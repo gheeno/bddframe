@@ -9,13 +9,13 @@ import yaml
 
 DEFAULTS = {
     "features_dir": "features",
-    # Engine resolves POMs at <feature_dir>/pageobjects/, so keep them under features/.
-    "pageobjects_dir": "features/pageobjects",
     "env_file": ".env",
     "reports_dir": "reports",
     "browser": "chromium",
     "headless": False,
 }
+# No pageobjects_dir: page objects live at <features_dir>/<app>/pageobjects/,
+# one folder per app-under-test — see docs/feature-packages.md.
 
 
 def load(workspace: str = ".") -> dict:

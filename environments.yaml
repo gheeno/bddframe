@@ -4,6 +4,7 @@
 
 saucedemo: https://www.saucedemo.com
 staging: https://staging.example.com
-busterblock: http://localhost:3333
 uitestingplayground: http://uitestingplayground.com
 restfulapi: https://api.restful-api.dev
+# busterblock moved to features/web/busterblock/environment/environments.yaml
+# (per-app packaging — see docs/feature-packages.md)

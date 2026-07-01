@@ -27,9 +27,16 @@ def test_generate_writes_files(tmp_path):
                                   cfg, str(tmp_path))
     assert feat.exists() and pom.exists()
     assert feat.name == "login.feature"
+    assert feat.parent == tmp_path / "features" / "saucedemo"
+    assert pom.parent == tmp_path / "features" / "saucedemo" / "pageobjects"
     text = feat.read_text()
     assert 'User is on "https://saucedemo.com"' in text
     assert "username field" in pom.read_text()
+
+
+def test_app_from_url():
+    assert generate._app_from_url("https://www.canadiantire.ca/en.html") == "canadiantire"
+    assert generate._app_from_url("http://localhost:3333") == "localhost"
 
 
 def test_dispatch_create(tmp_path, capsys):
@@ -37,7 +44,7 @@ def test_dispatch_create(tmp_path, capsys):
     keep = repl.dispatch('create test for login at https://example.com',
                          cfg, str(tmp_path), llm=None)
     assert keep is True
-    assert (tmp_path / "features" / "login.feature").exists()
+    assert (tmp_path / "features" / "example" / "login.feature").exists()
 
 
 def test_dispatch_quit_and_help(tmp_path, capsys):
