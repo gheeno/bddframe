@@ -5,9 +5,9 @@ skips cleanly when tesseract isn't installed or the synthetic font defeats OCR.
 """
 import pytest
 
-from bddframe.resolver.patterns import match, normalize_subject
-from bddframe.agents.web import screen
-from bddframe.agents.visual import ocr, regions
+from noodle.resolver.patterns import match, normalize_subject
+from noodle.agents.web import screen
+from noodle.agents.visual import ocr, regions
 
 
 def _resolve(text):
@@ -153,7 +153,7 @@ class _GotoPage:
 
 
 def test_navigate_resolves_local_html_to_file_uri(tmp_path):
-    from bddframe.agents.web import actions
+    from noodle.agents.web import actions
     f = tmp_path / "app.html"
     f.write_text("<html></html>")
     page = _GotoPage()
@@ -162,7 +162,7 @@ def test_navigate_resolves_local_html_to_file_uri(tmp_path):
 
 
 def test_navigate_leaves_http_urls_untouched():
-    from bddframe.agents.web import actions
+    from noodle.agents.web import actions
     page = _GotoPage()
     actions.navigate(page, "https://example.com")
     assert page.url == "https://example.com"

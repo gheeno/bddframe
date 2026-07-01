@@ -1,7 +1,7 @@
 @web @headless @hooks @capability
 Feature: Hooks — cross-cutting behaviour with @before and @after
 
-  # Hooks in BDDFrame fire around every scenario without touching the .feature
+  # Hooks in Noodle fire around every scenario without touching the .feature
   # file. They are registered in features/steps/custom_hooks.py using the
   # @hook decorator.
   #
@@ -20,7 +20,7 @@ Feature: Hooks — cross-cutting behaviour with @before and @after
   #
   # These scenarios need no step changes — hooks are transparent.
   #
-  # Run:  bddframe run features/web/busterblock/hooks.feature --headless --no-capture
+  # Run:  noodle run features/web/busterblock/hooks.feature --headless --no-capture
 
   Background:
     Given User is on "[BUSTERBLOCK]"
@@ -54,7 +54,7 @@ Feature: Hooks — cross-cutting behaviour with @before and @after
     #
     # To add your own before_all:
     #   In environment.py:
-    #     from bddframe.hooks import hook, before_all as _before_all
+    #     from noodle.hooks import hook, before_all as _before_all
     #     @hook("before_all")
     #     def my_setup(context):
     #         print("suite starting")

@@ -6,21 +6,21 @@ skipped wipe, and the merge-back.
 """
 import os
 
-from bddframe.reporting.paths import results_dir
+from noodle.reporting.paths import results_dir
 
 
 def test_results_dir_default(monkeypatch):
-    monkeypatch.delenv("BDDFRAME_RESULTS_DIR", raising=False)
+    monkeypatch.delenv("NOODLE_RESULTS_DIR", raising=False)
     assert str(results_dir()) == "allure-results"
 
 
 def test_results_dir_env_override(monkeypatch):
-    monkeypatch.setenv("BDDFRAME_RESULTS_DIR", "allure-results/p999")
+    monkeypatch.setenv("NOODLE_RESULTS_DIR", "allure-results/p999")
     assert str(results_dir()) == "allure-results/p999"
 
 
 def test_before_all_parallel_uses_pid_dir_and_skips_wipe(monkeypatch):
-    from bddframe import hooks
+    from noodle import hooks
     monkeypatch.setattr(hooks, "load_dotenv", lambda *a, **k: None)
     monkeypatch.setattr(hooks, "_load_environments", lambda: None)
     monkeypatch.setattr(hooks, "_load_keyvault", lambda: None)
@@ -28,17 +28,17 @@ def test_before_all_parallel_uses_pid_dir_and_skips_wipe(monkeypatch):
     monkeypatch.setattr(hooks.healing, "reset", lambda: None)
     wiped = []
     monkeypatch.setattr(hooks, "_clean_allure_results", lambda: wiped.append(True))
-    monkeypatch.setenv("BDDFRAME_PARALLEL_WORKER", "1")
-    monkeypatch.delenv("BDDFRAME_RESULTS_DIR", raising=False)
+    monkeypatch.setenv("NOODLE_PARALLEL_WORKER", "1")
+    monkeypatch.delenv("NOODLE_RESULTS_DIR", raising=False)
 
     hooks.before_all(object())
 
     assert wiped == []  # parallel worker must NOT wipe the shared dir
-    assert os.environ["BDDFRAME_RESULTS_DIR"] == f"allure-results/p{os.getpid()}"
+    assert os.environ["NOODLE_RESULTS_DIR"] == f"allure-results/p{os.getpid()}"
 
 
 def test_before_all_sequential_wipes_shared_dir(monkeypatch):
-    from bddframe import hooks
+    from noodle import hooks
     monkeypatch.setattr(hooks, "load_dotenv", lambda *a, **k: None)
     monkeypatch.setattr(hooks, "_load_environments", lambda: None)
     monkeypatch.setattr(hooks, "_load_keyvault", lambda: None)
@@ -46,14 +46,14 @@ def test_before_all_sequential_wipes_shared_dir(monkeypatch):
     monkeypatch.setattr(hooks.healing, "reset", lambda: None)
     wiped = []
     monkeypatch.setattr(hooks, "_clean_allure_results", lambda: wiped.append(True))
-    monkeypatch.delenv("BDDFRAME_PARALLEL_WORKER", raising=False)
+    monkeypatch.delenv("NOODLE_PARALLEL_WORKER", raising=False)
 
     hooks.before_all(object())
     assert wiped == [True]
 
 
 def test_merge_flattens_results_merges_junit_removes_worker_dirs(tmp_path):
-    from bddframe.cli import _merge_worker_results
+    from noodle.cli import _merge_worker_results
     for w, name in [("p1", "a"), ("p2", "b")]:
         (tmp_path / w).mkdir()
         (tmp_path / w / f"{name}-result.json").write_text("{}")
@@ -68,7 +68,7 @@ def test_merge_flattens_results_merges_junit_removes_worker_dirs(tmp_path):
 
 
 def test_merge_junits_skips_missing_and_malformed(tmp_path):
-    from bddframe.reporting.junit import merge_junits
+    from noodle.reporting.junit import merge_junits
     good = tmp_path / "good.xml"
     good.write_text('<testsuite name="g" tests="1"/>')
     bad = tmp_path / "bad.xml"
@@ -80,7 +80,7 @@ def test_merge_junits_skips_missing_and_malformed(tmp_path):
 
 def test_parallel_toggle_flag_env_and_default(monkeypatch):
     from typer.testing import CliRunner
-    from bddframe import cli
+    from noodle import cli
     seen = {}
     monkeypatch.setattr(cli, "_run_parallel", lambda path, n, tag, env, cwd=".": seen.__setitem__("n", n) or 0)
     # keep the single-process default path from actually launching behave
@@ -93,17 +93,17 @@ def test_parallel_toggle_flag_env_and_default(monkeypatch):
 
     seen.clear()
     assert run.invoke(cli.app, ["run", "features/", "--headless"],
-                      env={"BDDFRAME_PARALLEL_PROCESSES": "2"}).exit_code == 0
+                      env={"NOODLE_PARALLEL_PROCESSES": "2"}).exit_code == 0
     assert seen["n"] == 2                                   # env drives when no flag
 
     seen.clear()
     assert run.invoke(cli.app, ["run", "features/", "--headless"],
-                      env={"BDDFRAME_PARALLEL_PROCESSES": "0"}).exit_code == 0
+                      env={"NOODLE_PARALLEL_PROCESSES": "0"}).exit_code == 0
     assert "n" not in seen                                  # default = single process
 
 
 def test_clean_removes_worker_dirs(tmp_path):
-    from bddframe.cli import _clean_results_root
+    from noodle.cli import _clean_results_root
     (tmp_path / "old-result.json").write_text("{}")
     (tmp_path / "junit.xml").write_text("<x/>")
     (tmp_path / "p7").mkdir()

@@ -8,22 +8,22 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from bddframe import rca
+from noodle import rca
 
 
 # --- enabled() gating -------------------------------------------------------
 
 def test_disabled_by_default(monkeypatch):
-    monkeypatch.delenv("BDDFRAME_RCA", raising=False)
-    monkeypatch.setenv("BDDFRAME_MODEL", "gpt-4o")
+    monkeypatch.delenv("NOODLE_RCA", raising=False)
+    monkeypatch.setenv("NOODLE_MODEL", "gpt-4o")
     assert rca.enabled() is False
 
 
 def test_needs_both_flag_and_model(monkeypatch):
-    monkeypatch.setenv("BDDFRAME_RCA", "true")
-    monkeypatch.delenv("BDDFRAME_MODEL", raising=False)
+    monkeypatch.setenv("NOODLE_RCA", "true")
+    monkeypatch.delenv("NOODLE_MODEL", raising=False)
     assert rca.enabled() is False
-    monkeypatch.setenv("BDDFRAME_MODEL", "gpt-4o")
+    monkeypatch.setenv("NOODLE_MODEL", "gpt-4o")
     assert rca.enabled() is True
 
 
@@ -60,17 +60,17 @@ def test_parse_fills_missing_optional_fields():
 # --- review() ---------------------------------------------------------------
 
 def test_review_noop_when_disabled(monkeypatch):
-    monkeypatch.delenv("BDDFRAME_RCA", raising=False)
+    monkeypatch.delenv("NOODLE_RCA", raising=False)
     assert rca.review("a step", "boom", "/nonexistent.png") is None
 
 
 def test_review_returns_verdict(monkeypatch, tmp_path):
-    monkeypatch.setenv("BDDFRAME_RCA", "true")
-    monkeypatch.setenv("BDDFRAME_MODEL", "gpt-4o")
+    monkeypatch.setenv("NOODLE_RCA", "true")
+    monkeypatch.setenv("NOODLE_MODEL", "gpt-4o")
     shot = tmp_path / "fail.png"
     shot.write_bytes(b"\x89PNG\r\n")  # bytes are only base64'd, not decoded
 
-    import bddframe.llm.client as client
+    import noodle.llm.client as client
     monkeypatch.setattr(
         client, "ask_vision",
         lambda prompt, image_b64: '{"category": "D", "confidence": "high", "reason": "no seed", "suggested_fix": "seed it"}',
@@ -80,12 +80,12 @@ def test_review_returns_verdict(monkeypatch, tmp_path):
 
 
 def test_review_swallows_llm_errors(monkeypatch, tmp_path):
-    monkeypatch.setenv("BDDFRAME_RCA", "true")
-    monkeypatch.setenv("BDDFRAME_MODEL", "gpt-4o")
+    monkeypatch.setenv("NOODLE_RCA", "true")
+    monkeypatch.setenv("NOODLE_MODEL", "gpt-4o")
     shot = tmp_path / "fail.png"
     shot.write_bytes(b"x")
 
-    import bddframe.llm.client as client
+    import noodle.llm.client as client
     def _boom(prompt, image_b64):
         raise RuntimeError("model down")
     monkeypatch.setattr(client, "ask_vision", _boom)
@@ -95,8 +95,8 @@ def test_review_swallows_llm_errors(monkeypatch, tmp_path):
 # --- after_step wiring ------------------------------------------------------
 
 def test_after_step_attaches_rca_label(monkeypatch):
-    from bddframe import hooks
-    from bddframe.reporting import writer
+    from noodle import hooks
+    from noodle.reporting import writer
 
     # Real ScenarioResult so _allure_result accepts it (it isinstance-checks).
     scenario = MagicMock()
@@ -109,7 +109,7 @@ def test_after_step_attaches_rca_label(monkeypatch):
     context._allure_result = ar
     monkeypatch.setattr(hooks, "_REPORTING", True)
     monkeypatch.setattr(
-        "bddframe.rca.review",
+        "noodle.rca.review",
         lambda step_name, error, path: {"category": "B", "label": "locator-rot"},
     )
 

@@ -1,7 +1,7 @@
 @api @rest @rest_get @capability
 Feature: REST GET — read requests and status assertions
 
-  # BDDFrame's REST client is separate from the browser. It sends real HTTP
+  # Noodle's REST client is separate from the browser. It sends real HTTP
   # requests (not Playwright browser fetches) with full header control.
   #
   # Patterns demonstrated:
@@ -13,7 +13,7 @@ Feature: REST GET — read requests and status assertions
   #
   # Also shown: run_command with curl for full output capture (SCRIPT_OUTPUT).
   #
-  # Run:  bddframe run features/api/rest_get.feature --no-capture
+  # Run:  noodle run features/api/rest_get.feature --no-capture
   # Needs network: hits https://api.restful-api.dev (public sandbox, no auth)
 
   Background:

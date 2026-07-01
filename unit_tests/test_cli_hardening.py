@@ -8,11 +8,11 @@ import pytest
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
-from bddframe.cli import _normalize_headless, _find_behave_base, _VALID_BROWSERS
+from noodle.cli import _normalize_headless, _find_behave_base, _VALID_BROWSERS
 
 
 # ---------------------------------------------------------------------------
-# Bug 1 — Non-canonical BDDFRAME_HEADLESS passthrough
+# Bug 1 — Non-canonical NOODLE_HEADLESS passthrough
 # ---------------------------------------------------------------------------
 
 class TestNormalizeHeadless:
@@ -55,7 +55,7 @@ class TestHeadedHeadlessMutualExclusion:
     def _invoke(self, headed=False, headless=False, browser="chromium"):
         """Call run() via the Typer test runner."""
         from typer.testing import CliRunner
-        from bddframe.cli import app
+        from noodle.cli import app
         args = []
         if headed:
             args.append("--headed")
@@ -92,7 +92,7 @@ class TestHeadedHeadlessMutualExclusion:
 class TestBrowserValidation:
     def _invoke(self, browser):
         from typer.testing import CliRunner
-        from bddframe.cli import app
+        from noodle.cli import app
         runner = CliRunner()
         return runner.invoke(app, ["run", "--browser", browser])
 
@@ -147,20 +147,20 @@ class TestFindBehaveBase:
 
     def test_env_var_headless_normalised_in_subprocess(self):
         """
-        When BDDFRAME_HEADLESS=1 in the environment and neither flag is passed,
+        When NOODLE_HEADLESS=1 in the environment and neither flag is passed,
         the env dict sent to behave must contain 'true', not '1'.
         """
         from typer.testing import CliRunner
-        from bddframe.cli import app
+        from noodle.cli import app
         captured_env = {}
 
         def fake_run(args, env=None, cwd=None):
             captured_env.update(env or {})
             return MagicMock(returncode=0)
 
-        with patch.dict(os.environ, {"BDDFRAME_HEADLESS": "1"}):
+        with patch.dict(os.environ, {"NOODLE_HEADLESS": "1"}):
             with patch("subprocess.run", side_effect=fake_run):
                 runner = CliRunner()
                 runner.invoke(app, ["run"])
 
-        assert captured_env.get("BDDFRAME_HEADLESS") == "true"
+        assert captured_env.get("NOODLE_HEADLESS") == "true"

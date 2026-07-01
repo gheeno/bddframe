@@ -11,7 +11,7 @@ Feature: Waits — event-driven and time-based wait patterns
   # Prefer event-driven waits (visible/hidden/network) over fixed sleeps.
   # Fixed sleeps are slow, flaky, and never the right default for CI.
   #
-  # Run:  bddframe run features/web/busterblock/waits.feature --headless
+  # Run:  noodle run features/web/busterblock/waits.feature --headless
 
   @smoke @wait_visible
   Scenario: Wait for dynamic content to appear after login

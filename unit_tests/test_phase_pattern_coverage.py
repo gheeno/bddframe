@@ -1,7 +1,7 @@
 """BFRAME_0025 — pattern coverage: history, double/right click, submit,
 select-in, tab/window management. Pure routing + tab helpers (no browser)."""
-from bddframe.resolver.patterns import match, normalize_subject
-from bddframe.orchestrator import runner
+from noodle.resolver.patterns import match, normalize_subject
+from noodle.orchestrator import runner
 
 
 def _resolve(text):

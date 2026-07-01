@@ -1,7 +1,7 @@
 """Phase 9.1b — accessibility ambiguity detection in the locator."""
 import pytest
 
-from bddframe.agents.web import locator
+from noodle.agents.web import locator
 
 
 class _FakeLoc:

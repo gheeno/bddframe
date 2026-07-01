@@ -7,7 +7,7 @@ silently mislocated. _parse_vision_selector hardens that: structured JSON with
 an explicit "can't find" (null) path, plus tolerant parsing. Pure function, so
 these need no page or model.
 """
-from bddframe.agents.web.locator import _parse_vision_selector
+from noodle.agents.web.locator import _parse_vision_selector
 
 
 def test_structured_selector_returned():

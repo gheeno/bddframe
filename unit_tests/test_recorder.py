@@ -6,8 +6,8 @@ import pytest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from bddframe.recorder.sensitives import redact, suggest_var_name
-from bddframe.recorder.recorder import Recorder
+from noodle.recorder.sensitives import redact, suggest_var_name
+from noodle.recorder.recorder import Recorder
 
 
 # ---------------------------------------------------------------------------

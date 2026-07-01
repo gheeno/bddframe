@@ -38,7 +38,7 @@ Step Resolver (50+ built-in patterns)
           └─ LLM full (all steps) ───────► LLM ──► Web Agent ──────► Report
 ```
 
-| Mode | `BDDFRAME_LLM_MODE` | `BDDFRAME_MODEL` | Behaviour |
+| Mode | `NOODLE_LLM_MODE` | `NOODLE_MODEL` | Behaviour |
 |------|---------------------|-----------------|-----------|
 | **Off** *(default)* | *(unset)* | *(unset)* | Patterns only. Unresolved step fails loudly. Fully local, zero cost. |
 | **Fallback** | `auto` | set | Patterns first; LLM only when no pattern matches. |
@@ -62,7 +62,7 @@ uv pip install -e ".[llm]"
 
 ```bash
 # .env — committed, no secrets
-BDDFRAME_MODEL=anthropic/claude-haiku-4-5-20251001
+NOODLE_MODEL=anthropic/claude-haiku-4-5-20251001
 ```
 
 ```bash
@@ -96,8 +96,8 @@ ollama serve
 
 ```bash
 # .env
-BDDFRAME_MODEL=ollama/llava
-BDDFRAME_LLM_URL=http://localhost:11434
+NOODLE_MODEL=ollama/llava
+NOODLE_LLM_URL=http://localhost:11434
 ```
 
 No key needed. Run your tests as normal — the model runs on your machine.
@@ -226,7 +226,7 @@ noodle run features/web/busterblock/ --tag @smoke
 To run the LLM fallback demo (requires an API key):
 
 ```bash
-BDDFRAME_MODEL=anthropic/claude-haiku-4-5-20251001 \
+NOODLE_MODEL=anthropic/claude-haiku-4-5-20251001 \
 noodle run features/web/busterblock/llm_fallback.feature --no-capture
 ```
 

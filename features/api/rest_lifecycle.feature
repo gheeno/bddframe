@@ -12,7 +12,7 @@ Feature: REST Lifecycle — full CRUD with variable chaining
   #   the response status should be 200
   #   the response body should contain 'X'
   #
-  # Run:  bddframe run features/api/rest_lifecycle.feature --no-capture
+  # Run:  noodle run features/api/rest_lifecycle.feature --no-capture
 
   Background:
     Given sets `REST_BASE_URL` to '[RESTFULAPI]'
@@ -21,9 +21,9 @@ Feature: REST Lifecycle — full CRUD with variable chaining
   @smoke @crud
   Scenario: Full CRUD lifecycle — create, read, update, patch, delete
     # CREATE
-    When performs a POST call at '/objects' with body '{"name":"BDDFrame Lifecycle Device","data":{"year":2026,"tester":"lifecycle_test"}}' storing the response in `CREATE_RESP`
+    When performs a POST call at '/objects' with body '{"name":"Noodle Lifecycle Device","data":{"year":2026,"tester":"lifecycle_test"}}' storing the response in `CREATE_RESP`
     Then the response status should be 200
-    And the response body should contain 'BDDFrame Lifecycle Device'
+    And the response body should contain 'Noodle Lifecycle Device'
 
     # Extract the new object's ID from the response body for use in all later steps
     When extracts 'id' from the response storing in `DEVICE_ID`
@@ -32,17 +32,17 @@ Feature: REST Lifecycle — full CRUD with variable chaining
     # READ — confirm the object exists
     When performs a GET call at '/objects/`DEVICE_ID`' storing the response in `GET_RESP`
     Then the response status should be 200
-    And `GET_RESP` should contain 'BDDFrame Lifecycle Device'
+    And `GET_RESP` should contain 'Noodle Lifecycle Device'
 
     # UPDATE (full replace)
-    When performs a PUT call at '/objects/`DEVICE_ID`' with body '{"name":"BDDFrame Updated","data":{"year":2026}}'
+    When performs a PUT call at '/objects/`DEVICE_ID`' with body '{"name":"Noodle Updated","data":{"year":2026}}'
     Then the response status should be 200
-    And the response body should contain 'BDDFrame Updated'
+    And the response body should contain 'Noodle Updated'
 
     # PATCH (partial)
-    When performs a PATCH call at '/objects/`DEVICE_ID`' with body '{"name":"BDDFrame Patched"}'
+    When performs a PATCH call at '/objects/`DEVICE_ID`' with body '{"name":"Noodle Patched"}'
     Then the response status should be 200
-    And the response body should contain 'BDDFrame Patched'
+    And the response body should contain 'Noodle Patched'
 
     # DELETE
     When performs a DELETE call at '/objects/`DEVICE_ID`'

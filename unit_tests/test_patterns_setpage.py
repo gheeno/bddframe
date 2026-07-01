@@ -1,5 +1,5 @@
 """Phase 9.3 — the page-pin step pattern, and that it doesn't shadow navigate."""
-from bddframe.resolver.patterns import match
+from noodle.resolver.patterns import match
 
 
 def test_page_pin_pattern():

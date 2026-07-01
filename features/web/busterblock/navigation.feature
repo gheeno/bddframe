@@ -7,7 +7,7 @@ Feature: Navigation — move between pages, history, tabs
   #   URL assertion / title assertion
   #   a new tab should open / switches to tab / closes tab
   #
-  # Run:  bddframe run features/web/busterblock/navigation.feature --headless
+  # Run:  noodle run features/web/busterblock/navigation.feature --headless
 
   Background:
     Given User is on "[BUSTERBLOCK]"

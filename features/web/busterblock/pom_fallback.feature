@@ -1,7 +1,7 @@
 @web @headless @pom @fallback @capability
 Feature: POM Fallback — resolve elements via page-object aliases
 
-  # When the accessibility tree finds no match for a locator, BDDFrame falls
+  # When the accessibility tree finds no match for a locator, Noodle falls
   # back to pageobjects/busterblock_pom.yaml in this folder and looks up the
   # step text as a key.
   #
@@ -17,7 +17,7 @@ Feature: POM Fallback — resolve elements via page-object aliases
   #   movie count    → id: movie-count       (a <span> with no aria-label)
   #   catalog heading → css: main h1         (heading element)
   #
-  # Run:  bddframe run features/web/busterblock/pom_fallback.feature --headless --no-capture
+  # Run:  noodle run features/web/busterblock/pom_fallback.feature --headless --no-capture
 
   Background:
     Given User is on "[BUSTERBLOCK]"

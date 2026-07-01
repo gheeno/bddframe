@@ -1,7 +1,7 @@
 @web @headless @login @capability
-Feature: Login — all the ways BDDFrame can authenticate
+Feature: Login — all the ways Noodle can authenticate
 
-  # BDDFrame has no login keyword. Login is composed from the same vocabulary
+  # Noodle has no login keyword. Login is composed from the same vocabulary
   # as every other flow: navigate → fill → click → assert. This file shows every
   # pattern for supplying credentials so you can search @login and see them all.
   #
@@ -12,8 +12,8 @@ Feature: Login — all the ways BDDFrame can authenticate
   #   @outline      Scenario Outline + Examples table
   #   @csv          custom step reads resources/users.csv (NOT a built-in step)
   #
-  # Run:  bddframe run features/web/busterblock/login.feature --headless
-  # Tags: bddframe run features/web/busterblock/login.feature --tag @smoke
+  # Run:  noodle run features/web/busterblock/login.feature --headless
+  # Tags: noodle run features/web/busterblock/login.feature --tag @smoke
 
   @smoke @env_var
   Scenario: Log in with env var credentials
@@ -63,7 +63,7 @@ Feature: Login — all the ways BDDFrame can authenticate
 
   @csv @custom_step
   Scenario: Log in with the first user from a CSV resource file
-    # "a user from this list" is NOT a built-in BDDFrame step.
+    # "a user from this list" is NOT a built-in Noodle step.
     # It is defined in features/steps/custom_hooks.py — search @custom_step or
     # see custom_steps.feature for the pattern. The step reads resources/users.csv
     # and logs in as the first row.

@@ -1,5 +1,5 @@
 @web @headless @assertions @capability
-Feature: Assertions — every assertion pattern BDDFrame supports
+Feature: Assertions — every assertion pattern Noodle supports
 
   # Patterns demonstrated:
   #   should see 'X' / should not see 'X'     — element/text visible or hidden
@@ -11,7 +11,7 @@ Feature: Assertions — every assertion pattern BDDFrame supports
   #   the 'X' should have attribute 'Y' of 'Z' — attribute assertion
   #   `VAR` should contain / equal             — stored variable assertion
   #
-  # Run:  bddframe run features/web/busterblock/assertions.feature --headless
+  # Run:  noodle run features/web/busterblock/assertions.feature --headless
 
   Background:
     Given User is on "[BUSTERBLOCK]"

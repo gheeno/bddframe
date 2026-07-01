@@ -2,9 +2,9 @@
 import json
 from PIL import Image
 
-from bddframe.agents.web.actions import _pixel_diff_ratio
-from bddframe.resolver.patterns import match, normalize_subject
-from bddframe.cli import _all_failures_quarantined
+from noodle.agents.web.actions import _pixel_diff_ratio
+from noodle.resolver.patterns import match, normalize_subject
+from noodle.cli import _all_failures_quarantined
 
 
 # --- deterministic pixel diff ------------------------------------------------

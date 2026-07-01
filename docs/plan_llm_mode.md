@@ -2,7 +2,7 @@
 
 > **Status:** Implemented (BFRAME_0031). All SA conditions applied — see the
 > "Implementation notes" section at the end.
-> This plan covers adding a `BDDFRAME_LLM_MODE=full` toggle so the framework can
+> This plan covers adding a `NOODLE_LLM_MODE=full` toggle so the framework can
 > bypass all local heuristics and delegate every step to a language model.
 
 ---
@@ -13,7 +13,7 @@ Noodle Test Framework resolves a step through four sequential local layers befor
 
 | Layer | Module | LLM condition |
 |-------|--------|---------------|
-| ① Pattern match (50+ regex) | `resolver/patterns.py` | Skipped only if no regex matches AND `BDDFRAME_MODEL` is set |
+| ① Pattern match (50+ regex) | `resolver/patterns.py` | Skipped only if no regex matches AND `NOODLE_MODEL` is set |
 | ② Accessibility tree | `agents/web/locator.py` | Skipped only if element not found AND model set |
 | ③ POM YAML lookup | `agents/web/pom.py` | Skipped only if still not found AND model set |
 | ④ Playwright / stdlib action | `runner.py`, `rest_client.py` | Never — execution is always local |
@@ -44,18 +44,18 @@ The LLM is currently a **last-resort fallback**. There is no way today to say
 
 ## Proposed solution — four phases
 
-### Phase 1 — `BDDFRAME_LLM_MODE` toggle (step resolver)
+### Phase 1 — `NOODLE_LLM_MODE` toggle (step resolver)
 
 **The one-line env change that enables full LLM resolution.**
 
-Add `BDDFRAME_LLM_MODE` to `.env`:
+Add `NOODLE_LLM_MODE` to `.env`:
 
 ```bash
 # auto (default) — patterns first, LLM only on no-match
-BDDFRAME_LLM_MODE=auto
+NOODLE_LLM_MODE=auto
 
 # full — every step goes straight to the LLM; patterns are skipped
-BDDFRAME_LLM_MODE=full
+NOODLE_LLM_MODE=full
 ```
 
 **What changes:**
@@ -64,7 +64,7 @@ BDDFRAME_LLM_MODE=full
 
 ```python
 def resolve(step_text: str) -> dict:
-    mode = os.getenv('BDDFRAME_LLM_MODE', 'auto').lower()
+    mode = os.getenv('NOODLE_LLM_MODE', 'auto').lower()
     if mode != 'full':
         # Current path: pattern match first
         normalized = normalize_subject(step_text)
@@ -73,7 +73,7 @@ def resolve(step_text: str) -> dict:
             action_type, params = result
             return {'type': action_type, **params}
 
-    if os.getenv('BDDFRAME_MODEL'):
+    if os.getenv('NOODLE_MODEL'):
         return _llm_resolve(step_text)
 
     raise AssertionError(...)
@@ -93,7 +93,7 @@ web action types. Extend it to include all REST types (`rest_call`,
 
 **Lets the model find elements by description instead of by accessibility tree.**
 
-When `BDDFRAME_LLM_MODE=full`, `locator.find()` skips the accessibility scan and
+When `NOODLE_LLM_MODE=full`, `locator.find()` skips the accessibility scan and
 calls `ask_vision()` directly with the current screenshot. The existing vision-locate
 path in `locator.py` does this today — it just needs to be promoted from last-resort
 to first-attempt when the flag is set.
@@ -117,7 +117,7 @@ auto mode (unchanged):
 
 **Files touched:** `agents/web/locator.py` only.
 
-**Requires:** `BDDFRAME_MODEL` to be a vision-capable model (llava, gpt-4o,
+**Requires:** `NOODLE_MODEL` to be a vision-capable model (llava, gpt-4o,
 anthropic/claude-sonnet-4-6, gemini/gemini-1.5-flash, etc.).
 
 ---
@@ -156,7 +156,7 @@ entries and guide/architecture updates so users know what to put in their config
 | **Ollama** | `ollama/llama3` | Already documented. |
 | **Ollama (vision)** | `ollama/llava` | Already documented. |
 | **Foundry Local** | `openai/<model-id>` | Already documented. |
-| **Google Gemini** | `gemini/gemini-1.5-flash` | Free tier. Set `GEMINI_API_KEY`. No `BDDFRAME_LLM_URL` needed. |
+| **Google Gemini** | `gemini/gemini-1.5-flash` | Free tier. Set `GEMINI_API_KEY`. No `NOODLE_LLM_URL` needed. |
 | **Groq** | `groq/llama-3.1-8b-instant` | Free tier. Set `GROQ_API_KEY`. Very fast. |
 
 #### Paid / hosted options
@@ -171,15 +171,15 @@ Example `.env` additions:
 
 ```bash
 # Claude (Anthropic) — vision-capable, recommended for full mode
-# BDDFRAME_MODEL=anthropic/claude-sonnet-4-6
+# NOODLE_MODEL=anthropic/claude-sonnet-4-6
 # ANTHROPIC_API_KEY=sk-ant-...
 
 # Gemini Flash — free tier, vision-capable
-# BDDFRAME_MODEL=gemini/gemini-1.5-flash
+# NOODLE_MODEL=gemini/gemini-1.5-flash
 # GEMINI_API_KEY=...
 
 # Groq — free tier, text only (no vision)
-# BDDFRAME_MODEL=groq/llama-3.1-8b-instant
+# NOODLE_MODEL=groq/llama-3.1-8b-instant
 # GROQ_API_KEY=...
 ```
 
@@ -234,7 +234,7 @@ full (new toggle):
 
 | Phase | What ships | Files | Est. size |
 |-------|-----------|-------|-----------|
-| 1 | `BDDFRAME_LLM_MODE=full` toggle + REST prompt extension | `step_resolver.py`, `.env.example` | ~30 lines |
+| 1 | `NOODLE_LLM_MODE=full` toggle + REST prompt extension | `step_resolver.py`, `.env.example` | ~30 lines |
 | 2 | LLM-first locator in full mode | `locator.py` | ~15 lines |
 | 4 | Provider docs (Claude, Gemini, Groq) | `.env.example`, `guide.md`, `architecture.md` | docs only |
 
@@ -252,7 +252,7 @@ See the SA review below this document.
 ## Open questions
 
 1. Should `full` mode also skip semantic assertions that always require the model?
-   (They already require `BDDFRAME_MODEL`, so arguably no change is needed there.)
+   (They already require `NOODLE_MODEL`, so arguably no change is needed there.)
 2. Should there be a per-scenario `@llm_mode_full` tag as an alternative to the
    global env toggle?
 3. For REST in `full` mode: should the LLM also be allowed to set headers and
@@ -273,7 +273,7 @@ the design; they are prompt-engineering, guard-clause, and config-clarity fixes.
 ### Strengths
 
 - **Rollback is zero-cost.** `auto` is the default; existing runs are unaffected.
-  Removing `BDDFRAME_LLM_MODE=full` from `.env` fully reverts behaviour.
+  Removing `NOODLE_LLM_MODE=full` from `.env` fully reverts behaviour.
 - **Minimal diff.** Two files (`step_resolver.py`, `locator.py`) carry 95% of the
   code change. The execution layer (`runner.py`, `rest_client.py`, `actions.py`) is
   untouched — the LLM resolves intent, Playwright/stdlib still executes.
@@ -308,7 +308,7 @@ the LLM prompt entirely** and remain pattern-only; their matching pattern is
 unambiguous (step ends with `:`).
 
 **[major] Phase 2 has no guard for text-only models.**
-`BDDFRAME_MODEL=groq/llama-3.1-8b-instant` is documented in Phase 4 as a valid
+`NOODLE_MODEL=groq/llama-3.1-8b-instant` is documented in Phase 4 as a valid
 choice. Groq/Llama is text-only — `ask_vision()` will raise when it tries to send
 an image. The current `_vision_locate` already wraps the call in `except Exception:
 pass`, so it silently returns `None` and falls back to accessibility. But in
@@ -319,13 +319,13 @@ element lookups with no log line explaining why. Add a `logger.warning` in
 note in the docs: *"Phase 2 (LLM-first locator) requires a vision-capable model.
 Text-only models silently fall back to the accessibility tree."*
 
-**[major] `BDDFRAME_LLM_URL` is a footgun for cloud providers.**
-`client.py` unconditionally passes `api_base=os.getenv("BDDFRAME_LLM_URL",
+**[major] `NOODLE_LLM_URL` is a footgun for cloud providers.**
+`client.py` unconditionally passes `api_base=os.getenv("NOODLE_LLM_URL",
 "http://localhost:11434")` to `litellm.completion`. That default Ollama base URL
 will override Anthropic's and Gemini's real endpoints for any user who leaves
-`BDDFRAME_LLM_URL` unset or set to Ollama. This already exists as a latent bug, but
+`NOODLE_LLM_URL` unset or set to Ollama. This already exists as a latent bug, but
 Phase 4 expands the provider surface and will surface it. Fix: pass `api_base` only
-when `BDDFRAME_LLM_URL` is explicitly set (i.e., `api_base=os.getenv("BDDFRAME_LLM_URL")
+when `NOODLE_LLM_URL` is explicitly set (i.e., `api_base=os.getenv("NOODLE_LLM_URL")
 or None`). LiteLLM uses the provider's default URL when `api_base` is `None`.
 
 **[minor] Phase 3 as a named phase creates dead weight.**
@@ -341,7 +341,7 @@ Verify against LiteLLM's provider docs before publishing `.env.example`.
 **[minor] No test coverage planned for the new mode flag.**
 The unit suite has `test_llm_openai_endpoint.py` and `test_phase_c.py`. Phase 1
 adds a branching condition to `resolve()` — add at least two tests: one verifying
-that `BDDFRAME_LLM_MODE=full` skips `pattern_match` (mock `_llm_resolve` and assert
+that `NOODLE_LLM_MODE=full` skips `pattern_match` (mock `_llm_resolve` and assert
 it's called even when a pattern would have matched), and one verifying `auto` mode
 is unchanged. These are mockable without a live model.
 
@@ -358,8 +358,8 @@ is unchanged. These are mockable without a live model.
    `rest_assert_header_table` from the prompt entirely.
 
 2. **`noodle/llm/client.py` — fix `api_base` default.**
-   Change `api_base=os.getenv("BDDFRAME_LLM_URL", "http://localhost:11434")` to
-   `api_base=os.getenv("BDDFRAME_LLM_URL") or None` in both `ask()` and
+   Change `api_base=os.getenv("NOODLE_LLM_URL", "http://localhost:11434")` to
+   `api_base=os.getenv("NOODLE_LLM_URL") or None` in both `ask()` and
    `ask_vision()`. This is a pre-existing bug that Phase 4 would actively expose.
 
 3. **`noodle/agents/web/locator.py` — add warning log in `_vision_locate`.**
@@ -393,7 +393,7 @@ All four SA conditions were applied in the implementation:
 | SA condition | Resolution |
 |--------------|-----------|
 | [critical] REST prompt needs param schemas; exclude `*_table` types | `_llm_resolve` prompt in `step_resolver.py` now lists every web + REST type with its param keys, names `path`/`expected` explicitly, and instructs the model to never emit a `*_table` type (those stay pattern-only). |
-| [major] `api_base` Ollama footgun breaks cloud providers | `client.py` now has `_api_base()` returning `os.getenv("BDDFRAME_LLM_URL") or None`. Unset → LiteLLM resolves each provider's own endpoint. This is the change that lets **any** LiteLLM provider work, not just Ollama. |
+| [major] `api_base` Ollama footgun breaks cloud providers | `client.py` now has `_api_base()` returning `os.getenv("NOODLE_LLM_URL") or None`. Unset → LiteLLM resolves each provider's own endpoint. This is the change that lets **any** LiteLLM provider work, not just Ollama. |
 | [major] Phase 2 silent degradation on text-only models | `_vision_locate` in `locator.py` now logs a `⚠️` warning when `ask_vision` raises (the typical cause: a text-only model rejecting an image), then falls back to accessibility. |
 | [minor] Anthropic needs `anthropic/` prefix | All docs + `.env.example` use `anthropic/claude-sonnet-4-6`. |
 | [minor] No test coverage for the flag | `unit_tests/test_llm_mode.py` — 6 tests covering auto vs full routing, REST routing in full mode, the no-model error, and `_api_base()` behaviour. |
@@ -406,11 +406,11 @@ provider's API key from its conventional env var (`ANTHROPIC_API_KEY`,
 two things and nothing else:
 
 ```bash
-BDDFRAME_MODEL=<provider>/<model>     # e.g. anthropic/claude-sonnet-4-6
+NOODLE_MODEL=<provider>/<model>     # e.g. anthropic/claude-sonnet-4-6
 <PROVIDER>_API_KEY=...                 # the provider's key (cloud only)
 ```
 
-`BDDFRAME_LLM_URL` is **only** for self-hosted/local endpoints (Ollama, Foundry
+`NOODLE_LLM_URL` is **only** for self-hosted/local endpoints (Ollama, Foundry
 Local, an OpenAI-compatible proxy). Leaving it unset is now correct for every
 cloud provider — the previous hardcoded localhost default was the one thing
 blocking them.
@@ -418,7 +418,7 @@ blocking them.
 ### Files changed
 
 - `noodle/llm/client.py` — `_api_base()` helper; both `ask`/`ask_vision` use it.
-- `noodle/resolver/step_resolver.py` — `BDDFRAME_LLM_MODE` branch in `resolve()`; REST-aware prompt.
+- `noodle/resolver/step_resolver.py` — `NOODLE_LLM_MODE` branch in `resolve()`; REST-aware prompt.
 - `noodle/agents/web/locator.py` — `_is_full_llm()`; vision-first in full mode; warning log.
 - `unit_tests/test_llm_mode.py` — new test file (6 tests).
 - `.env.example`, `docs/guide.md`, `docs/architecture.md` — provider docs + mode toggle.

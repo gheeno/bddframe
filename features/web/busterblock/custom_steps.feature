@@ -1,7 +1,7 @@
 @web @headless @custom_step @capability
 Feature: Custom Steps — steps not in the built-in dictionary
 
-  # BDDFrame's built-in patterns cover the common automation vocabulary.
+  # Noodle's built-in patterns cover the common automation vocabulary.
   # When you need something outside that vocabulary, you have two options:
   #
   #   Option A — LLM fallback (zero code)
@@ -25,7 +25,7 @@ Feature: Custom Steps — steps not in the built-in dictionary
   #
   # Search for @custom_step across all feature files to find every usage.
   #
-  # Run:  bddframe run features/web/busterblock/custom_steps.feature --headless
+  # Run:  noodle run features/web/busterblock/custom_steps.feature --headless
 
   @smoke @csv @custom_step
   Scenario: Custom step — log in as the first user from a CSV file

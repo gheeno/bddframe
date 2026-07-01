@@ -1,5 +1,5 @@
 {
-  "name": "BDDFrame",
+  "name": "Noodle",
   "build": { "dockerfile": "../Dockerfile" },
   "overrideCommand": true,
   "customizations": {

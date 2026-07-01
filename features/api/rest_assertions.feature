@@ -1,7 +1,7 @@
 @api @rest @rest_assertions @capability
 Feature: REST Assertions — assert status, body, and headers
 
-  # BDDFrame's REST layer provides three assertion families after a call:
+  # Noodle's REST layer provides three assertion families after a call:
   #
   #   Status:   the response status should be N
   #   Body:     the response body should contain 'X'
@@ -11,7 +11,7 @@ Feature: REST Assertions — assert status, body, and headers
   #
   # All assertions operate on the LAST completed REST call in the scenario.
   #
-  # Run:  bddframe run features/api/rest_assertions.feature --no-capture
+  # Run:  noodle run features/api/rest_assertions.feature --no-capture
 
   Background:
     Given sets `REST_BASE_URL` to '[RESTFULAPI]'

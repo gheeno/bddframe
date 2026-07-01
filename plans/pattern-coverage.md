@@ -13,7 +13,7 @@ Playwright/Selenium tester vocabularies.
 ## 1. Current coverage
 
 117 unique steps. **113 resolve to a built-in pattern; 4 do not** and only work
-when the LLM fallback is enabled (`BDDFRAME_MODEL`), which is non-deterministic
+when the LLM fallback is enabled (`NOODLE_MODEL`), which is non-deterministic
 and costs a model call per step.
 
 | Unmatched step (in repo today) | Why it misses | Phase |

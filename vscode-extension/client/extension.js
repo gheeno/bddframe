@@ -4,22 +4,22 @@ const { LanguageClient, TransportKind } = require("vscode-languageclient/node");
 let client;
 
 function activate(context) {
-  const config = workspace.getConfiguration("bddframe");
+  const config = workspace.getConfiguration("noodle");
   const python = config.get("pythonPath", "python3");
   const severity = config.get("unknownStepSeverity", "warning");
 
   const serverOptions = {
     command: python,
-    args: ["-m", "bddframe.lsp.server"],
+    args: ["-m", "noodle.lsp.server"],
     transport: TransportKind.stdio,
     options: {
-      env: { ...process.env, BDDFRAME_UNKNOWN_STEP_SEVERITY: severity },
+      env: { ...process.env, NOODLE_UNKNOWN_STEP_SEVERITY: severity },
     },
   };
 
   const clientOptions = {
-    // activate for .feature files registered as bddframe language
-    documentSelector: [{ scheme: "file", language: "bddframe" }],
+    // activate for .feature files registered as noodle language
+    documentSelector: [{ scheme: "file", language: "noodle" }],
     synchronize: {
       // re-validate when .env changes (variable completions update)
       fileEvents: workspace.createFileSystemWatcher("**/.env"),
@@ -27,16 +27,16 @@ function activate(context) {
   };
 
   client = new LanguageClient(
-    "bddframe-lsp",
-    "BDDFrame Language Server",
+    "noodle-lsp",
+    "Noodle Language Server",
     serverOptions,
     clientOptions
   );
 
   client.start().catch((err) => {
     window.showErrorMessage(
-      `BDDFrame LSP failed to start: ${err.message}\n` +
-      `Make sure bddframe is installed: pip install bddframe[lsp]`
+      `Noodle LSP failed to start: ${err.message}\n` +
+      `Make sure noodle is installed: pip install noodle[lsp]`
     );
   });
 }

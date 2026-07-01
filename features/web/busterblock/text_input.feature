@@ -9,7 +9,7 @@ Feature: Text Input — fill, clear, type, keyboard keys
   #   types 'X'                        — raw keyboard input (no locator, goes to focused element)
   #   presses 'Tab' / 'Enter' / 'Escape'  — keyboard key
   #
-  # Run:  bddframe run features/web/busterblock/text_input.feature --headless
+  # Run:  noodle run features/web/busterblock/text_input.feature --headless
 
   Background:
     Given User is on "[BUSTERBLOCK]"

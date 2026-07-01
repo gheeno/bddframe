@@ -185,7 +185,7 @@ a root-cause narrative. Runs on your machine — no internet, no API cost.
 
 ```bash
 export ANTHROPIC_API_KEY=sk-ant-...
-noodle-agent --workspace ~/my-tests --llm claude --model anthropic/claude-sonnet-4-6
+noodle-agent --workspace ~/my-tests --llm claude --model anthropic/claude-sonnet-5
 ```
 
 ```bash

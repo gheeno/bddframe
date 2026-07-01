@@ -71,8 +71,8 @@ same plain-English Gherkin steps as the web agent where possible.
 
 2. **Create `noodle/agents/mobile/` package.**
    - `driver.py` — session lifecycle: `start_session(capabilities)`,
-     `stop_session()`. Capabilities loaded from `BDDFRAME_APPIUM_URL`,
-     `BDDFRAME_APPIUM_CAPS` (JSON string or path to a `.json` file).
+     `stop_session()`. Capabilities loaded from `NOODLE_APPIUM_URL`,
+     `NOODLE_APPIUM_CAPS` (JSON string or path to a `.json` file).
    - `locator.py` — find by `accessibility_id`, `resource-id`, `content-desc`,
      XPath. Mirror the fallback chain from the web locator (accessibility first,
      POM YAML second, fail loudly third).
@@ -186,7 +186,7 @@ multiple apps are open.
 
 ### Deferred (F3d, F3e)
 
-- **Multi-monitor** (F3d): expose `BDDFRAME_MONITOR=N` and thread it through
+- **Multi-monitor** (F3d): expose `NOODLE_MONITOR=N` and thread it through
   `mss` capture. Low complexity, low demand — add when a user reports it.
 - **Win32/COM** (F3e): only viable if a specific legacy app is targeted.
   Requires Windows-only CI agent. Defer indefinitely until there is a named
@@ -196,29 +196,29 @@ multiple apps are open.
 
 ## Phase H — Remote browser execution (F4)
 
-**Goal:** `BDDFRAME_REMOTE_URL` points Playwright at a remote CDP endpoint
+**Goal:** `NOODLE_REMOTE_URL` points Playwright at a remote CDP endpoint
 (BrowserStack, Sauce Labs, Playwright grid).
 
 ### Steps
 
-1. **`hooks.before_scenario`**: if `BDDFRAME_REMOTE_URL` is set, call
+1. **`hooks.before_scenario`**: if `NOODLE_REMOTE_URL` is set, call
    `browser_type.connect(ws_endpoint=url)` instead of `browser_type.launch(...)`.
    The rest of the scenario lifecycle is unchanged — `context.page` is the same
    object either way.
 
-2. **Add `BDDFRAME_REMOTE_URL`** to `.env.example` and `docs/guide.md`.
+2. **Add `NOODLE_REMOTE_URL`** to `.env.example` and `docs/guide.md`.
 
 3. **Document capability injection** for BrowserStack/Sauce Labs (they require
    a capabilities header in the WS URL).
 
 4. **CI matrix**: add an optional `remote` job that runs the saucedemo suite
-   against BrowserStack when `BDDFRAME_REMOTE_URL` is set in the variable group.
+   against BrowserStack when `NOODLE_REMOTE_URL` is set in the variable group.
 
 ### Acceptance criteria
 
-- `BDDFRAME_REMOTE_URL=wss://... noodle run features/saucedemo/` runs against
+- `NOODLE_REMOTE_URL=wss://... noodle run features/saucedemo/` runs against
   a remote browser without code changes.
-- Local runs (no `BDDFRAME_REMOTE_URL`) are unaffected.
+- Local runs (no `NOODLE_REMOTE_URL`) are unaffected.
 
 ---
 
@@ -228,16 +228,16 @@ multiple apps are open.
 
 ### Steps
 
-1. Add `BDDFRAME_LLM_MAX_CALLS` (int, default `0` = unlimited) to `.env.example`.
+1. Add `NOODLE_LLM_MAX_CALLS` (int, default `0` = unlimited) to `.env.example`.
 
 2. Add a call counter to `noodle/llm/client.py` — module-level `_call_count`
    reset in `hooks.before_all`.
 
 3. Before every `ask()` / `ask_vision()` call, check the counter. If at cap,
    log a warning and raise `AssertionError` with a clear message
-   ("LLM call cap reached — set BDDFRAME_LLM_MAX_CALLS to raise or 0 to disable").
+   ("LLM call cap reached — set NOODLE_LLM_MAX_CALLS to raise or 0 to disable").
 
-4. RCA calls (`rca.review`) are counted separately via `BDDFRAME_RCA_MAX_CALLS`
+4. RCA calls (`rca.review`) are counted separately via `NOODLE_RCA_MAX_CALLS`
    so a cap on fallback steps doesn't also silence RCA.
 
 ---
@@ -273,7 +273,7 @@ restarting the scenario.
 
 ### Steps
 
-1. Add `BDDFRAME_STEP_RETRIES` (int, default `0`) to `.env.example`.
+1. Add `NOODLE_STEP_RETRIES` (int, default `0`) to `.env.example`.
 
 2. In `noodle/steps/catch_all.py` (the catch-all step that calls
    `execute_step`), wrap the call in a retry loop when the count is > 0.
