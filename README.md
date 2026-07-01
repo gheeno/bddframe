@@ -169,6 +169,11 @@ Three config files, each with a clear role:
 
 See **[docs/glossary.md](docs/glossary.md)** for a full map of every env var and where it lives.
 
+Each app-under-test (e.g. `features/web/busterblock/`) can keep its own
+`environment/` folder with a package-scoped `.env`/`secrets.env`/
+`environments.yaml` instead of using the root files — see
+**[docs/feature-packages.md](docs/feature-packages.md)**.
+
 ### 3. Run tests
 
 ```bash
@@ -214,7 +219,17 @@ npm start            # → http://localhost:3333
 noodle run features/web/busterblock/ --headless
 ```
 
-Default credentials are already in `secrets.env.example` (`BB_USER=reel_ryan`, `BB_PASS=Popcorn1!`). `http://localhost:3333` is pre-wired to `[BUSTERBLOCK]` in `environments.yaml` — no extra config needed.
+The `[BUSTERBLOCK]` base URL is already committed at
+`features/web/busterblock/environment/environments.yaml`. Copy the package's
+credentials once:
+
+```bash
+cp features/web/busterblock/environment/secrets.env.example \
+   features/web/busterblock/environment/secrets.env
+```
+
+Default values (`BB_USER=reel_ryan`, `BB_PASS=Popcorn1!`) already work against
+the bundled app.
 
 Run a specific capability:
 
@@ -237,6 +252,7 @@ noodle run features/web/busterblock/llm_fallback.feature --no-capture
 | Doc | What's in it |
 |-----|-------------|
 | [docs/guide.md](docs/guide.md) | Complete how-to: write tests, pom.yaml, shared state, CI, LLM setup |
+| [docs/feature-packages.md](docs/feature-packages.md) | Per-app packaging: `environment/`, `resources/`, resolution order, in-repo vs external workspace |
 | [docs/glossary.md](docs/glossary.md) | Where to find everything — env vars, YAML files, outputs, resources |
 | [docs/steps_dictionary.md](docs/steps_dictionary.md) | All built-in step patterns with examples |
 | [docs/architecture.md](docs/architecture.md) | Deep dive: components, resolution hierarchy, the LLM layer |

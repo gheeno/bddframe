@@ -207,7 +207,6 @@ def _merge_worker_results(results: Path):
 _NOODLE_YAML = """\
 # Noodle workspace config. Paths are relative to this file.
 features_dir: features
-pageobjects_dir: features/pageobjects
 env_file: .env
 reports_dir: reports
 browser: chromium
@@ -247,7 +246,9 @@ from noodle.steps.catch_all import *  # noqa: F401,F403
 def init(
     path: str = typer.Argument(".", help="Directory to scaffold the workspace in"),
 ):
-    """Scaffold a test workspace (noodle.yaml, .env, features/, pageobjects/)."""
+    """Scaffold a test workspace (noodle.yaml, .env, features/environment.py, features/steps/).
+    Page objects, environment/, and resources/ are created per app-under-test
+    (see docs/feature-packages.md) — nothing to scaffold for them up front."""
     root = Path(path)
     root.mkdir(parents=True, exist_ok=True)
     created = []
@@ -256,7 +257,6 @@ def init(
         root / ".env": _ENV_STUB,
         root / "features" / "environment.py": _ENVIRONMENT_PY,
         root / "features" / "steps" / "z_catch_all.py": _CATCH_ALL_PY,
-        root / "features" / "pageobjects" / ".gitkeep": "",
     }
     for f, text in files.items():
         if f.exists():

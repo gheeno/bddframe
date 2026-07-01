@@ -89,17 +89,29 @@ def _name_from(description: str, url: str) -> str:
     return "_".join(words[:3])
 
 
+def _app_from_url(url: str) -> str:
+    """Derive the app-package folder name from the URL host, e.g.
+    https://www.canadiantire.ca/... -> canadiantire, http://localhost:3333 -> localhost.
+    Each app-under-test gets its own package folder (see docs/feature-packages.md)."""
+    host = re.sub(r"^www\.", "", re.sub(r"^https?://", "", url)).split("/")[0]
+    host = host.split(":")[0].split(".")[0]
+    return re.sub(r"[^a-z0-9]+", "_", host.lower()) or "app"
+
+
 def generate(description: str, url: str, workspace_cfg: dict, workspace: str = "."):
-    """Write features/<name>.feature + pageobjects/<name>_pom.yaml. Returns paths."""
+    """Write <features_dir>/<app>/<name>.feature + pageobjects/<name>_pom.yaml,
+    where <app> is derived from the URL's host — each app-under-test gets its
+    own package folder (docs/feature-packages.md). Returns paths."""
     name = _name_from(description, url)
+    app = _app_from_url(url)
     title = name.replace("_", " ").title()
     feature_tpl, pom_tpl = pick_template(description)
     feature = feature_tpl.format(url=url, name=name, Title=title)
     pom = pom_tpl.format(url=url, name=name, Title=title)
 
-    root = Path(workspace)
-    feat_path = root / workspace_cfg["features_dir"] / f"{name}.feature"
-    pom_path = root / workspace_cfg["pageobjects_dir"] / f"{name}_pom.yaml"
+    app_dir = Path(workspace) / workspace_cfg["features_dir"] / app
+    feat_path = app_dir / f"{name}.feature"
+    pom_path = app_dir / "pageobjects" / f"{name}_pom.yaml"
     for p, text in [(feat_path, feature), (pom_path, pom)]:
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(text)
@@ -121,13 +133,13 @@ def generate_llm(description: str, url: str, workspace_cfg: dict, workspace: str
     feature = ask(prompt).strip()
     if feature.startswith("```"):
         feature = re.sub(r"^```[a-z]*\n|\n```$", "", feature)
-    root = Path(workspace)
-    feat_path = root / workspace_cfg["features_dir"] / f"{name}.feature"
+    app_dir = Path(workspace) / workspace_cfg["features_dir"] / _app_from_url(url)
+    feat_path = app_dir / f"{name}.feature"
     feat_path.parent.mkdir(parents=True, exist_ok=True)
     feat_path.write_text(feature + "\n")
     # POM still skeletoned from the template — the LLM doesn't know real selectors.
     _, pom_tpl = pick_template(description)
-    pom_path = root / workspace_cfg["pageobjects_dir"] / f"{name}_pom.yaml"
+    pom_path = app_dir / "pageobjects" / f"{name}_pom.yaml"
     pom_path.parent.mkdir(parents=True, exist_ok=True)
     pom_path.write_text(pom_tpl.format(url=url, name=name, Title=name.title()))
     return feat_path, pom_path

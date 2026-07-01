@@ -11,6 +11,7 @@ Quick navigation for settings, files, and resources. If you're looking for a spe
 | Base URLs (`[SAUCEDEMO]`, `[STAGING]`) | `environments.yaml` | Committed. One key per environment. |
 | Browser, headless, retries, LLM mode | `.env` | Committed. No secrets here. |
 | Credentials, API keys | `secrets.env` | **Gitignored.** Copy from `secrets.env.example`. |
+| Per-app env/secrets/URLs | `features/<app>/environment/` | Optional — overrides the root files for that app only. See [feature-packages.md](feature-packages.md). |
 | Element aliases when labels fail | `pom.yaml` | Colocated next to the feature file. |
 | Precondition / teardown HTTP calls | `preconditions.yaml` | Colocated next to the feature file. |
 | Azure Key Vault connection | `.env` (`NOODLE_KEYVAULT_URL`) + `secrets.env` | Requires `.[azure]` extra. |
@@ -49,12 +50,12 @@ Quick navigation for settings, files, and resources. If you're looking for a spe
 
 | Variable | What it does |
 |----------|-------------|
-| `BB_USER` / `BB_PASS` | BusterBlock demo credentials |
+| `BB_USER` / `BB_PASS` | BusterBlock credentials — `features/web/busterblock/environment/secrets.env` |
 | `SAUCE_USERNAME` / `SAUCE_PASSWORD` | SauceDemo credentials |
 | `NOODLE_KEYVAULT_URL` | Azure Key Vault URL (if using Key Vault) |
-| Any `[VAR]` in a feature | Matching key in `secrets.env`, shell env, or Key Vault |
+| Any `[VAR]` in a feature | Matching key in `secrets.env`, shell env, Key Vault, or the feature's own `environment/secrets.env` |
 
-Variable resolution order (highest wins): **Key Vault → shell/CI → `.env` → `secrets.env` → `environments.yaml`**
+Variable resolution order (highest wins): **Key Vault → shell/CI → root `.env` → root `secrets.env` → `<app>/environment/.env` → `<app>/environment/secrets.env` → `environments.yaml`**. See [feature-packages.md](feature-packages.md) for the per-app cascade.
 
 ---
 
@@ -69,6 +70,7 @@ Variable resolution order (highest wins): **Key Vault → shell/CI → `.env` �
 | Terminal / canvas tests | `features/terminal/` |
 | Custom step definitions | `features/steps/` |
 | Resource files (CSV, JSON payloads) | `features/<suite>/resources/` |
+| Per-app env/secrets/base URL | `features/<suite>/environment/` |
 | POM aliases | `pom.yaml` next to the feature file |
 | Precondition fixtures | `preconditions.yaml` next to the feature file |
 | Utility scripts (CI discovery, seeding) | `scripts/` |
@@ -99,6 +101,7 @@ Variable resolution order (highest wins): **Key Vault → shell/CI → `.env` �
 |-----|-------------|
 | `README.md` | Overview, tech stack, quick setup, BusterBlock |
 | `docs/guide.md` | Complete how-to: write tests, pom.yaml, shared state, CI, LLM setup |
+| `docs/feature-packages.md` | Per-app packaging: `environment/`, resolution order, in-repo vs external workspace |
 | `docs/steps_dictionary.md` | All built-in step patterns with phrasings and examples |
 | `docs/architecture.md` | Deep dive: components, resolution hierarchy, the LLM layer |
 | `docs/design-history.md` | Rationale behind each capability |

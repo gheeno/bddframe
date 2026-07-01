@@ -85,6 +85,7 @@ features/             ← your tests live here
     checkout.feature
     pom.yaml          ← element aliases for this folder (optional)
   busterblock/        ← example suite for the bundled test app (needs it running)
+    environment/      ← package-scoped .env / secrets.env / environments.yaml (optional)
     preconditions.yaml ← @precondition data fixtures (optional)
     scripts/          ← scripts invoked by "run the script ..." steps
   pom.yaml            ← global element aliases (optional)
@@ -166,6 +167,12 @@ Any `[variable]` in a `.feature` maps to the matching key, uppercased with space
 → underscores: `[sauce username]` → `SAUCE_USERNAME`. **Resolution order, highest
 wins:** Key Vault (if configured) → shell / CI variables → `.env` → `secrets.env`
 → `environments.yaml`.
+
+**Per-app overrides.** Any app folder (e.g. `features/web/busterblock/`) can
+carry its own `environment/.env`, `environment/secrets.env` and
+`environment/environments.yaml` instead of adding keys to the root files —
+see **[docs/feature-packages.md](feature-packages.md)** for the full
+resolution order and the package layout.
 
 ### Secrets — Azure Key Vault
 
@@ -267,7 +274,7 @@ noodle run features/web/busterblock/login.feature --headless
 noodle run features/web/busterblock/ --tag @smoke --headless
 ```
 
-Full capability map and credential setup: **[README → Run the bundled test app](../README.md#run-the-bundled-test-app-busterblock)**.
+Full capability map and credential setup: **[README → BusterBlock](../README.md#busterblock--the-bundled-test-app)**.
 
 **What to expect:**
 
@@ -800,7 +807,7 @@ do automatically. (No in-process worker pool; add agents, not threads.)
 
 Separate agents get separate *workspaces*, **not** separate *backends*. Two
 shards that seed the same test server race: if both call
-`POST [BUSTERBLOCK]/api/test/reset` ([preconditions](#preconditions--teardowns)),
+`POST [BUSTERBLOCK]/api/test/reset` ([preconditions](architecture.md#2-the-component-map)),
 one shard's reset wipes the other's state mid-run. Two ways to keep shards
 independent:
 
@@ -867,7 +874,7 @@ make test                               # == python -m pytest unit_tests/ -v
 python -m pytest unit_tests/test_lsp.py -v   # a single file
 ```
 
-**Expected: 216 passed, 0 failed.** Coverage spans CLI hardening, hooks
+**Expected: 314 passed, 0 failed.** Coverage spans CLI hardening, hooks
 lifecycle, step patterns (incl. tables and shared-state), visual patterns,
 OpenCV matcher (mocked), Allure writer, JUnit output, screenshot annotation,
 recorder + sensitive redaction, LSP validation, page-scoped POM lookup, locator

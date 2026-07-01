@@ -61,9 +61,9 @@ def _load_environments():
     Real env vars / .env win, so CI can override without editing the file.
 
     Load order (first-write wins via setdefault):
-      1. <cwd>/environments.yaml          — project-wide defaults
-      2. features/**/resources/environments.yaml — suite-specific URLs
-    Suite files add keys; they cannot override root or real env vars."""
+      1. <cwd>/environments.yaml                      — project-wide defaults
+      2. features/**/environment/environments.yaml    — per-app overrides
+    App files add keys; they cannot override root or real env vars."""
     import yaml
 
     def _apply(path: Path):
@@ -74,14 +74,35 @@ def _load_environments():
             os.environ.setdefault(key.upper(), str(value))
 
     _apply(Path.cwd() / "environments.yaml")
-    for suite_env in sorted(Path.cwd().glob("features/**/resources/environments.yaml")):
+    for suite_env in sorted(Path.cwd().glob("features/**/environment/environments.yaml")):
         _apply(suite_env)
+
+
+# Package dirs whose environment/.env + secrets.env have already been loaded
+# this run — before_feature fires once per .feature file, but many files
+# share one package dir, so re-loading would just be wasted parses.
+_loaded_package_dirs: set[str] = set()
+
+
+def _load_package_env(feature_dir: Path):
+    """Load <feature_dir>/environment/.env + secrets.env — the per-app
+    equivalent of the root loads in before_all. Same load_dotenv() semantics
+    (set a key only if not already in os.environ), so root config/secrets
+    still win over package-level ones on a key collision."""
+    key = str(feature_dir)
+    if key in _loaded_package_dirs:
+        return
+    _loaded_package_dirs.add(key)
+    env_dir = feature_dir / "environment"
+    load_dotenv(env_dir / ".env")
+    load_dotenv(env_dir / "secrets.env")
 
 
 def before_all(context):
     load_dotenv()                          # config (committed)
     load_dotenv("secrets.env")             # secrets (gitignored) — soon AKV
     _load_environments()
+    _loaded_package_dirs.clear()
     _suite_results.clear()
     if os.getenv("NOODLE_PARALLEL_WORKER") == "1":
         # Each behavex worker is its own process — give it a private results
@@ -108,8 +129,10 @@ def _clean_allure_results():
 
 
 def before_feature(context, feature):
+    feature_dir = Path(feature.filename).parent
     # Tell POM loader which folder to look in for local pom.yaml
-    pom_module.set_context(str(Path(feature.filename).parent))
+    pom_module.set_context(str(feature_dir))
+    _load_package_env(feature_dir)
 
     # Flaky-test retry: re-run a failed scenario up to NOODLE_RETRIES extra
     # times (default 1). Retries fire ONLY on failure, so green scenarios cost

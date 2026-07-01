@@ -62,13 +62,18 @@ playwright install chromium
 
 ## Part 2 — Configure (one time only)
 
-### Step 1 — create your secrets file
+### Step 1 — create your secrets files
 
 ```bash
 cp secrets.env.example secrets.env
+cp features/web/busterblock/environment/secrets.env.example \
+   features/web/busterblock/environment/secrets.env
 ```
 
-The default credentials in `secrets.env.example` already work for the bundled test app (BusterBlock) and the public SauceDemo site. You do not need to change anything for the tests in this guide.
+The default credentials already work for the public SauceDemo site (root
+`secrets.env`) and the bundled BusterBlock app (its own package-scoped
+`secrets.env` — see [docs/feature-packages.md](docs/feature-packages.md)).
+You do not need to change anything for the tests in this guide.
 
 ### Step 2 — check your .env file
 
@@ -147,7 +152,7 @@ noodle run features/web/busterblock/ --tag @smoke --headless
 SauceDemo is a public website — no local server needed.
 
 ```bash
-noodle run features/saucedemo/ --headless
+noodle run features/web/saucedemo/ --headless
 ```
 
 These tests cover login (pass, locked-out user, empty credentials), checkout, and product browsing. They hit `https://www.saucedemo.com`.
@@ -159,7 +164,7 @@ These tests cover login (pass, locked-out user, empty credentials), checkout, an
 Canadian Tire is a real public website. Tests use POM files (page object maps) to locate elements that have no accessible label.
 
 ```bash
-noodle run features/canadiantire/ --headless
+noodle run features/web/canadiantire/ --headless
 ```
 
 These hit `https://www.canadiantire.ca`. They need internet. They take longer because they wait for a real retailer site to load.
@@ -374,8 +379,10 @@ Feature: My first test
 **What each part means:**
 
 - `@web @headless` — run in a browser (Chromium), no visible window
-- `[BUSTERBLOCK]` — resolves to `http://localhost:3333` from `environments.yaml`
-- `[BB_USER]` / `[BB_PASS]` — resolves from `secrets.env` (`reel_ryan` / `Popcorn1!`)
+- `[BUSTERBLOCK]` — resolves to `http://localhost:3333` from
+  `features/web/busterblock/environment/environments.yaml`
+- `[BB_USER]` / `[BB_PASS]` — resolves from
+  `features/web/busterblock/environment/secrets.env` (`reel_ryan` / `Popcorn1!`)
 - `Then User should see "VHS Catalog"` — asserts that text appears on the page
 
 ### Step 2 — run it
@@ -429,10 +436,10 @@ noodle run features/web/busterblock/login.feature --headless
 noodle run features/web/busterblock/ --tag @smoke --headless
 
 # SauceDemo (public site, no local server)
-noodle run features/saucedemo/ --headless
+noodle run features/web/saucedemo/ --headless
 
 # Canadian Tire (real site, needs internet)
-noodle run features/canadiantire/ --headless
+noodle run features/web/canadiantire/ --headless
 
 # API tests (REST, no browser)
 noodle run features/api/ --headless
