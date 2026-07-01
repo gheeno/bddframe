@@ -45,7 +45,7 @@ Snapshot original stock at startup, then (behind `BB_TEST_API`):
   user's cart without driving the UI.
 
 ### Phase 3 — Framework precondition runner
-New module `bddframe/preconditions.py`:
+New module `noodle/preconditions.py`:
 - Reads `preconditions.yaml` from the **feature's own folder**.
 - For each `@precondition:NAME` tag, runs that fixture's `setup:` / `teardown:`
   list of `METHOD URL [JSON]` lines.
@@ -53,7 +53,7 @@ New module `bddframe/preconditions.py`:
   `[BUSTERBLOCK]` resolves from `environments.yaml`.
 - HTTP via **stdlib `urllib`** — no new dependency.
 
-Wire into `bddframe/hooks.py`:
+Wire into `noodle/hooks.py`:
 - `before_scenario` → `preconditions.run(scenario, "setup")`.
 - `after_scenario` → `preconditions.run(scenario, "teardown")`, run early and
   guarded so it **always fires, even when the scenario failed** (the whole point

@@ -1,4 +1,4 @@
-# BDDFrame — Enterprise-Grade Plan
+# Noodle Test Framework — Enterprise-Grade Plan
 
 Status: proposed (not yet implemented). Owner: @gheeno. Date: 2026-06-27.
 
@@ -27,7 +27,7 @@ currently **broken**, not just missing.
 
 ## What's already solid (don't touch)
 
-- **Locator strategy** (`bddframe/agents/web/locator.py`): role/label/placeholder/
+- **Locator strategy** (`noodle/agents/web/locator.py`): role/label/placeholder/
   text, unique-match enforcement, strict mode, POM escape hatch, iframe + row/
   section scoping (D365-grade). This is the moat.
 - **LLM is opt-in fallback only** — deterministic, zero-cost by default. Correct
@@ -48,7 +48,7 @@ currently **broken**, not just missing.
    xdist in deps). Enterprise suites run fully serial. Also the #1 thing
    Selenium-Grid+TestNG users expect. → remove the lie or make it real.
 2. **The Azure pipeline can't run.** `azure-pipelines.yml` does
-   `pip install bddframe` — pulls from PyPI where `bddframe 0.1.0` isn't
+   `pip install noodle` — pulls from PyPI where `noodle 0.1.0` isn't
    published. CI fails at install. → `pip install -e ".[all]"` or publish to an
    Azure Artifacts feed.
 
@@ -121,18 +121,18 @@ which we mostly already do. Lean into that and close the debug/scale gap.
       *Skipped: Playwright `to_have_screenshot` — its pytest-oriented baseline/
       first-run semantics fought the BDD flow; Pillow gave full control in ~25
       lines.*
-- [x] `bddframe/log.py` logger, `BDDFRAME_LOG_LEVEL` + `--log-level`; runtime
+- [x] `noodle/log.py` logger, `BDDFRAME_LOG_LEVEL` + `--log-level`; runtime
       breadcrumbs migrated off `print()` (live-stdout handler keeps capsys/behave
       output intact). *Skipped: migrating CLI command UX prints — those are user
       output, not runtime telemetry.*
 
 ### Phase C — Enterprise integration — DONE 2026-06-27
 
-- [x] `bddframe/secrets_akv.py` — Key Vault loader gated by
+- [x] `noodle/secrets_akv.py` — Key Vault loader gated by
       `BDDFRAME_KEYVAULT_URL`, `DefaultAzureCredential` (managed identity in CI,
       `az login` locally), dash→underscore name mapping. `[azure]` extra. Wired
       into `hooks.before_all`; `$(VAR)`-literal guarded. Unset → `.env` fallback.
-- [x] `bddframe/healing.py` — every self-heal (scroll/partial), POM
+- [x] `noodle/healing.py` — every self-heal (scroll/partial), POM
       disambiguation and vision-locate is recorded; `after_all` writes
       `healing.jsonl` + a report with one `pom.yaml` suggestion per healed
       locator. The Healenium-killer: we report what broke *and* the deterministic
@@ -199,7 +199,7 @@ or Appium server. Real mobile automation does not exist yet.
 
 **What's needed:**
 
-- A new `bddframe/agents/mobile/` agent wrapping `appium-python-client`.
+- A new `noodle/agents/mobile/` agent wrapping `appium-python-client`.
 - An `@appium` routing tag in the orchestrator (alongside `@web` and `@visual`).
 - Mobile-specific locator strategies: `accessibility_id`, `resource-id`,
   `content-desc`, and XPath for UIAutomator2 (Android) / XCUITest (iOS).
@@ -263,7 +263,7 @@ legacy app target is named.
 
 Currently all Playwright browsers launch locally. Enterprise teams run against
 device/browser farms. Playwright supports remote CDP endpoints and
-`connect_over_cdp()`; BDDFrame needs to expose a `BDDFRAME_REMOTE_URL`
+`connect_over_cdp()`; Noodle Test Framework needs to expose a `BDDFRAME_REMOTE_URL`
 environment variable and pass it through `hooks.before_scenario` as an
 alternative launch path.
 

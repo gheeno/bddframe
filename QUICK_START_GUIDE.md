@@ -1,4 +1,4 @@
-# BDDFrame — Quick Start Guide
+# Noodle Test Framework — Quick Start Guide
 
 **Who this is for:** Someone brand new. Zero knowledge of AI, testing, or this framework required.  
 **How to use it:** Follow top to bottom, in order. Do not skip sections.
@@ -7,7 +7,7 @@
 
 ## What is this framework?
 
-BDDFrame lets you write tests in plain English sentences — no code, no selectors, no setup per page.
+Noodle Test Framework lets you write tests in plain English sentences — no code, no selectors, no setup per page.
 
 ```gherkin
 Scenario: User logs in
@@ -48,8 +48,8 @@ ollama --version       # only if you installed it
 ### Clone and install the framework
 
 ```bash
-git clone https://github.com/gheeno/bddframe.git
-cd bddframe
+git clone https://github.com/gheeno/noodle.git
+cd noodle
 
 # Install everything (framework + LLM + reports + visual tools)
 uv pip install -e ".[all]"
@@ -110,7 +110,7 @@ Login: `reel_ryan` / `Popcorn1!`
 Open a **new terminal** (keep Terminal A running). All commands below go in this terminal.
 
 ```bash
-cd bddframe
+cd noodle
 source .venv/bin/activate    # activate the Python environment
 ```
 
@@ -121,7 +121,7 @@ source .venv/bin/activate    # activate the Python environment
 BusterBlock tests cover every framework capability: login, clicks, forms, navigation, assertions, waits, scroll, hover, API steps, variables, scenario outlines, POM fallback, custom scripts, custom hooks, and preconditions.
 
 ```bash
-bddframe run features/web/busterblock/ --headless
+noodle run features/web/busterblock/ --headless
 ```
 
 Expected: all non-LLM tests pass. The LLM tests (`llm_fallback.feature`, `pure_llm.feature`) are skipped unless a model is configured — that is fine for now.
@@ -129,15 +129,15 @@ Expected: all non-LLM tests pass. The LLM tests (`llm_fallback.feature`, `pure_l
 To run just one capability file:
 
 ```bash
-bddframe run features/web/busterblock/login.feature --headless
-bddframe run features/web/busterblock/assertions.feature --headless
-bddframe run features/web/busterblock/navigation.feature --headless
+noodle run features/web/busterblock/login.feature --headless
+noodle run features/web/busterblock/assertions.feature --headless
+noodle run features/web/busterblock/navigation.feature --headless
 ```
 
 To run by tag:
 
 ```bash
-bddframe run features/web/busterblock/ --tag @smoke --headless
+noodle run features/web/busterblock/ --tag @smoke --headless
 ```
 
 ---
@@ -147,7 +147,7 @@ bddframe run features/web/busterblock/ --tag @smoke --headless
 SauceDemo is a public website — no local server needed.
 
 ```bash
-bddframe run features/saucedemo/ --headless
+noodle run features/saucedemo/ --headless
 ```
 
 These tests cover login (pass, locked-out user, empty credentials), checkout, and product browsing. They hit `https://www.saucedemo.com`.
@@ -159,7 +159,7 @@ These tests cover login (pass, locked-out user, empty credentials), checkout, an
 Canadian Tire is a real public website. Tests use POM files (page object maps) to locate elements that have no accessible label.
 
 ```bash
-bddframe run features/canadiantire/ --headless
+noodle run features/canadiantire/ --headless
 ```
 
 These hit `https://www.canadiantire.ca`. They need internet. They take longer because they wait for a real retailer site to load.
@@ -171,7 +171,7 @@ These hit `https://www.canadiantire.ca`. They need internet. They take longer be
 These tests drive a public REST API — no browser, no local server.
 
 ```bash
-bddframe run features/api/ --headless
+noodle run features/api/ --headless
 ```
 
 Tests cover GET, POST, PUT, DELETE, and assertions on JSON responses. They hit `https://api.restful-api.dev`.
@@ -181,7 +181,7 @@ Tests cover GET, POST, PUT, DELETE, and assertions on JSON responses. They hit `
 ### 4.5 — Run everything at once
 
 ```bash
-bddframe run features/ --headless
+noodle run features/ --headless
 ```
 
 This includes all suites above. BusterBlock must be running (Terminal A). Canadian Tire and API need internet. The LLM feature files are skipped if no model is configured.
@@ -212,11 +212,11 @@ python -m pytest unit_tests/test_phase_pattern_coverage.py -v
 After any test run:
 
 ```bash
-bddframe report generate    # builds the HTML report in allure-report/
-bddframe report open        # opens it in your browser
+noodle report generate    # builds the HTML report in allure-report/
+noodle report open        # opens it in your browser
 ```
 
-> Do not open `allure-report/index.html` directly — it will appear blank. Always use `bddframe report open`.
+> Do not open `allure-report/index.html` directly — it will appear blank. Always use `noodle report open`.
 
 ---
 
@@ -226,7 +226,7 @@ bddframe report open        # opens it in your browser
 
 ### What is happening here?
 
-BDDFrame has 50+ built-in step patterns. When a step matches one, it is handled locally — fast, free, deterministic. When a step does **not** match any pattern, BDDFrame can send it to a local AI model to figure out what to do.
+Noodle Test Framework has 50+ built-in step patterns. When a step matches one, it is handled locally — fast, free, deterministic. When a step does **not** match any pattern, Noodle Test Framework can send it to a local AI model to figure out what to do.
 
 **Without an AI model:** an unmatched step fails loudly with "No pattern matched."  
 **With an AI model (auto mode):** the framework falls back to the model only for unmatched steps.  
@@ -293,7 +293,7 @@ No API key. No account. Everything runs on your machine.
 Make sure BusterBlock is running (Terminal A), then:
 
 ```bash
-bddframe run features/web/busterblock/llm_fallback.feature --no-capture
+noodle run features/web/busterblock/llm_fallback.feature --no-capture
 ```
 
 Watch the console output. When a step reaches the model you will see:
@@ -314,7 +314,7 @@ Expected: 2 scenarios pass.
 
 ```bash
 BDDFRAME_LLM_MODE=full \
-bddframe run features/web/busterblock/pure_llm.feature --no-capture
+noodle run features/web/busterblock/pure_llm.feature --no-capture
 ```
 
 The `BDDFRAME_LLM_MODE=full` here overrides the `auto` setting in `.env` for this one run only.
@@ -381,7 +381,7 @@ Feature: My first test
 ### Step 2 — run it
 
 ```bash
-bddframe run features/web/busterblock/my_first_test.feature
+noodle run features/web/busterblock/my_first_test.feature
 ```
 
 You should see a Chromium window open, log in, and the test pass.
@@ -403,13 +403,13 @@ Add this scenario to the same file:
 `authenticates via` is not a built-in pattern. With `BDDFRAME_LLM_MODE=auto` and `BDDFRAME_MODEL=ollama/llama3.1:8b` set in `.env`, this step will be handed to the model.
 
 ```bash
-bddframe run features/web/busterblock/my_first_test.feature --no-capture
+noodle run features/web/busterblock/my_first_test.feature --no-capture
 ```
 
 ### Step 4 — run your test by tag
 
 ```bash
-bddframe run features/web/busterblock/my_first_test.feature --tag @smoke
+noodle run features/web/busterblock/my_first_test.feature --tag @smoke
 ```
 
 ---
@@ -420,35 +420,35 @@ bddframe run features/web/busterblock/my_first_test.feature --tag @smoke
 
 ```bash
 # All BusterBlock tests
-bddframe run features/web/busterblock/ --headless
+noodle run features/web/busterblock/ --headless
 
 # One feature file
-bddframe run features/web/busterblock/login.feature --headless
+noodle run features/web/busterblock/login.feature --headless
 
 # By tag
-bddframe run features/web/busterblock/ --tag @smoke --headless
+noodle run features/web/busterblock/ --tag @smoke --headless
 
 # SauceDemo (public site, no local server)
-bddframe run features/saucedemo/ --headless
+noodle run features/saucedemo/ --headless
 
 # Canadian Tire (real site, needs internet)
-bddframe run features/canadiantire/ --headless
+noodle run features/canadiantire/ --headless
 
 # API tests (REST, no browser)
-bddframe run features/api/ --headless
+noodle run features/api/ --headless
 
 # Everything
-bddframe run features/ --headless
+noodle run features/ --headless
 
 # Unit tests (no browser, no LLM)
 python -m pytest unit_tests/ -v
 
 # LLM fallback (auto mode — patterns first, AI on no-match)
-bddframe run features/web/busterblock/llm_fallback.feature --no-capture
+noodle run features/web/busterblock/llm_fallback.feature --no-capture
 
 # Pure LLM (full mode — every step goes to AI)
 BDDFRAME_LLM_MODE=full \
-bddframe run features/web/busterblock/pure_llm.feature --no-capture
+noodle run features/web/busterblock/pure_llm.feature --no-capture
 ```
 
 ### Config files
@@ -480,7 +480,7 @@ bddframe run features/web/busterblock/pure_llm.feature --no-capture
 
 ## Troubleshooting
 
-**`bddframe: command not found`**  
+**`noodle: command not found`**  
 Activate the venv first: `source .venv/bin/activate`
 
 **`litellm` not found / LLM import error**  
@@ -501,4 +501,4 @@ Terminal A is not running the app. `cd test-app && npm start`
 You wrote a step that does not match a built-in pattern, and no model is set. Either use a built-in step phrase (see `docs/steps_dictionary.md`) or add `BDDFRAME_MODEL=ollama/llama3.1:8b` to `.env`.
 
 **Allure report is blank when I open `index.html` directly**  
-Use `bddframe report open` instead. The report uses HTTP — it cannot load from `file://`.
+Use `noodle report open` instead. The report uses HTTP — it cannot load from `file://`.

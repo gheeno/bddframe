@@ -1,6 +1,6 @@
-# BDDFrame
+# Noodle Test Framework
 
-**QAs write a `.feature` file in plain sentences. BDDFrame does the rest.**
+**QAs write a `.feature` file in plain sentences. Noodle Test Framework does the rest.**
 
 No selectors. No Page Object classes. No step definitions. No code.
 
@@ -50,7 +50,7 @@ Step Resolver (50+ built-in patterns)
 
 ## LLM augmentation
 
-BDDFrame is **model-agnostic** via [LiteLLM](https://github.com/BerriAI/litellm) — you point it at any provider with two lines of config. Cloud or local, the framework works the same way.
+Noodle Test Framework is **model-agnostic** via [LiteLLM](https://github.com/BerriAI/litellm) — you point it at any provider with two lines of config. Cloud or local, the framework works the same way.
 
 ### Cloud providers (one API key required)
 
@@ -118,7 +118,7 @@ No key needed. Run your tests as normal — the model runs on your machine.
 | Pillow | ≥ 10.0.0 | Screenshot annotation |
 | PyYAML | ≥ 6.0 | Config and POM parsing |
 | python-dotenv | ≥ 1.0.0 | `.env` / `secrets.env` loading |
-| Typer | ≥ 0.9.0 | `bddframe` CLI |
+| Typer | ≥ 0.9.0 | `noodle` CLI |
 | LiteLLM *(optional)* | ≥ 1.0.0 | LLM provider abstraction (Claude, Gemini, OpenAI, Ollama…) |
 | allure-python-commons *(optional)* | ≥ 2.13.0 | Allure report generation |
 | OpenCV *(optional)* | ≥ 4.8.0 | Visual / canvas testing |
@@ -127,7 +127,7 @@ No key needed. Run your tests as normal — the model runs on your machine.
 | BehaveX *(optional)* | ≥ 4.0.0 | Local parallel execution |
 | azure-identity *(optional)* | ≥ 1.15.0 | Azure Key Vault auth |
 | azure-keyvault-secrets *(optional)* | ≥ 4.7.0 | Azure Key Vault secret fetch |
-| Allure CLI | latest | `bddframe report generate/open` |
+| Allure CLI | latest | `noodle report generate/open` |
 | Node.js | ≥ 18 | BusterBlock test app |
 
 ---
@@ -139,14 +139,14 @@ No key needed. Run your tests as normal — the model runs on your machine.
 **Prerequisites:** Python 3.11+, [uv](https://docs.astral.sh/uv/)
 
 ```bash
-git clone https://github.com/gheeno/bddframe.git
-cd bddframe
+git clone https://github.com/gheeno/noodle.git
+cd noodle
 
 uv pip install -e ".[all]"      # or: pip install -e ".[all]"
 playwright install chromium
 ```
 
-For Allure reports (required for `bddframe report`):
+For Allure reports (required for `noodle report`):
 
 ```bash
 brew install allure              # macOS
@@ -172,16 +172,16 @@ See **[docs/glossary.md](docs/glossary.md)** for a full map of every env var and
 ### 3. Run tests
 
 ```bash
-bddframe run features/                                      # all tests
-bddframe run features/web/busterblock/ --headless           # a folder
-bddframe run features/web/busterblock/login.feature         # one file
-bddframe run features/web/busterblock/ --tag smoke          # by tag
+noodle run features/                                      # all tests
+noodle run features/web/busterblock/ --headless           # a folder
+noodle run features/web/busterblock/login.feature         # one file
+noodle run features/web/busterblock/ --tag smoke          # by tag
 ```
 
 ### 4. Generate the report
 
 ```bash
-bddframe report generate
+noodle report generate
 ```
 
 Reads `allure-results/` and writes `allure-report/` (HTML).
@@ -189,7 +189,7 @@ Reads `allure-results/` and writes `allure-report/` (HTML).
 ### 5. View the report
 
 ```bash
-bddframe report open
+noodle report open
 ```
 
 > Don't open `allure-report/index.html` directly — it needs HTTP. This command serves it.
@@ -211,7 +211,7 @@ npm start            # → http://localhost:3333
 **Terminal 2 — run the tests:**
 
 ```bash
-bddframe run features/web/busterblock/ --headless
+noodle run features/web/busterblock/ --headless
 ```
 
 Default credentials are already in `secrets.env.example` (`BB_USER=reel_ryan`, `BB_PASS=Popcorn1!`). `http://localhost:3333` is pre-wired to `[BUSTERBLOCK]` in `environments.yaml` — no extra config needed.
@@ -219,15 +219,15 @@ Default credentials are already in `secrets.env.example` (`BB_USER=reel_ryan`, `
 Run a specific capability:
 
 ```bash
-bddframe run features/web/busterblock/login.feature --headless
-bddframe run features/web/busterblock/ --tag @smoke
+noodle run features/web/busterblock/login.feature --headless
+noodle run features/web/busterblock/ --tag @smoke
 ```
 
 To run the LLM fallback demo (requires an API key):
 
 ```bash
 BDDFRAME_MODEL=anthropic/claude-haiku-4-5-20251001 \
-bddframe run features/web/busterblock/llm_fallback.feature --no-capture
+noodle run features/web/busterblock/llm_fallback.feature --no-capture
 ```
 
 ---

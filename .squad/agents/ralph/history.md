@@ -1,6 +1,6 @@
 # Project Context
 
-- **Project:** bddframe
+- **Project:** noodle
 - **Created:** 2026-06-30
 
 ## Core Context

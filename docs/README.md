@@ -1,7 +1,7 @@
-# BDDFrame — Documentation
+# Noodle Test Framework — Documentation
 
 A QA writes a `.feature` file in plain Gherkin sentences. No step definitions, no
-selectors, no code. BDDFrame reads each sentence, finds the element by what it
+selectors, no code. Noodle Test Framework reads each sentence, finds the element by what it
 *is* (role / label / text), runs it with Playwright (web) or OpenCV (visual), and
 produces an annotated Allure report. An LLM is an **optional, opt-in fallback** —
 off by default.

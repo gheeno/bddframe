@@ -1,4 +1,4 @@
-# BDDFrame — Design History
+# Noodle Test Framework — Design History
 
 The chronological record of how each capability was designed and built, condensed
 from the original twelve phase documents. For how the framework works *today*, read
@@ -36,7 +36,7 @@ current; this page is the rationale trail behind them.
 
 **Goal:** read a `.feature` file, understand each step, route it to the right agent.
 
-- **behave** parses Gherkin; BDDFrame drives the steps through one catch-all (no per-step glue).
+- **behave** parses Gherkin; Noodle Test Framework drives the steps through one catch-all (no per-step glue).
 - **Variable substitution** — `[my email]` → `os.getenv("MY_EMAIL")`, before the step resolves. Missing vars stay literal + warn (handy for exploratory runs).
 - **Two-tier resolver** — Tier 1 is regex pattern matching (most steps, no cost); Tier 2 hands the sentence to the LLM only on a miss.
 - **LiteLLM** is the single model gateway — swap models with one env var.
@@ -86,13 +86,13 @@ Covered by `unit_tests/test_cli_hardening.py` and `unit_tests/test_hooks_hardeni
 - `reporting/writer.py` emits **Allure JSON** per step as it runs.
 - `reporting/annotate.py` draws failure annotations with **Pillow** (red box for not-found, highlight + ✗ for assertion failures).
 - `reporting/junit.py` writes **JUnit XML** (stdlib `xml.etree`) — Azure DevOps shows pass/fail counts with no plugin.
-- `reporting/builder.py` shells out to the **Allure CLI** to render the HTML; `bddframe report open` / `generate` wrap it. Semantic-assertion reasoning is attached as evidence.
+- `reporting/builder.py` shells out to the **Allure CLI** to render the HTML; `noodle report open` / `generate` wrap it. Semantic-assertion reasoning is attached as evidence.
 
 ## Phase 6 — CLI, Recorder & Azure DevOps
 
 **Goal:** one command to run, one to record, drop-in pipeline YAML.
 
-- **Recorder** (`recorder/recorder.py`) — `bddframe record` opens a visible browser, watches navigate/click/fill events via Playwright, and writes human-readable steps (not raw selectors). `recorder/sensitives.py` auto-redacts emails/cards/passwords to `[VARIABLE]`.
+- **Recorder** (`recorder/recorder.py`) — `noodle record` opens a visible browser, watches navigate/click/fill events via Playwright, and writes human-readable steps (not raw selectors). `recorder/sensitives.py` auto-redacts emails/cards/passwords to `[VARIABLE]`.
 - **CLI** (`cli.py`, Typer): `run` (`--headless`/`--headed`/`--tag`/`--browser`), `validate`, `list`, `record`, `report open`/`generate`.
 - **Azure pipelines** — Linux (`azure-pipelines.yml`, Xvfb for headed/visual) and Windows (`azure-pipelines-windows.yml`, native GUI) templates that publish JUnit + Allure.
 
@@ -100,7 +100,7 @@ Covered by `unit_tests/test_cli_hardening.py` and `unit_tests/test_hooks_hardeni
 
 **Goal:** great `.feature` editing in VS Code with minimal new code.
 
-- A **TextMate grammar** (`vscode-extension/syntaxes/bddframe.tmLanguage.json`) colours Gherkin keywords, `@tags`, and BDDFrame-specific `[variables]` (gold).
+- A **TextMate grammar** (`vscode-extension/syntaxes/noodle.tmLanguage.json`) colours Gherkin keywords, `@tags`, and Noodle Test Framework-specific `[variables]` (gold).
 - A **pygls** language server (`lsp/server.py`) reads `resolver/patterns.py` directly, so step validation always reflects the real patterns. Unknown steps are **warnings, not errors** (the LLM may resolve them at runtime).
 - `@tag` autocomplete and `[variable]` completion sourced from the project `.env`.
 - The standard Cucumber extension conflicts (both bind `.feature`); disable it per workspace.
@@ -137,7 +137,7 @@ models from the Azure Foundry Catalog (not HF), is a separate runtime (not
 Ollama), and its runtime installs via `winget`/`brew` (not pip). It exposes an
 **OpenAI-compatible** endpoint.
 
-The lazy finding for BDDFrame itself: its LLM fallback already runs on LiteLLM,
+The lazy finding for Noodle Test Framework itself: its LLM fallback already runs on LiteLLM,
 which already speaks OpenAI-compatible endpoints — so unblocking it needs **no new
 framework, only `.env`**:
 
@@ -149,7 +149,7 @@ OPENAI_API_KEY=not-needed                               # local service ignores 
 
 The heavier `agent-framework` + `MCPStdioTool` work (a genuinely agentic
 MCP-driven browser agent) is reserved for when one-shot `ask()` isn't enough —
-kept in a separate `uv` subproject so it never bloats BDDFrame's core install.
+kept in a separate `uv` subproject so it never bloats Noodle Test Framework's core install.
 
 ## Phase 11 — Step-Coverage Expansion
 
@@ -204,7 +204,7 @@ data before a scenario — the JDBC-fixture pattern, in Gherkin.
 - **BusterBlock** (`test-app/`) — a Node/Express VHS-rental site with
   in-memory data and test-only `/api/test/*` endpoints (reset / set-stock /
   seed-cart) gated behind `BB_TEST_API`. The in-memory store *is* the "database".
-- **Tag-driven preconditions** (`bddframe/preconditions.py`) — `@precondition:NAME`
+- **Tag-driven preconditions** (`noodle/preconditions.py`) — `@precondition:NAME`
   runs a fixture's `setup:` HTTP calls in `before_scenario` and its `teardown:`
   calls in `after_scenario` (**even on failure**), from a per-folder
   `preconditions.yaml`. stdlib `urllib`, no new dependency.
@@ -218,7 +218,7 @@ Chosen over a `Background:`-only approach (no teardown) and a real SQLite DB
 **Goal:** invoke anything a test needs that the browser can't do — seed a DB with
 Python, run a Java jar, call a shell tool — as a plain Gherkin step.
 
-- `run_script` / `run_command` (`bddframe/orchestrator/script_runner.py`) — the
+- `run_script` / `run_command` (`noodle/orchestrator/script_runner.py`) — the
   interpreter is inferred from the file extension (`.py`/`.js`/`.jar`/`.sh`/…); a
   non-zero exit **fails the step**; stdout is captured into `` `SCRIPT_OUTPUT` ``
   (plus an optional named var) for downstream assertions. Same three-edit shape as
